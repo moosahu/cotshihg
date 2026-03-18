@@ -35,6 +35,10 @@ class TherapistDetailPage extends StatelessWidget {
                 SliverAppBar(
                   expandedHeight: 220,
                   pinned: true,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                    onPressed: () => context.pop(),
+                  ),
                   flexibleSpace: FlexibleSpaceBar(
                     background: Container(
                       decoration: const BoxDecoration(

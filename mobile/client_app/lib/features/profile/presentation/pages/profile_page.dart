@@ -6,23 +6,113 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/network/api_client.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
 
-  Map<String, dynamic> _getUser() {
+class _ProfilePageState extends State<ProfilePage> {
+  Map<String, dynamic> _user = {};
+  int _sessionCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+    _loadStats();
+  }
+
+  Future<void> _loadUser() async {
     final raw = getIt<StorageService>().getUser();
-    if (raw == null) return {};
-    return jsonDecode(raw) as Map<String, dynamic>;
+    if (raw != null) {
+      final user = jsonDecode(raw) as Map<String, dynamic>;
+      if (mounted) setState(() => _user = user);
+      if ((user['name'] as String?)?.isNotEmpty == true) return;
+    }
+    try {
+      final res = await getIt<ApiClient>().getProfile();
+      final user = res['data'] as Map<String, dynamic>? ?? {};
+      await getIt<StorageService>().saveUser(jsonEncode(user));
+      if (mounted) setState(() => _user = user);
+    } catch (_) {}
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final res = await getIt<ApiClient>().getMyBookings(status: 'completed');
+      final list = (res['data'] as List?) ?? [];
+      if (mounted) setState(() => _sessionCount = list.length);
+    } catch (_) {}
+  }
+
+  void _editProfile() {
+    final nameCtrl = TextEditingController(text: _user['name'] as String? ?? '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            left: 24, right: 24, top: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('تعديل الملف الشخصي',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'الاسم الكامل',
+                  prefixIcon: Icon(Icons.person_outline)),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await getIt<ApiClient>()
+                        .updateProfile({'name': nameCtrl.text.trim()});
+                    final updated = Map<String, dynamic>.from(_user)
+                      ..['name'] = nameCtrl.text.trim();
+                    await getIt<StorageService>().saveUser(jsonEncode(updated));
+                    setState(() => _user = updated);
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('تم الحفظ'),
+                            backgroundColor: AppTheme.successColor));
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('خطأ: $e'),
+                            backgroundColor: AppTheme.errorColor));
+                  }
+                },
+                child: const Text('حفظ'),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = _getUser();
-    final name = (user['name'] as String?) ?? 'المستخدم';
-    final phone = (user['phone'] as String?) ?? '';
+    final name = (_user['name'] as String?) ?? 'المستخدم';
+    final phone = (_user['phone'] as String?) ?? '';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('حسابي')),
+      appBar: AppBar(automaticallyImplyLeading: false, title: const Text('حسابي')),
       body: ListView(
         children: [
           // Header
@@ -34,25 +124,23 @@ class ProfilePage extends StatelessWidget {
                 const CircleAvatar(
                   radius: 44,
                   backgroundColor: AppTheme.backgroundColor,
-                  child: Icon(
-                    Icons.person,
-                    size: 48,
-                    color: AppTheme.primaryColor,
-                  ),
+                  child: Icon(Icons.person, size: 48, color: AppTheme.primaryColor),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  phone.isNotEmpty ? phone : '',
-                  style: const TextStyle(color: AppTheme.textSecondary),
-                ),
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
+                if (phone.isNotEmpty)
+                  Text(phone,
+                      style: const TextStyle(color: AppTheme.textSecondary)),
                 const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () {},
-                  child: const Text('تعديل الملف الشخصي'),
+                OutlinedButton.icon(
+                  onPressed: _editProfile,
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('تعديل الملف الشخصي'),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      side: const BorderSide(color: AppTheme.primaryColor)),
                 ),
               ],
             ),
@@ -62,89 +150,70 @@ class ProfilePage extends StatelessWidget {
           Container(
             color: Colors.white,
             padding: const EdgeInsets.all(16),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _ProfileStat(value: '0', label: 'جلسة'),
-                _StatDivider(),
-                _ProfileStat(value: '0', label: 'يوم متابعة'),
-                _StatDivider(),
-                _ProfileStat(value: '0', label: 'هدف مكتمل'),
+                _ProfileStat(value: '$_sessionCount', label: 'جلسة مكتملة'),
+                const _StatDivider(),
+                const _ProfileStat(value: '0', label: 'يوم متابعة'),
+                const _StatDivider(),
+                const _ProfileStat(value: '0', label: 'هدف مكتمل'),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          // Menu
-          _MenuSection(
-            title: 'جلساتي',
-            items: [
-              _MenuItem(
-                icon: Icons.calendar_today_outlined,
-                title: 'حجوزاتي',
-                onTap: () {},
-              ),
-              _MenuItem(
-                icon: Icons.history_outlined,
-                title: 'سجل الجلسات',
-                onTap: () {},
-              ),
-              _MenuItem(
-                icon: Icons.payment_outlined,
-                title: 'المدفوعات',
-                onTap: () {},
-              ),
-            ],
-          ),
-          _MenuSection(
-            title: 'الإعدادات',
-            items: [
-              _MenuItem(
-                icon: Icons.notifications_outlined,
-                title: 'الإشعارات',
-                onTap: () {},
-              ),
-              _MenuItem(
-                icon: Icons.lock_outline,
-                title: 'الخصوصية',
-                onTap: () {},
-              ),
-              _MenuItem(
-                icon: Icons.language_outlined,
-                title: 'اللغة',
-                onTap: () {},
-              ),
-            ],
-          ),
-          _MenuSection(
-            title: 'المساعدة',
-            items: [
-              _MenuItem(
-                icon: Icons.help_outline,
-                title: 'الأسئلة الشائعة',
-                onTap: () {},
-              ),
-              _MenuItem(
-                icon: Icons.support_agent_outlined,
-                title: 'تواصل معنا',
-                onTap: () {},
-              ),
-              _MenuItem(
-                icon: Icons.logout,
-                title: 'تسجيل الخروج',
-                color: AppTheme.errorColor,
-                onTap: () {
-                  context.read<AuthBloc>().add(LogoutEvent());
-                  context.go('/login');
-                },
-              ),
-            ],
-          ),
+          // جلساتي
+          _MenuSection(title: 'جلساتي', items: [
+            _MenuItem(
+              icon: Icons.calendar_today_outlined,
+              title: 'حجوزاتي',
+              onTap: () => context.push('/my-bookings'),
+            ),
+            _MenuItem(
+              icon: Icons.payment_outlined,
+              title: 'سجل المدفوعات',
+              onTap: () => context.push('/my-payments'),
+            ),
+          ]),
+          // الإعدادات
+          _MenuSection(title: 'الإعدادات', items: [
+            _MenuItem(
+              icon: Icons.notifications_outlined,
+              title: 'الإشعارات',
+              onTap: () {},
+            ),
+            _MenuItem(
+              icon: Icons.lock_outline,
+              title: 'الخصوصية',
+              onTap: () => context.push('/privacy'),
+            ),
+          ]),
+          // المساعدة
+          _MenuSection(title: 'المساعدة', items: [
+            _MenuItem(
+              icon: Icons.help_outline,
+              title: 'الأسئلة الشائعة',
+              onTap: () {},
+            ),
+            _MenuItem(
+              icon: Icons.support_agent_outlined,
+              title: 'تواصل معنا',
+              onTap: () {},
+            ),
+            _MenuItem(
+              icon: Icons.logout,
+              title: 'تسجيل الخروج',
+              color: AppTheme.errorColor,
+              onTap: () {
+                context.read<AuthBloc>().add(LogoutEvent());
+                context.go('/login');
+              },
+            ),
+          ]),
           const SizedBox(height: 32),
           const Center(
-            child: Text(
-              'Coaching v1.0.0',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-            ),
+            child: Text('Coaching v1.0.0',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           ),
           const SizedBox(height: 16),
         ],
@@ -156,71 +225,43 @@ class ProfilePage extends StatelessWidget {
 class _ProfileStat extends StatelessWidget {
   final String value;
   final String label;
-
   const _ProfileStat({required this.value, required this.label});
-
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(value,
           style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
+              fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+      Text(label,
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+    ],
+  );
 }
 
 class _StatDivider extends StatelessWidget {
   const _StatDivider();
-
   @override
-  Widget build(BuildContext context) {
-    return Container(width: 1, height: 40, color: AppTheme.backgroundColor);
-  }
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 40, color: AppTheme.backgroundColor);
 }
 
 class _MenuSection extends StatelessWidget {
   final String title;
   final List<_MenuItem> items;
-
   const _MenuSection({required this.title, required this.items});
-
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-        ),
-        Container(
-          color: Colors.white,
-          child: Column(children: items),
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Text(title,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+      ),
+      Container(color: Colors.white, child: Column(children: items)),
+      const SizedBox(height: 8),
+    ],
+  );
 }
 
 class _MenuItem extends StatelessWidget {
@@ -228,26 +269,15 @@ class _MenuItem extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
   final Color? color;
-
-  const _MenuItem({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-    this.color,
-  });
-
+  const _MenuItem(
+      {required this.icon, required this.title, required this.onTap, this.color});
   @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: color ?? AppTheme.textPrimary),
-      title: Text(
-        title,
-        style: TextStyle(color: color ?? AppTheme.textPrimary),
-      ),
-      trailing: color == null
-          ? const Icon(Icons.chevron_left, color: AppTheme.textSecondary)
-          : null,
-      onTap: onTap,
-    );
-  }
+  Widget build(BuildContext context) => ListTile(
+    leading: Icon(icon, color: color ?? AppTheme.textPrimary),
+    title: Text(title, style: TextStyle(color: color ?? AppTheme.textPrimary)),
+    trailing: color == null
+        ? const Icon(Icons.chevron_left, color: AppTheme.textSecondary)
+        : null,
+    onTap: onTap,
+  );
 }

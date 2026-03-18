@@ -229,7 +229,7 @@ class _FeaturedTherapistsSectionState extends State<_FeaturedTherapistsSection> 
           )
         else
           SizedBox(
-            height: 220,
+            height: 240,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _therapists.length,

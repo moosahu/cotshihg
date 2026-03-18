@@ -14,6 +14,9 @@ import '../../features/session/presentation/pages/video_call_page.dart';
 import '../../features/mood/presentation/pages/mood_tracker_page.dart';
 import '../../features/content/presentation/pages/content_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/my_bookings_page.dart';
+import '../../features/profile/presentation/pages/my_payments_page.dart';
+import '../../features/profile/presentation/pages/privacy_page.dart';
 // Coach screens
 import '../../features/coach/dashboard/presentation/pages/coach_dashboard_page.dart';
 import '../../features/coach/bookings/presentation/pages/coach_bookings_page.dart';
@@ -87,6 +90,9 @@ class AppRouter {
         path: '/coach/video/:bookingId',
         builder: (_, state) => VideoCallPage(bookingId: state.pathParameters['bookingId']!),
       ),
+      GoRoute(path: '/my-bookings', builder: (_, __) => const MyBookingsPage()),
+      GoRoute(path: '/my-payments', builder: (_, __) => const MyPaymentsPage()),
+      GoRoute(path: '/privacy', builder: (_, __) => const PrivacyPage()),
     ],
   );
 }
