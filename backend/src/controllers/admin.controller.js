@@ -113,7 +113,7 @@ exports.getTherapists = async (req, res) => {
               t.is_approved, t.id as therapist_id
        FROM users u
        LEFT JOIN therapists t ON t.user_id = u.id
-       WHERE u.role = 'therapist'
+       WHERE u.role IN ('therapist', 'coach')
        ORDER BY u.created_at DESC`
     );
     successResponse(res, result.rows);
@@ -152,6 +152,28 @@ exports.getBookings = async (req, res) => {
        LIMIT 100`
     );
     successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/bookings/:id/cancel
+exports.cancelBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // End any active session for this booking
+    await pool.query(
+      `UPDATE sessions SET status='ended', ended_at=NOW() WHERE booking_id=$1 AND status='active'`,
+      [id]
+    );
+    const result = await pool.query(
+      `UPDATE bookings SET status='cancelled', updated_at=NOW()
+       WHERE id=$1 AND status NOT IN ('completed','cancelled')
+       RETURNING id, status`,
+      [id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'الحجز غير موجود أو لا يمكن إلغاؤه', 400);
+    successResponse(res, result.rows[0], 'تم إلغاء الحجز');
   } catch (err) {
     errorResponse(res, err.message, 500);
   }

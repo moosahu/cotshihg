@@ -11,12 +11,28 @@ export default function Bookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     api.getBookings()
       .then(res => setBookings(res.data || []))
       .catch(err => toast.error(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleCancel = async (id) => {
+    if (!window.confirm('هل تريد إلغاء هذا الحجز؟')) return;
+    try {
+      await api.cancelBooking(id);
+      toast.success('تم إلغاء الحجز');
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const canCancel = (status) => ['pending', 'confirmed', 'in_progress'].includes(status);
 
   const columns = [
     { key: 'id', label: 'رقم الحجز', render: v => v ? v.slice(0, 8).toUpperCase() : '—' },
@@ -35,6 +51,17 @@ export default function Bookings() {
           {statusLabels[v] || v}
         </span>
       )
+    },
+    {
+      key: 'id', label: 'إجراء',
+      render: (id, row) => canCancel(row.status) ? (
+        <button
+          onClick={() => handleCancel(id)}
+          style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid #E53935', background: 'transparent', color: '#E53935', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+        >
+          إلغاء
+        </button>
+      ) : '—'
     },
   ];
 

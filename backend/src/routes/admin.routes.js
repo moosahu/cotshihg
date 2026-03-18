@@ -26,6 +26,7 @@ router.put('/users/:id/ban', adminAuth, adminController.toggleBanUser);
 router.get('/therapists', adminAuth, adminController.getTherapists);
 router.put('/therapists/:id/approve', adminAuth, adminController.toggleApproveTherapist);
 router.get('/bookings', adminAuth, adminController.getBookings);
+router.put('/bookings/:id/cancel', adminAuth, adminController.cancelBooking);
 router.get('/payments', adminAuth, adminController.getPayments);
 router.get('/content', adminAuth, adminController.getContent);
 router.post('/content', adminAuth, adminController.createContent);
