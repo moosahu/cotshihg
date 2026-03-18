@@ -90,7 +90,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
         if (mounted) setState(() => _remoteUid = null);
       },
       onError: (ErrorCodeType err, String msg) {
-        final detail = 'Agora error ${err.index}: $msg';
+        final detail = 'Agora ${err.name}(${err.index}) msg:$msg';
         if (mounted) setState(() {
           _loading = false;
           _errorMsg = 'خطأ في الاتصال';
