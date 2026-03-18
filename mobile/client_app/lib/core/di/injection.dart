@@ -42,7 +42,7 @@ Future<void> setupDependencies() async {
 
 Dio _createDio() {
   final dio = Dio(BaseOptions(
-    baseUrl: 'http://localhost:3000/api/v1',
+    baseUrl: 'https://coaching-backend-ft67.onrender.com/api/v1',
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
     headers: {'Content-Type': 'application/json'},
