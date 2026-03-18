@@ -26,5 +26,9 @@ router.get('/therapists', adminAuth, adminController.getTherapists);
 router.put('/therapists/:id/approve', adminAuth, adminController.toggleApproveTherapist);
 router.get('/bookings', adminAuth, adminController.getBookings);
 router.get('/payments', adminAuth, adminController.getPayments);
+router.get('/content', adminAuth, adminController.getContent);
+router.post('/content', adminAuth, adminController.createContent);
+router.put('/content/:id/publish', adminAuth, adminController.togglePublishContent);
+router.delete('/content/:id', adminAuth, adminController.deleteContent);
 
 module.exports = router;

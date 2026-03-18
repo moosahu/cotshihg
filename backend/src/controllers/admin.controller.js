@@ -129,6 +129,60 @@ exports.getBookings = async (req, res) => {
   }
 };
 
+// GET /admin/content
+exports.getContent = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM content ORDER BY created_at DESC'
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// POST /admin/content
+exports.createContent = async (req, res) => {
+  try {
+    const { title_ar, content_type, category, is_free } = req.body;
+    if (!title_ar) return errorResponse(res, 'العنوان مطلوب', 400);
+    const result = await pool.query(
+      `INSERT INTO content (title_ar, content_type, category, is_free, is_published)
+       VALUES ($1, $2, $3, $4, false) RETURNING *`,
+      [title_ar, content_type || 'article', category || 'تطوير ذاتي', is_free !== false]
+    );
+    successResponse(res, result.rows[0], 'تمت الإضافة');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/content/:id/publish
+exports.togglePublishContent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'UPDATE content SET is_published = NOT is_published WHERE id = $1 RETURNING id, title_ar, is_published',
+      [id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'المحتوى غير موجود', 404);
+    successResponse(res, result.rows[0]);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// DELETE /admin/content/:id
+exports.deleteContent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM content WHERE id = $1', [id]);
+    successResponse(res, null, 'تم الحذف');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
 // GET /admin/payments
 exports.getPayments = async (req, res) => {
   try {

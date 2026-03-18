@@ -29,6 +29,10 @@ const api = {
   toggleApproveTherapist: (id) => request(`/admin/therapists/${id}/approve`, { method: 'PUT' }),
   getBookings: () => request('/admin/bookings'),
   getPayments: () => request('/admin/payments'),
+  getContent: () => request('/admin/content'),
+  createContent: (data) => request('/admin/content', { method: 'POST', body: JSON.stringify(data) }),
+  togglePublishContent: (id) => request(`/admin/content/${id}/publish`, { method: 'PUT' }),
+  deleteContent: (id) => request(`/admin/content/${id}`, { method: 'DELETE' }),
 };
 
 export default api;
