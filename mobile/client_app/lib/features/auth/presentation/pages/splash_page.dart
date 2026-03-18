@@ -13,7 +13,8 @@ class SplashPage extends StatelessWidget {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          context.go('/home');
+          final role = state.user['role'] as String? ?? 'client';
+          context.go(role == 'coach' ? '/coach/dashboard' : '/home');
         } else if (state is AuthUnauthenticated) {
           context.go('/onboarding');
         }

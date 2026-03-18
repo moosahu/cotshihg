@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class ChatSessionPage extends StatefulWidget {
@@ -18,9 +19,19 @@ class _ChatSessionPageState extends State<ChatSessionPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('جلسة المحادثة'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.phone_outlined), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.videocam_outlined), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.phone_outlined),
+            onPressed: () => context.push('/video-call/${widget.bookingId}'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.videocam_outlined),
+            onPressed: () => context.push('/video-call/${widget.bookingId}'),
+          ),
         ],
       ),
       body: Column(
@@ -65,7 +76,7 @@ class _ChatSessionPageState extends State<ChatSessionPage> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.send, color: AppTheme.primaryColor),
+                  icon: const Icon(Icons.arrow_upward, color: AppTheme.primaryColor),
                   onPressed: () {
                     if (_messageController.text.isNotEmpty) {
                       setState(() {

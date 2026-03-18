@@ -18,6 +18,7 @@ class AppTheme {
   static const Color textSecondary = Color(0xFF8A94A6);
   static const Color errorColor = Color(0xFFE53935);
   static const Color successColor = Color(0xFF2ECC71);
+  static const Color warningColor = Color(0xFFF5A623);
 
   // Gradient — used on splash & hero sections
   static const LinearGradient primaryGradient = LinearGradient(
@@ -77,7 +78,7 @@ class AppTheme {
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: cardColor,
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

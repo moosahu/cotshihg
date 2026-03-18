@@ -30,6 +30,17 @@ class AuthRepository {
     return result['data'];
   }
 
+  Future<Map<String, dynamic>> register({
+    required String name,
+    required String gender,
+    required String role,
+  }) async {
+    final result = await _api.register(name: name, gender: gender, role: role);
+    final user = result['data'];
+    await _storage.saveUser(jsonEncode(user));
+    return user;
+  }
+
   Future<void> logout() async {
     await _storage.clearAll();
   }

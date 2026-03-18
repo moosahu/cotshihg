@@ -81,9 +81,9 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
 
 class _StatsRow extends StatelessWidget {
   final List<Map<String, dynamic>> stats = const [
-    {'label': 'جلسات اليوم', 'value': '3', 'icon': Icons.today, 'color': Color(0xFF1A6B72)},
-    {'label': 'هذا الأسبوع', 'value': '12', 'icon': Icons.calendar_view_week, 'color': Color(0xFFF5A623)},
-    {'label': 'التقييم', 'value': '4.9', 'icon': Icons.star, 'color': Color(0xFFFF6B35)},
+    {'label': 'جلسات اليوم', 'value': '0', 'icon': Icons.today, 'color': Color(0xFF1A6B72)},
+    {'label': 'هذا الأسبوع', 'value': '0', 'icon': Icons.calendar_view_week, 'color': Color(0xFFF5A623)},
+    {'label': 'التقييم', 'value': '—', 'icon': Icons.star, 'color': Color(0xFFFF6B35)},
   ];
 
   @override
@@ -110,12 +110,6 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _TodaySessionsCard extends StatelessWidget {
-  final List<Map<String, dynamic>> sessions = const [
-    {'name': 'أحمد محمد', 'time': '10:00 ص', 'type': 'video', 'status': 'confirmed'},
-    {'name': 'سارة علي', 'time': '12:30 م', 'type': 'chat', 'status': 'confirmed'},
-    {'name': 'خالد أحمد', 'time': '3:00 م', 'type': 'voice', 'status': 'pending'},
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -132,7 +126,12 @@ class _TodaySessionsCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            ...sessions.map((s) => _SessionTile(session: s)),
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('لا توجد جلسات اليوم', style: TextStyle(color: AppTheme.textSecondary)),
+              ),
+            ),
           ],
         ),
       ),
@@ -202,8 +201,8 @@ class _PendingRequestsCard extends StatelessWidget {
           decoration: BoxDecoration(color: AppTheme.warningColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
           child: const Icon(Icons.pending_actions_outlined, color: AppTheme.warningColor),
         ),
-        title: const Text('2 طلبات معلقة', style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: const Text('في انتظار موافقتك'),
+        title: const Text('الطلبات المعلقة', style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: const Text('اضغط لعرض الطلبات'),
         trailing: const Icon(Icons.chevron_left, color: AppTheme.textSecondary),
         onTap: () => context.go('/coach/bookings'),
       ),
@@ -230,7 +229,7 @@ class _WeeklyEarningsCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('أرباح هذا الأسبوع', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                  Text('1,850 ر.س', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                  Text('0 ر.س', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                 ],
               ),
             ),

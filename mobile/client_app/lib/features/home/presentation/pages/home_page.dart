@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/network/api_client.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -81,9 +83,36 @@ class _MoodCheckInCard extends StatelessWidget {
   }
 }
 
-class _UpcomingSessionCard extends StatelessWidget {
+class _UpcomingSessionCard extends StatefulWidget {
+  @override
+  State<_UpcomingSessionCard> createState() => _UpcomingSessionCardState();
+}
+
+class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
+  Map<String, dynamic>? _session;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await getIt<ApiClient>().getMyBookings(status: 'confirmed');
+      final list = (res['data'] as List?) ?? [];
+      if (list.isNotEmpty && mounted) setState(() => _session = list.first as Map<String, dynamic>);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_session == null) return const SizedBox.shrink();
+    final therapistName = _session!['therapist_name'] as String? ?? 'الكوتش';
+    final scheduledAt = _session!['scheduled_at'] as String?;
+    final dateStr = scheduledAt != null
+        ? DateTime.tryParse(scheduledAt)?.toLocal().toString().substring(0, 16) ?? scheduledAt
+        : '';
     return Card(
       color: AppTheme.primaryColor,
       child: Padding(
@@ -97,13 +126,13 @@ class _UpcomingSessionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('جلستك القادمة', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  const Text('د. سارة الأحمد', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                  const Text('غداً - 10:00 صباحاً', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  Text(therapistName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(dateStr, style: const TextStyle(color: Colors.white70, fontSize: 13)),
                 ],
               ),
             ),
             ElevatedButton(
-              onPressed: () => context.go('/chat/booking_id'),
+              onPressed: () => context.go('/chat/${_session!['id']}'),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppTheme.primaryColor),
               child: const Text('انضم'),
             ),
@@ -150,7 +179,33 @@ class _QuickAccessSection extends StatelessWidget {
   }
 }
 
-class _FeaturedTherapistsSection extends StatelessWidget {
+class _FeaturedTherapistsSection extends StatefulWidget {
+  @override
+  State<_FeaturedTherapistsSection> createState() => _FeaturedTherapistsSectionState();
+}
+
+class _FeaturedTherapistsSectionState extends State<_FeaturedTherapistsSection> {
+  List<dynamic> _therapists = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await getIt<ApiClient>().getTherapists();
+      setState(() {
+        _therapists = (res['data'] as List?) ?? [];
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -159,62 +214,69 @@ class _FeaturedTherapistsSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('المعالجون المميزون', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('الكوتشز المميزون', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             TextButton(onPressed: () => context.go('/therapists'), child: const Text('عرض الكل')),
           ],
         ),
-        SizedBox(
-          height: 200,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: 5,
-            itemBuilder: (context, index) => _TherapistCard(index: index),
+        if (_loading)
+          const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+        else if (_therapists.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('لا يوجد كوتشز متاحون بعد', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+          )
+        else
+          SizedBox(
+            height: 220,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _therapists.length,
+              itemBuilder: (context, i) {
+                final t = _therapists[i] as Map<String, dynamic>;
+                final name = t['name'] as String? ?? 'كوتش';
+                final specs = t['specializations'] as List?;
+                final spec = specs != null && specs.isNotEmpty ? specs.first as String : '';
+                final rating = t['rating'];
+                return Container(
+                  width: 150,
+                  margin: const EdgeInsets.only(left: 12),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: [
+                          const CircleAvatar(radius: 35, backgroundColor: AppTheme.backgroundColor, child: Icon(Icons.person, size: 40, color: AppTheme.textSecondary)),
+                          const SizedBox(height: 8),
+                          Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(spec, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.star, size: 14, color: Colors.amber),
+                              Text(' ${rating ?? '—'}', style: const TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () => context.go('/therapist/${t['id']}'),
+                              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 6)),
+                              child: const Text('احجز', style: TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
       ],
-    );
-  }
-}
-
-class _TherapistCard extends StatelessWidget {
-  final int index;
-  const _TherapistCard({required this.index});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 150,
-      margin: const EdgeInsets.only(left: 12),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              const CircleAvatar(radius: 35, backgroundColor: AppTheme.backgroundColor, child: Icon(Icons.person, size: 40, color: AppTheme.textSecondary)),
-              const SizedBox(height: 8),
-              const Text('د. محمد الأحمد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-              const Text('نفسي إكلينيكي', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-              const SizedBox(height: 4),
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.star, size: 14, color: Colors.amber),
-                  Text(' 4.8', style: TextStyle(fontSize: 12)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => context.go('/therapist/$index'),
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 6)),
-                  child: const Text('احجز', style: TextStyle(fontSize: 12)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

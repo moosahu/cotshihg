@@ -23,6 +23,14 @@ class VerifyOTPEvent extends AuthEvent {
   @override
   List<Object?> get props => [firebaseToken, phone];
 }
+class RegisterEvent extends AuthEvent {
+  final String name;
+  final String gender;
+  final String role;
+  const RegisterEvent({required this.name, required this.gender, required this.role});
+  @override
+  List<Object?> get props => [name, gender, role];
+}
 class LogoutEvent extends AuthEvent {}
 
 // States
@@ -57,6 +65,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<CheckAuthEvent>(_onCheckAuth);
     on<SendOTPEvent>(_onSendOTP);
     on<VerifyOTPEvent>(_onVerifyOTP);
+    on<RegisterEvent>(_onRegister);
     on<LogoutEvent>(_onLogout);
   }
 
@@ -89,6 +98,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final result = await _repository.verifyOTP(event.firebaseToken, event.phone);
       emit(AuthAuthenticated(user: result['user']));
+    } catch (e) {
+      emit(AuthError(message: e.toString()));
+    }
+  }
+
+  Future<void> _onRegister(RegisterEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final result = await _repository.register(
+        name: event.name,
+        gender: event.gender,
+        role: event.role,
+      );
+      emit(AuthAuthenticated(user: result));
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }

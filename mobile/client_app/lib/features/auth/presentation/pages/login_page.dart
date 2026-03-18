@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import '../bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
+
+// DEV MODE: set to false in production
+const bool kDevMode = false;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,6 +16,60 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  Future<void> _sendOTP() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // DEV MODE: skip OTP verification
+    if (kDevMode) {
+      context.go('/complete-profile');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final phone = '+966${_phoneController.text.trim()}';
+
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: phone,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (PhoneAuthCredential credential) async {
+        // Auto-verification on Android — sign in automatically
+        try {
+          final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+          final idToken = await userCredential.user?.getIdToken();
+          if (mounted && idToken != null) {
+            context.go('/otp', extra: {
+              'phone': phone,
+              'verificationId': '',
+              'autoToken': idToken,
+            });
+          }
+        } catch (_) {}
+      },
+      verificationFailed: (FirebaseAuthException e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.message ?? 'فشل إرسال رمز التحقق'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          context.go('/otp', extra: {
+            'phone': phone,
+            'verificationId': verificationId,
+          });
+        }
+      },
+      codeAutoRetrievalTimeout: (_) {},
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,30 +113,11 @@ class _LoginPageState extends State<LoginPage> {
                   },
                 ),
                 const SizedBox(height: 24),
-                BlocConsumer<AuthBloc, AuthState>(
-                  listener: (context, state) {
-                    if (state is OTPSent) {
-                      context.go('/otp', extra: '+966${_phoneController.text}');
-                    } else if (state is AuthError) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(state.message), backgroundColor: AppTheme.errorColor),
-                      );
-                    }
-                  },
-                  builder: (context, state) {
-                    return ElevatedButton(
-                      onPressed: state is AuthLoading ? null : () {
-                        if (_formKey.currentState!.validate()) {
-                          context.read<AuthBloc>().add(
-                            SendOTPEvent(phone: '+966${_phoneController.text}'),
-                          );
-                        }
-                      },
-                      child: state is AuthLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('إرسال رمز التحقق'),
-                    );
-                  },
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _sendOTP,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('إرسال رمز التحقق'),
                 ),
               ],
             ),

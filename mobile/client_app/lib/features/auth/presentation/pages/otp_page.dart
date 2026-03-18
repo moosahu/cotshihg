@@ -2,13 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import '../bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class OtpPage extends StatefulWidget {
   final String phone;
-  const OtpPage({super.key, required this.phone});
+  final String verificationId;
+  final String? autoToken;
+
+  const OtpPage({
+    super.key,
+    required this.phone,
+    required this.verificationId,
+    this.autoToken,
+  });
 
   @override
   State<OtpPage> createState() => _OtpPageState();
@@ -20,11 +29,23 @@ class _OtpPageState extends State<OtpPage> {
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   int _secondsLeft = 60;
   Timer? _timer;
+  bool _isVerifying = false;
+  String? _currentVerificationId;
 
   @override
   void initState() {
     super.initState();
+    _currentVerificationId = widget.verificationId;
     _startTimer();
+
+    // If auto-verified (Android), process immediately
+    if (widget.autoToken != null && widget.autoToken!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<AuthBloc>().add(
+          VerifyOTPEvent(firebaseToken: widget.autoToken!, phone: widget.phone),
+        );
+      });
+    }
   }
 
   void _startTimer() {
@@ -59,12 +80,88 @@ class _OtpPageState extends State<OtpPage> {
     if (_otp.length == 6) _verify();
   }
 
-  void _verify() {
-    // In production: use FirebaseAuth to verify OTP, then get token
-    // For now simulate with the OTP as the firebase token
-    context.read<AuthBloc>().add(
-          VerifyOTPEvent(firebaseToken: _otp, phone: widget.phone),
+  Future<void> _verify() async {
+    if (_isVerifying || _otp.length < 6) return;
+    setState(() => _isVerifying = true);
+
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _currentVerificationId!,
+        smsCode: _otp,
+      );
+
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+      final idToken = await userCredential.user?.getIdToken();
+
+      if (idToken != null && mounted) {
+        context.read<AuthBloc>().add(
+          VerifyOTPEvent(firebaseToken: idToken, phone: widget.phone),
         );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        setState(() => _isVerifying = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.code == 'invalid-verification-code'
+                ? 'رمز التحقق غير صحيح'
+                : e.message ?? 'خطأ Firebase: ${e.code}'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isVerifying = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _resendOTP() async {
+    setState(() => _isVerifying = true);
+
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: widget.phone,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (PhoneAuthCredential credential) async {
+        final userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
+        final idToken = await userCredential.user?.getIdToken();
+        if (idToken != null && mounted) {
+          context.read<AuthBloc>().add(
+            VerifyOTPEvent(firebaseToken: idToken, phone: widget.phone),
+          );
+        }
+      },
+      verificationFailed: (FirebaseAuthException e) {
+        if (mounted) {
+          setState(() => _isVerifying = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.message ?? 'فشل إعادة الإرسال'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        if (mounted) {
+          setState(() {
+            _currentVerificationId = verificationId;
+            _isVerifying = false;
+          });
+          _startTimer();
+        }
+      },
+      codeAutoRetrievalTimeout: (_) {},
+    );
   }
 
   @override
@@ -74,8 +171,16 @@ class _OtpPageState extends State<OtpPage> {
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            context.go('/home');
+            final user = state.user;
+            final isNewUser = user['name'] == null || (user['name'] as String).isEmpty;
+            if (isNewUser) {
+              context.go('/complete-profile');
+            } else {
+              final role = user['role'] as String? ?? 'client';
+              context.go(role == 'coach' ? '/coach/dashboard' : '/home');
+            }
           } else if (state is AuthError) {
+            setState(() => _isVerifying = false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
@@ -106,7 +211,6 @@ class _OtpPageState extends State<OtpPage> {
                 ),
               ),
               const SizedBox(height: 40),
-              // OTP fields
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: List.generate(
@@ -120,6 +224,7 @@ class _OtpPageState extends State<OtpPage> {
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
                       maxLength: 1,
+                      enabled: !_isVerifying,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
                         counterText: '',
@@ -146,7 +251,8 @@ class _OtpPageState extends State<OtpPage> {
               const SizedBox(height: 32),
               BlocBuilder<AuthBloc, AuthState>(
                 builder: (context, state) {
-                  if (state is AuthLoading) {
+                  final loading = _isVerifying || state is AuthLoading;
+                  if (loading) {
                     return const CircularProgressIndicator();
                   }
                   return ElevatedButton(
@@ -159,19 +265,13 @@ class _OtpPageState extends State<OtpPage> {
                 },
               ),
               const SizedBox(height: 24),
-              // Resend
               _secondsLeft > 0
                   ? Text(
                       'إعادة الإرسال بعد $_secondsLeft ثانية',
                       style: const TextStyle(color: AppTheme.textSecondary),
                     )
                   : TextButton(
-                      onPressed: () {
-                        context
-                            .read<AuthBloc>()
-                            .add(SendOTPEvent(phone: widget.phone));
-                        _startTimer();
-                      },
+                      onPressed: _isVerifying ? null : _resendOTP,
                       child: const Text('إعادة إرسال الرمز'),
                     ),
             ],

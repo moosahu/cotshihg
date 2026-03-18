@@ -16,6 +16,11 @@ class ApiClient {
     return res.data;
   }
 
+  Future<Map<String, dynamic>> register({required String name, required String gender, required String role}) async {
+    final res = await _dio.post('/auth/register', data: {'name': name, 'gender': gender, 'role': role});
+    return res.data;
+  }
+
   // Therapists
   Future<Map<String, dynamic>> getTherapists({Map<String, dynamic>? params}) async {
     final res = await _dio.get('/therapists', queryParameters: params);
@@ -63,6 +68,12 @@ class ApiClient {
   // Content
   Future<Map<String, dynamic>> getContent({Map<String, dynamic>? params}) async {
     final res = await _dio.get('/content', queryParameters: params);
+    return res.data;
+  }
+
+  // Payments
+  Future<Map<String, dynamic>> getPaymentHistory() async {
+    final res = await _dio.get('/payments/history');
     return res.data;
   }
 
