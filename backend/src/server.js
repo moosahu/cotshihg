@@ -19,6 +19,7 @@ const moodRoutes = require('./routes/mood.routes');
 const socketHandler = require('./socket/socket.handler');
 const errorHandler = require('./middleware/error.middleware');
 const rateLimiter = require('./middleware/rateLimit.middleware');
+const runMigration = require('./database/migrate');
 
 const app = express();
 const httpServer = createServer(app);
@@ -60,8 +61,9 @@ socketHandler(io);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  await runMigration();
 });
 
 module.exports = { app, io };
