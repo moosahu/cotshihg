@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../core/services/storage_service.dart';
+import '../../../../../core/network/api_client.dart';
 
 class CoachDashboardPage extends StatefulWidget {
   const CoachDashboardPage({super.key});
@@ -18,11 +19,27 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
   @override
   void initState() {
     super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
     final raw = getIt<StorageService>().getUser();
     if (raw != null) {
       final user = jsonDecode(raw) as Map<String, dynamic>;
-      _userName = (user['name'] as String?) ?? '';
+      final name = (user['name'] as String?) ?? '';
+      if (name.isNotEmpty) {
+        if (mounted) setState(() => _userName = name);
+        return;
+      }
     }
+    // Name not in local storage — fetch from API
+    try {
+      final res = await getIt<ApiClient>().getProfile();
+      final user = res['data'] as Map<String, dynamic>? ?? {};
+      final name = (user['name'] as String?) ?? '';
+      await getIt<StorageService>().saveUser(jsonEncode(user));
+      if (mounted) setState(() => _userName = name);
+    } catch (_) {}
   }
 
   @override

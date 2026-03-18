@@ -71,6 +71,27 @@ class ApiClient {
     return res.data;
   }
 
+  // Therapist profile & availability
+  Future<Map<String, dynamic>> updateTherapistProfile(Map<String, dynamic> data) async {
+    final res = await _dio.put('/therapists/profile', data: data);
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getMyAvailability(String therapistId) async {
+    final res = await _dio.get('/therapists/$therapistId/availability');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getMyOwnAvailability() async {
+    final res = await _dio.get('/therapists/me/availability');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> updateAvailability(List<Map<String, dynamic>> availability) async {
+    final res = await _dio.put('/therapists/availability', data: {'availability': availability});
+    return res.data;
+  }
+
   // Payments
   Future<Map<String, dynamic>> getPaymentHistory() async {
     final res = await _dio.get('/payments/history');
