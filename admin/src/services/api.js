@@ -24,6 +24,7 @@ const api = {
 
   getStats: () => request('/admin/stats'),
   getUsers: () => request('/admin/users'),
+  updateUserRole: (id, role) => request(`/admin/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
   toggleBanUser: (id) => request(`/admin/users/${id}/ban`, { method: 'PUT' }),
   getTherapists: () => request('/admin/therapists'),
   toggleApproveTherapist: (id) => request(`/admin/therapists/${id}/approve`, { method: 'PUT' }),

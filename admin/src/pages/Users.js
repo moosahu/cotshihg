@@ -14,11 +14,24 @@ export default function Users() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleBan = async (id, currentStatus) => {
+  const handleBan = async (id) => {
     try {
       const res = await api.toggleBanUser(id);
       setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: res.data.is_active } : u));
       toast.success(res.data.is_active ? 'تم رفع الحظر' : 'تم حظر المستخدم');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleRoleChange = async (id, currentRole) => {
+    const newRole = currentRole === 'therapist' ? 'client' : 'therapist';
+    const label = newRole === 'therapist' ? 'كوتش' : 'عميل';
+    if (!window.confirm(`تغيير الدور إلى ${label}؟`)) return;
+    try {
+      const res = await api.updateUserRole(id, newRole);
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, role: res.data.role } : u));
+      toast.success(`تم تغيير الدور إلى ${label}`);
     } catch (err) {
       toast.error(err.message);
     }
@@ -44,10 +57,16 @@ export default function Users() {
     {
       key: 'actions', label: 'إجراء',
       render: (_, row) => (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <button
-            onClick={() => handleBan(row.id, row.is_active)}
-            style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${row.is_active ? '#E53935' : '#2ECC71'}`, background: 'none', color: row.is_active ? '#E53935' : '#2ECC71', fontSize: 12, cursor: 'pointer' }}
+            onClick={() => handleRoleChange(row.id, row.role)}
+            style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #1A6B72', background: 'none', color: '#1A6B72', fontSize: 12, cursor: 'pointer' }}
+          >
+            {row.role === 'therapist' ? '← عميل' : '← كوتش'}
+          </button>
+          <button
+            onClick={() => handleBan(row.id)}
+            style={{ padding: '5px 10px', borderRadius: 8, border: `1px solid ${row.is_active ? '#E53935' : '#2ECC71'}`, background: 'none', color: row.is_active ? '#E53935' : '#2ECC71', fontSize: 12, cursor: 'pointer' }}
           >
             {row.is_active ? 'حظر' : 'رفع الحظر'}
           </button>

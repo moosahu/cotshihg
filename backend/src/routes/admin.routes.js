@@ -21,6 +21,7 @@ const adminAuth = (req, res, next) => {
 router.post('/login', adminController.login);
 router.get('/stats', adminAuth, adminController.getStats);
 router.get('/users', adminAuth, adminController.getUsers);
+router.put('/users/:id/role', adminAuth, adminController.updateUserRole);
 router.put('/users/:id/ban', adminAuth, adminController.toggleBanUser);
 router.get('/therapists', adminAuth, adminController.getTherapists);
 router.put('/therapists/:id/approve', adminAuth, adminController.toggleApproveTherapist);
