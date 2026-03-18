@@ -189,8 +189,8 @@ class _OtpPageState extends State<OtpPage> {
             );
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
