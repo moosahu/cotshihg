@@ -128,6 +128,10 @@ class ApiClient {
     return res.data;
   }
 
+  Future<void> endSession(String sessionId) async {
+    await _dio.post('/sessions/$sessionId/end');
+  }
+
   // Payments
   Future<Map<String, dynamic>> getPaymentHistory() async {
     final res = await _dio.get('/payments/history');

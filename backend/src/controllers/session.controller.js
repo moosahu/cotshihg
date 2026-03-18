@@ -108,6 +108,7 @@ function generateAgoraToken(channelName, uid = 0) {
 // ─────────────────────────────────────────────────────────────
 
 exports.startSession = async (req, res) => {
+  cleanupStaleSessions(); // non-blocking cleanup
   try {
     const booking = await pool.query(
       `SELECT b.* FROM bookings b
@@ -184,6 +185,26 @@ exports.endSession = async (req, res) => {
     errorResponse(res, err.message, 500);
   }
 };
+
+// Cleanup stale sessions (called on startSession to avoid orphaned records)
+async function cleanupStaleSessions() {
+  try {
+    const result = await pool.query(
+      `UPDATE sessions SET status='ended', ended_at=NOW()
+       WHERE status='active' AND started_at < NOW() - INTERVAL '2 hours'
+       RETURNING booking_id`
+    );
+    for (const row of result.rows) {
+      await pool.query(
+        `UPDATE bookings SET status='completed', updated_at=NOW() WHERE id=$1`,
+        [row.booking_id]
+      );
+    }
+    if (result.rows.length > 0) {
+      console.log(`🧹 Cleaned up ${result.rows.length} stale sessions`);
+    }
+  } catch (_) {}
+}
 
 exports.getAgoraToken = async (req, res) => {
   try {

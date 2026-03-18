@@ -13,11 +13,13 @@ const _agoraAppId = '45772ce780f046808740a6d07c34781b';
 class VideoCallPage extends StatefulWidget {
   final String bookingId;
   final String sessionType; // 'video' or 'voice'
+  final bool isCoach;
 
   const VideoCallPage({
     super.key,
     required this.bookingId,
     this.sessionType = 'video',
+    this.isCoach = false,
   });
 
   @override
@@ -34,6 +36,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   String? _errorMsg;
   String? _debugInfo; // shows full error for diagnosis
   String? _roomId;
+  String? _sessionId;
 
   // Timer — 45 minutes countdown
   static const _totalSeconds = 45 * 60;
@@ -55,6 +58,8 @@ class _VideoCallPageState extends State<VideoCallPage> {
       final data = res['data'] as Map<String, dynamic>;
       _roomId = data['room_id'] as String? ?? widget.bookingId;
       final token = data['agora_token'] as String? ?? '';
+      final session = data['session'] as Map<String, dynamic>?;
+      _sessionId = session?['id'] as String?;
       _debugInfo = 'API ✓ | room: ${_roomId?.substring(0, 8)}... | token: ${token.isEmpty ? "EMPTY" : token.substring(0, 10) + "..."}';
       await _initAgora(token);
     } catch (e) {
@@ -83,11 +88,13 @@ class _VideoCallPageState extends State<VideoCallPage> {
       onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
         if (mounted) setState(() { _isJoined = true; _loading = false; });
         _startTimer();
-        // Notify coach via socket
-        final socket = getIt<SocketService>();
-        socket.connect();
-        socket.joinBooking(widget.bookingId);
-        socket.initiateCall(widget.bookingId, widget.sessionType);
+        // Only client notifies coach — coach doesn't re-notify
+        if (!widget.isCoach) {
+          final socket = getIt<SocketService>();
+          socket.connect();
+          socket.joinBooking(widget.bookingId);
+          socket.initiateCall(widget.bookingId, widget.sessionType);
+        }
       },
       onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
         if (mounted) setState(() => _remoteUid = remoteUid);
@@ -155,9 +162,18 @@ class _VideoCallPageState extends State<VideoCallPage> {
     await _engine?.leaveChannel();
     await _engine?.release();
     _engine = null;
+    // End session in DB so both sides see it as completed
+    if (_sessionId != null) {
+      try {
+        await getIt<ApiClient>().endSession(_sessionId!);
+      } catch (_) {}
+    }
     if (mounted) {
-      if (context.canPop()) context.pop();
-      else context.go('/home');
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(widget.isCoach ? '/coach/dashboard' : '/home');
+      }
     }
   }
 
