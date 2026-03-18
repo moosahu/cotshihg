@@ -1,34 +1,45 @@
 const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const { v4: uuidv4 } = require('uuid');
-const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
+let RtcTokenBuilder, RtcRole;
+try {
+  const pkg = require('agora-access-token');
+  RtcTokenBuilder = pkg.RtcTokenBuilder;
+  RtcRole = pkg.RtcRole;
+} catch (e) {
+  console.warn('agora-access-token not available, using fallback token');
+}
 
 const AGORA_APP_ID = process.env.AGORA_APP_ID || '45772ce780f046808740a6d07c34781b';
 const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE || '2c729394bb4e41298e5eb26ebd00c6bb';
 const TOKEN_EXPIRY_SECONDS = 3600; // 1 hour
 
 const generateAgoraToken = (channelName, uid) => {
-  const expireTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRY_SECONDS;
-  return RtcTokenBuilder.buildTokenWithUid(
-    AGORA_APP_ID,
-    AGORA_APP_CERTIFICATE,
-    channelName,
-    uid,
-    RtcRole.PUBLISHER,
-    expireTime
-  );
+  if (RtcTokenBuilder && RtcRole && AGORA_APP_ID !== 'your_agora_app_id' && AGORA_APP_CERTIFICATE !== 'your_agora_certificate') {
+    const expireTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRY_SECONDS;
+    return RtcTokenBuilder.buildTokenWithUid(
+      AGORA_APP_ID,
+      AGORA_APP_CERTIFICATE,
+      channelName,
+      uid,
+      RtcRole.PUBLISHER,
+      expireTime
+    );
+  }
+  // Fallback token (works when App Certificate is disabled in Agora Console)
+  return '';
 };
 
 exports.startSession = async (req, res) => {
   try {
     const booking = await pool.query(
       `SELECT b.* FROM bookings b
-       WHERE b.id=$1 AND b.status IN ('confirmed','pending')
+       WHERE b.id=$1
        AND (b.client_id=$2 OR b.therapist_id=(SELECT id FROM therapists WHERE user_id=$2))`,
       [req.params.bookingId, req.user.id]
     );
 
-    if (!booking.rows[0]) return errorResponse(res, 'Booking not found or not confirmed', 404);
+    if (!booking.rows[0]) return errorResponse(res, 'Booking not found', 404);
 
     // Check if session already exists (idempotent)
     const existing = await pool.query(
