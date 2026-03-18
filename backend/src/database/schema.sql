@@ -7,7 +7,7 @@ CREATE TABLE users (
   avatar_url TEXT,
   gender VARCHAR(10),
   date_of_birth DATE,
-  role VARCHAR(20) DEFAULT 'client' CHECK (role IN ('client', 'therapist', 'admin')),
+  role VARCHAR(20) DEFAULT 'client' CHECK (role IN ('client', 'therapist', 'coach', 'admin')),
   is_active BOOLEAN DEFAULT true,
   fcm_token TEXT,
   created_at TIMESTAMP DEFAULT NOW(),

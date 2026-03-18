@@ -14,6 +14,7 @@ async function runMigration() {
 
     if (check.rows[0].exists) {
       console.log('✅ Database already initialized — skipping migration');
+      await runPatches();
       return;
     }
 
@@ -23,6 +24,21 @@ async function runMigration() {
     console.log('✅ Database migration completed successfully');
   } catch (err) {
     console.error('❌ Migration error:', err.message);
+  }
+}
+
+// Run patches on existing DB (safe to run multiple times)
+async function runPatches() {
+  try {
+    // Patch: add 'coach' to users role constraint
+    await pool.query(`
+      ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+      ALTER TABLE users ADD CONSTRAINT users_role_check
+        CHECK (role IN ('client', 'therapist', 'coach', 'admin'));
+    `);
+    console.log('✅ DB patches applied');
+  } catch (err) {
+    console.error('⚠️  Patch error (non-fatal):', err.message);
   }
 }
 
