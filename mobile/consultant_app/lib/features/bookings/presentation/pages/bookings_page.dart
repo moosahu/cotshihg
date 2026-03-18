@@ -75,16 +75,6 @@ class _BookingsListState extends State<_BookingsList> with AutomaticKeepAliveCli
     }
   }
 
-  Future<void> _updateStatus(String id, String status) async {
-    try {
-      await getIt<ApiClient>().updateBookingStatus(id, status);
-      _load();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -152,14 +142,30 @@ class _BookingsListState extends State<_BookingsList> with AutomaticKeepAliveCli
                       if (widget.status == 'pending') ...[
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () => _updateStatus(id, 'confirmed'),
+                            onPressed: () async {
+                              try {
+                                await getIt<ApiClient>().confirmBooking(id);
+                                _load();
+                              } catch (e) {
+                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+                              }
+                            },
                             child: const Text('قبول'),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () => _updateStatus(id, 'cancelled'),
+                            onPressed: () async {
+                              try {
+                                await getIt<ApiClient>().cancelBooking(id);
+                                _load();
+                              } catch (e) {
+                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+                              }
+                            },
                             child: const Text('رفض'),
                           ),
                         ),

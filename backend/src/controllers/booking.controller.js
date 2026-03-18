@@ -70,7 +70,7 @@ exports.getMyBookings = async (req, res) => {
     let query;
     const params = [req.user.id];
 
-    if (req.user.role === 'therapist') {
+    if (req.user.role === 'therapist' || req.user.role === 'coach') {
       query = `SELECT b.*, u.name as client_name, u.avatar_url as client_avatar
                FROM bookings b JOIN users u ON u.id = b.client_id
                WHERE b.therapist_id = (SELECT id FROM therapists WHERE user_id=$1)`;
@@ -120,7 +120,7 @@ exports.getBookingById = async (req, res) => {
 
 exports.confirmBooking = async (req, res) => {
   try {
-    const therapistResult = await pool.query('SELECT id FROM therapists WHERE user_id=$1', [req.user.id]);
+    const therapistResult = await pool.query('SELECT id FROM therapists WHERE user_id=$1 LIMIT 1', [req.user.id]);
     if (!therapistResult.rows[0]) return errorResponse(res, 'Therapist not found', 404);
 
     const result = await pool.query(

@@ -7,7 +7,7 @@ router.post('/', authenticate, authorize('client'), bookingController.createBook
 router.post('/instant', authenticate, authorize('client'), bookingController.createInstantBooking);
 router.get('/', authenticate, bookingController.getMyBookings);
 router.get('/:id', authenticate, bookingController.getBookingById);
-router.put('/:id/confirm', authenticate, authorize('therapist'), bookingController.confirmBooking);
+router.put('/:id/confirm', authenticate, authorize('therapist', 'coach'), bookingController.confirmBooking);
 router.put('/:id/cancel', authenticate, bookingController.cancelBooking);
 router.post('/:id/review', authenticate, authorize('client'), bookingController.submitReview);
 

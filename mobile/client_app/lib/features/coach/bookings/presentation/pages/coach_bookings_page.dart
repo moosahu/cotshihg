@@ -151,9 +151,31 @@ class _BookingsListState extends State<_BookingsList> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Expanded(child: ElevatedButton(onPressed: () {}, child: const Text('قبول'))),
+                        Expanded(child: ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              await getIt<ApiClient>().confirmBooking(b['id'].toString());
+                              _load();
+                            } catch (e) {
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+                            }
+                          },
+                          child: const Text('قبول'),
+                        )),
                         const SizedBox(width: 8),
-                        Expanded(child: OutlinedButton(onPressed: () {}, child: const Text('رفض'))),
+                        Expanded(child: OutlinedButton(
+                          onPressed: () async {
+                            try {
+                              await getIt<ApiClient>().cancelBooking(b['id'].toString());
+                              _load();
+                            } catch (e) {
+                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+                            }
+                          },
+                          child: const Text('رفض'),
+                        )),
                       ],
                     ),
                   ] else if (widget.status == 'confirmed') ...[

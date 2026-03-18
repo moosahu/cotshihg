@@ -83,7 +83,12 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> cancelBooking(String id) async {
-    final res = await _dio.put('/bookings/$id/status', data: {'status': 'cancelled'});
+    final res = await _dio.put('/bookings/$id/cancel');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> confirmBooking(String id) async {
+    final res = await _dio.put('/bookings/$id/confirm');
     return res.data;
   }
 
