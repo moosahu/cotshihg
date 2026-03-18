@@ -8,10 +8,20 @@ import '../../features/session/presentation/pages/video_call_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/availability/presentation/pages/availability_page.dart';
 import '../../features/earnings/presentation/pages/earnings_page.dart';
+import '../di/injection.dart';
+import '../services/storage_service.dart';
 
 class AppRouter {
   static final router = GoRouter(
     initialLocation: '/login',
+    redirect: (context, state) {
+      final token = getIt<StorageService>().getToken();
+      final isLoggedIn = token != null && token.isNotEmpty;
+      final isLoginPage = state.matchedLocation == '/login';
+      if (!isLoggedIn && !isLoginPage) return '/login';
+      if (isLoggedIn && isLoginPage) return '/dashboard';
+      return null;
+    },
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       ShellRoute(

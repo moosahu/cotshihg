@@ -78,7 +78,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
                 _CallButton(icon: _isMuted ? Icons.mic_off : Icons.mic, label: _isMuted ? 'كتم' : 'صوت', onTap: () => setState(() => _isMuted = !_isMuted), active: !_isMuted),
                 _CallButton(icon: _isCameraOff ? Icons.videocam_off : Icons.videocam, label: _isCameraOff ? 'إيقاف' : 'كاميرا', onTap: () => setState(() => _isCameraOff = !_isCameraOff), active: !_isCameraOff),
                 _CallButton(icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_off, label: 'سماعة', onTap: () => setState(() => _isSpeakerOn = !_isSpeakerOn), active: _isSpeakerOn),
-                _CallButton(icon: Icons.call_end, label: 'إنهاء', onTap: () => context.pop(), isEnd: true),
+                _CallButton(icon: Icons.call_end, label: 'إنهاء', onTap: () => context.go('/dashboard'), isEnd: true),
               ],
             ),
           ),

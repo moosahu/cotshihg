@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/network/api_client.dart';
 
 class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
@@ -41,78 +43,142 @@ class _BookingsPageState extends State<BookingsPage> with SingleTickerProviderSt
   }
 }
 
-class _BookingsList extends StatelessWidget {
+class _BookingsList extends StatefulWidget {
   final String status;
   const _BookingsList({required this.status});
+  @override
+  State<_BookingsList> createState() => _BookingsListState();
+}
 
-  static const List<Map<String, dynamic>> _mockBookings = [
-    {'name': 'أحمد محمد', 'date': 'اليوم - 10:00 ص', 'type': 'video', 'price': 300},
-    {'name': 'سارة علي', 'date': 'غداً - 2:00 م', 'type': 'chat', 'price': 150},
-    {'name': 'خالد أحمد', 'date': 'الخميس - 4:00 م', 'type': 'voice', 'price': 200},
-  ];
+class _BookingsListState extends State<_BookingsList> with AutomaticKeepAliveClientMixin {
+  List<dynamic> _bookings = [];
+  bool _loading = true;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await getIt<ApiClient>().getMyBookings(status: widget.status);
+      if (mounted) setState(() {
+        _bookings = (res['data'] as List?) ?? [];
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _updateStatus(String id, String status) async {
+    try {
+      await getIt<ApiClient>().updateBookingStatus(id, status);
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _mockBookings.length,
-      itemBuilder: (_, i) {
-        final b = _mockBookings[i];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(radius: 24, backgroundColor: AppTheme.primaryColor.withOpacity(0.1), child: const Icon(Icons.person, color: AppTheme.primaryColor)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(b['name'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                          Text(b['date'] as String, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    Text('${b['price']} ر.س', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    if (status == 'pending') ...[
+    super.build(context);
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_bookings.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text('لا توجد حجوزات', style: TextStyle(color: AppTheme.textSecondary)),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _bookings.length,
+        itemBuilder: (_, i) {
+          final b = _bookings[i] as Map<String, dynamic>;
+          final clientName = b['client_name'] as String? ?? 'عميل';
+          final scheduledAt = b['scheduled_at'] as String?;
+          final dateStr = scheduledAt != null
+              ? DateTime.tryParse(scheduledAt)?.toLocal().toString().substring(0, 16) ?? scheduledAt
+              : '';
+          final price = b['price_paid'] ?? b['session_price'] ?? 0;
+          final id = b['id'].toString();
+          final sessionType = b['session_type'] as String? ?? '';
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                          radius: 24,
+                          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                          child: const Icon(Icons.person, color: AppTheme.primaryColor)),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          child: const Text('قبول'),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(clientName,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            Text(dateStr,
+                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                            if (sessionType.isNotEmpty)
+                              Text(sessionType,
+                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {},
-                          child: const Text('رفض'),
+                      Text('$price ر.س',
+                          style: const TextStyle(
+                              color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      if (widget.status == 'pending') ...[
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _updateStatus(id, 'confirmed'),
+                            child: const Text('قبول'),
+                          ),
                         ),
-                      ),
-                    ] else if (status == 'confirmed')
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => context.go('/video/booking_id'),
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('بدء الجلسة'),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _updateStatus(id, 'cancelled'),
+                            child: const Text('رفض'),
+                          ),
                         ),
-                      ),
-                  ],
-                ),
-              ],
+                      ] else if (widget.status == 'confirmed')
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.go('/video/$id'),
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('بدء الجلسة'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

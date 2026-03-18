@@ -1,74 +1,112 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/network/api_client.dart';
 
-class EarningsPage extends StatelessWidget {
+class EarningsPage extends StatefulWidget {
   const EarningsPage({super.key});
+  @override
+  State<EarningsPage> createState() => _EarningsPageState();
+}
+
+class _EarningsPageState extends State<EarningsPage> {
+  List<dynamic> _transactions = [];
+  double _total = 0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await getIt<ApiClient>().getPaymentHistory();
+      final list = (res['data'] as List?) ?? [];
+      double total = 0;
+      for (final t in list) {
+        final amount = (t as Map<String, dynamic>)['amount'];
+        if (t['status'] == 'completed' && amount != null) {
+          total += (amount as num).toDouble();
+        }
+      }
+      if (mounted) setState(() {
+        _transactions = list;
+        _total = total;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('الأرباح')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Summary card
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(20)),
-            child: const Column(
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Text('إجمالي الأرباح', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                SizedBox(height: 8),
-                Text('12,450 ر.س', style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _EarningsStat(label: 'هذا الشهر', value: '3,200 ر.س'),
-                    _EarningsStat(label: 'هذا الأسبوع', value: '850 ر.س'),
-                    _EarningsStat(label: 'اليوم', value: '150 ر.س'),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Column(
+                    children: [
+                      const Text('إجمالي الأرباح',
+                          style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      const SizedBox(height: 8),
+                      Text('${_total.toStringAsFixed(0)} ر.س',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 20),
+                const Text('آخر المعاملات',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 12),
+                if (_transactions.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text('لا توجد معاملات بعد',
+                          style: TextStyle(color: AppTheme.textSecondary)),
+                    ),
+                  )
+                else
+                  ..._transactions.map((t) {
+                    final tx = t as Map<String, dynamic>;
+                    final name = tx['client_name'] as String? ?? 'عميل';
+                    final amount = tx['amount'] ?? 0;
+                    final date = tx['created_at'] as String?;
+                    final dateStr = date != null
+                        ? DateTime.tryParse(date)?.toLocal().toString().substring(0, 10) ?? date
+                        : '';
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.successColor.withOpacity(0.1),
+                          child: const Icon(Icons.arrow_downward, color: AppTheme.successColor),
+                        ),
+                        title: Text(name),
+                        subtitle: Text(dateStr,
+                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                        trailing: Text('+$amount ر.س',
+                            style: const TextStyle(
+                                color: AppTheme.successColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15)),
+                      ),
+                    );
+                  }),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
-          const Text('آخر المعاملات', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 12),
-          ..._buildTransactions(),
-        ],
-      ),
     );
   }
-
-  List<Widget> _buildTransactions() {
-    final transactions = [
-      {'name': 'أحمد محمد', 'date': 'اليوم - 10:00 ص', 'type': 'فيديو', 'amount': '+300'},
-      {'name': 'سارة علي', 'date': 'أمس - 2:00 م', 'type': 'دردشة', 'amount': '+150'},
-      {'name': 'خالد أحمد', 'date': 'أمس - 4:00 م', 'type': 'صوتي', 'amount': '+200'},
-      {'name': 'نورة سالم', 'date': 'الخميس', 'type': 'فيديو', 'amount': '+300'},
-    ];
-    return transactions.map((t) => Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(backgroundColor: AppTheme.successColor.withOpacity(0.1), child: const Icon(Icons.arrow_downward, color: AppTheme.successColor)),
-        title: Text(t['name']!),
-        subtitle: Text('${t['date']} • ${t['type']}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-        trailing: Text(t['amount']!, style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontSize: 15)),
-      ),
-    )).toList();
-  }
-}
-
-class _EarningsStat extends StatelessWidget {
-  final String label;
-  final String value;
-  const _EarningsStat({required this.label, required this.value});
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-    ],
-  );
 }
