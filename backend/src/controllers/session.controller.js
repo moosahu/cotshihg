@@ -1,34 +1,88 @@
 const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const { v4: uuidv4 } = require('uuid');
-let RtcTokenBuilder, RtcRole;
-try {
-  const pkg = require('agora-access-token');
-  RtcTokenBuilder = pkg.RtcTokenBuilder;
-  RtcRole = pkg.RtcRole;
-} catch (e) {
-  console.warn('agora-access-token not available, using fallback token');
+const crypto = require('crypto');
+const zlib = require('zlib');
+
+// ─── Agora Token Builder (pure Node.js, no external packages) ───
+const AGORA_APP_ID = process.env.AGORA_APP_ID && !process.env.AGORA_APP_ID.startsWith('your_')
+  ? process.env.AGORA_APP_ID
+  : '45772ce780f046808740a6d07c34781b';
+
+const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE && !process.env.AGORA_APP_CERTIFICATE.startsWith('your_')
+  ? process.env.AGORA_APP_CERTIFICATE
+  : '2c729394bb4e41298e5eb26ebd00c6bb';
+
+function _crc32(buf) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) {
+    crc ^= buf[i];
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ ((crc & 1) * 0xEDB88320);
+    }
+  }
+  return (~crc) >>> 0;
 }
 
-const AGORA_APP_ID = process.env.AGORA_APP_ID || '45772ce780f046808740a6d07c34781b';
-const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE || '2c729394bb4e41298e5eb26ebd00c6bb';
-const TOKEN_EXPIRY_SECONDS = 3600; // 1 hour
+function _uint32LE(v) {
+  const b = Buffer.alloc(4);
+  b.writeUInt32LE((v >>> 0), 0);
+  return b;
+}
 
-const generateAgoraToken = (channelName, uid) => {
-  if (RtcTokenBuilder && RtcRole && AGORA_APP_ID !== 'your_agora_app_id' && AGORA_APP_CERTIFICATE !== 'your_agora_certificate') {
-    const expireTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRY_SECONDS;
-    return RtcTokenBuilder.buildTokenWithUid(
-      AGORA_APP_ID,
-      AGORA_APP_CERTIFICATE,
-      channelName,
-      uid,
-      RtcRole.PUBLISHER,
-      expireTime
-    );
+function _packBytes(buf) {
+  const len = Buffer.alloc(2);
+  len.writeUInt16LE(buf.length, 0);
+  return Buffer.concat([len, buf]);
+}
+
+function _packMessage(salt, ts, privileges) {
+  const entries = Object.entries(privileges);
+  const size = 4 + 4 + 2 + entries.length * 6;
+  const buf = Buffer.alloc(size);
+  let off = 0;
+  buf.writeUInt32LE(salt, off); off += 4;
+  buf.writeUInt32LE(ts, off); off += 4;
+  buf.writeUInt16LE(entries.length, off); off += 2;
+  for (const [k, v] of entries) {
+    buf.writeUInt16LE(parseInt(k), off); off += 2;
+    buf.writeUInt32LE((v >>> 0), off); off += 4;
   }
-  // Fallback token (works when App Certificate is disabled in Agora Console)
-  return '';
-};
+  return buf;
+}
+
+function generateAgoraToken(channelName, uid = 0) {
+  try {
+    const ts = (Math.floor(Date.now() / 1000) + 3600) >>> 0; // expire in 1h
+    const salt = (Math.random() * 0xFFFFFFFF) >>> 0;
+    const expireTime = ts;
+
+    // privileges: kJoinChannel=1, kPublishAudioStream=2, kPublishVideoStream=3
+    const privileges = { 1: expireTime, 2: expireTime, 3: expireTime };
+    const m = _packMessage(salt, ts, privileges);
+
+    // HMAC step 1: sign(appCertificate, appId + ts + salt)
+    const signingInput = Buffer.concat([Buffer.from(AGORA_APP_ID), _uint32LE(ts), _uint32LE(salt)]);
+    const signingKey = crypto.createHmac('sha256', AGORA_APP_CERTIFICATE).update(signingInput).digest();
+
+    // HMAC step 2: sign(signingKey, channelName + uid + message)
+    const signContent = Buffer.concat([Buffer.from(channelName), _uint32LE(uid), m]);
+    const signature = crypto.createHmac('sha256', signingKey).update(signContent).digest();
+
+    const packed = Buffer.concat([
+      _packBytes(signature),
+      _uint32LE(_crc32(Buffer.from(channelName))),
+      _uint32LE(_crc32(_uint32LE(uid))),
+      m,
+    ]);
+
+    return '006' + AGORA_APP_ID + zlib.deflateRawSync(packed).toString('base64');
+  } catch (err) {
+    console.error('Agora token generation failed:', err.message);
+    return '';
+  }
+}
+// ──────────────────────────────────────────────────────────────
 
 exports.startSession = async (req, res) => {
   try {
@@ -41,7 +95,7 @@ exports.startSession = async (req, res) => {
 
     if (!booking.rows[0]) return errorResponse(res, 'Booking not found', 404);
 
-    // Check if session already exists (idempotent)
+    // Return existing active session (idempotent)
     const existing = await pool.query(
       `SELECT * FROM sessions WHERE booking_id=$1 AND status='active'`,
       [req.params.bookingId]
@@ -49,12 +103,12 @@ exports.startSession = async (req, res) => {
 
     if (existing.rows[0]) {
       const s = existing.rows[0];
-      const newToken = generateAgoraToken(s.room_id, req.user.id);
+      const newToken = generateAgoraToken(s.room_id, 0);
       return successResponse(res, { session: s, room_id: s.room_id, agora_token: newToken });
     }
 
     const roomId = uuidv4();
-    const agoraToken = generateAgoraToken(roomId, req.user.id);
+    const agoraToken = generateAgoraToken(roomId, 0);
 
     const session = await pool.query(
       `INSERT INTO sessions (booking_id, room_id, started_at, status, agora_token)
@@ -89,7 +143,6 @@ exports.endSession = async (req, res) => {
       [result.rows[0].booking_id]
     );
 
-    // Update therapist total sessions
     const booking = await pool.query('SELECT therapist_id FROM bookings WHERE id=$1', [result.rows[0].booking_id]);
     await pool.query(
       'UPDATE therapists SET total_sessions = total_sessions + 1 WHERE id=$1',
@@ -114,7 +167,7 @@ exports.getAgoraToken = async (req, res) => {
 
     if (!session.rows[0]) return errorResponse(res, 'Active session not found', 404);
 
-    const newToken = generateAgoraToken(session.rows[0].room_id, req.user.id);
+    const newToken = generateAgoraToken(session.rows[0].room_id, 0);
     successResponse(res, { token: newToken, room_id: session.rows[0].room_id });
   } catch (err) {
     errorResponse(res, err.message, 500);
