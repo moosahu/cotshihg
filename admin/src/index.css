@@ -1,0 +1,33 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Cairo', sans-serif;
+  direction: rtl;
+  background-color: #F7F9FC;
+  color: #1A2332;
+}
+
+:root {
+  --primary: #1A6B72;
+  --primary-light: #2E9EA8;
+  --secondary: #F5A623;
+  --accent: #FF6B35;
+  --bg: #F7F9FC;
+  --card: #ffffff;
+  --text: #1A2332;
+  --text-secondary: #8A94A6;
+  --border: #E8ECF0;
+  --success: #2ECC71;
+  --error: #E53935;
+  --warning: #F5A623;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+button { cursor: pointer; font-family: 'Cairo', sans-serif; }
+a { text-decoration: none; color: inherit; }

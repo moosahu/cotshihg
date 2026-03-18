@@ -1,0 +1,20 @@
+.stat-card { display: flex; flex-direction: column; gap: 8px; }
+
+.stat-header { display: flex; align-items: center; justify-content: space-between; }
+
+.stat-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.stat-change { font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 6px; }
+.stat-change.positive { background: #e8f8ee; color: #2ECC71; }
+.stat-change.negative { background: #fdecea; color: #E53935; }
+
+.stat-value { font-size: 28px; font-weight: 700; color: var(--text); }
+.stat-title { font-size: 13px; color: var(--text-secondary); }

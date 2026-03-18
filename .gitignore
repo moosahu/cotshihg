@@ -1,0 +1,30 @@
+# ============ Backend ============
+backend/node_modules/
+backend/.env
+backend/*.log
+
+# ============ Admin ============
+admin/node_modules/
+admin/build/
+admin/.env
+
+# ============ Flutter ============
+mobile/client_app/.dart_tool/
+mobile/client_app/.flutter-plugins
+mobile/client_app/.flutter-plugins-dependencies
+mobile/client_app/build/
+mobile/client_app/.packages
+mobile/client_app/pubspec.lock
+
+mobile/consultant_app/.dart_tool/
+mobile/consultant_app/.flutter-plugins
+mobile/consultant_app/.flutter-plugins-dependencies
+mobile/consultant_app/build/
+mobile/consultant_app/.packages
+mobile/consultant_app/pubspec.lock
+
+# ============ System ============
+.DS_Store
+*.DS_Store
+.env
+*.log
