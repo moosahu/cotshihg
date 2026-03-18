@@ -25,8 +25,9 @@ export default function Users() {
   };
 
   const handleRoleChange = async (id, currentRole) => {
-    const newRole = currentRole === 'therapist' ? 'client' : 'therapist';
-    const label = newRole === 'therapist' ? 'كوتش' : 'عميل';
+    const isCoach = currentRole === 'coach' || currentRole === 'therapist';
+    const newRole = isCoach ? 'client' : 'coach';
+    const label = newRole === 'coach' ? 'كوتش' : 'عميل';
     if (!window.confirm(`تغيير الدور إلى ${label}؟`)) return;
     try {
       const res = await api.updateUserRole(id, newRole);
@@ -40,7 +41,7 @@ export default function Users() {
   const columns = [
     { key: 'name', label: 'الاسم', render: v => v || '—' },
     { key: 'phone', label: 'الجوال' },
-    { key: 'role', label: 'الدور', render: v => v === 'therapist' ? 'كوتش' : 'عميل' },
+    { key: 'role', label: 'الدور', render: v => (v === 'coach' || v === 'therapist') ? 'كوتش' : 'عميل' },
     { key: 'sessions', label: 'الجلسات' },
     {
       key: 'created_at', label: 'تاريخ التسجيل',
@@ -62,7 +63,7 @@ export default function Users() {
             onClick={() => handleRoleChange(row.id, row.role)}
             style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #1A6B72', background: 'none', color: '#1A6B72', fontSize: 12, cursor: 'pointer' }}
           >
-            {row.role === 'therapist' ? '← عميل' : '← كوتش'}
+            {(row.role === 'coach' || row.role === 'therapist') ? '← عميل' : '← كوتش'}
           </button>
           <button
             onClick={() => handleBan(row.id)}

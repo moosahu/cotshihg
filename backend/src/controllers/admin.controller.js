@@ -66,7 +66,7 @@ exports.updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    if (!['client', 'therapist', 'admin'].includes(role)) return errorResponse(res, 'دور غير صحيح', 400);
+    if (!['client', 'coach', 'therapist', 'admin'].includes(role)) return errorResponse(res, 'دور غير صحيح', 400);
     const result = await pool.query(
       'UPDATE users SET role=$1, updated_at=NOW() WHERE id=$2 RETURNING id, name, role',
       [role, id]
