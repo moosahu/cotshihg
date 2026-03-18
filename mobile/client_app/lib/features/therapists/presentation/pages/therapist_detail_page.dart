@@ -36,8 +36,8 @@ class TherapistDetailPage extends StatelessWidget {
                   expandedHeight: 220,
                   pinned: true,
                   leading: IconButton(
-                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                    onPressed: () => context.pop(),
+                    icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
+                    onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
                   ),
                   flexibleSpace: FlexibleSpaceBar(
                     background: Container(

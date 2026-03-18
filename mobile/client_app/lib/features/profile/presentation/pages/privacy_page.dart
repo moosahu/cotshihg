@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class PrivacyPage extends StatelessWidget {
@@ -7,7 +8,13 @@ class PrivacyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الخصوصية وسياسة الاستخدام')),
+      appBar: AppBar(
+        title: const Text('الخصوصية وسياسة الاستخدام'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_forward_ios),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/profile'),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: const [

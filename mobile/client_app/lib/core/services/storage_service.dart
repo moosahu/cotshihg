@@ -24,4 +24,9 @@ class StorageService {
   Future<void> setOnboardingDone() => _prefs.setBool(_onboardingKey, true);
 
   Future<void> clearAll() => _prefs.clear();
+
+  Future<void> clearSession() async {
+    await _prefs.remove(_tokenKey);
+    await _prefs.remove(_userKey);
+  }
 }

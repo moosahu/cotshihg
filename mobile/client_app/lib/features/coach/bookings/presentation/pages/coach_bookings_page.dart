@@ -183,7 +183,10 @@ class _BookingsListState extends State<_BookingsList> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => context.go('/coach/video/${b['id']}'),
+                        onPressed: () => context.go(
+                          '/coach/video/${b['id']}',
+                          extra: {'sessionType': b['session_type'] as String? ?? 'video'},
+                        ),
                         icon: const Icon(Icons.play_arrow),
                         label: const Text('بدء الجلسة'),
                       ),

@@ -26,7 +26,8 @@
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.5",
     "uuid": "^9.0.0",
-    "date-fns": "^2.30.0"
+    "date-fns": "^2.30.0",
+    "agora-access-token": "^2.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",

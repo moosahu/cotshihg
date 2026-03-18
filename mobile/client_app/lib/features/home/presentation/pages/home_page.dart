@@ -148,7 +148,7 @@ class _QuickAccessSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       {'icon': Icons.people, 'label': 'المعالجون', 'route': '/therapists', 'color': const Color(0xFF5C6BC0)},
-      {'icon': Icons.flash_on, 'label': 'جلسة فورية', 'route': '/therapists?instant=true', 'color': const Color(0xFFFF7043)},
+      {'icon': Icons.flash_on, 'label': 'جلسة فورية', 'route': '/instant-booking', 'color': const Color(0xFFFF7043)},
       {'icon': Icons.library_books, 'label': 'المحتوى', 'route': '/content', 'color': const Color(0xFF26A69A)},
       {'icon': Icons.mood, 'label': 'تتبع المزاج', 'route': '/mood', 'color': const Color(0xFFAB47BC)},
     ];
@@ -158,7 +158,14 @@ class _QuickAccessSection extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 4,
       children: items.map((item) => GestureDetector(
-        onTap: () => context.go(item['route'] as String),
+        onTap: () {
+          final route = item['route'] as String;
+          if (route.startsWith('/instant')) {
+            context.push(route);
+          } else {
+            context.go(route);
+          }
+        },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -263,7 +270,7 @@ class _FeaturedTherapistsSectionState extends State<_FeaturedTherapistsSection> 
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () => context.go('/therapist/${t['id']}'),
+                              onPressed: () => context.push('/therapist/${t['id']}'),
                               style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 6)),
                               child: const Text('احجز', style: TextStyle(fontSize: 12)),
                             ),

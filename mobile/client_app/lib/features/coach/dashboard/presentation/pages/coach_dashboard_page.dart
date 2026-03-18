@@ -29,10 +29,11 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
       final name = (user['name'] as String?) ?? '';
       if (name.isNotEmpty) {
         if (mounted) setState(() => _userName = name);
+        // Still load instant availability from API
+        _loadInstantStatus();
         return;
       }
     }
-    // Name not in local storage — fetch from API
     try {
       final res = await getIt<ApiClient>().getProfile();
       final user = res['data'] as Map<String, dynamic>? ?? {};
@@ -40,6 +41,31 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
       await getIt<StorageService>().saveUser(jsonEncode(user));
       if (mounted) setState(() => _userName = name);
     } catch (_) {}
+    _loadInstantStatus();
+  }
+
+  Future<void> _loadInstantStatus() async {
+    try {
+      final res = await getIt<ApiClient>().getProfile();
+      final user = res['data'] as Map<String, dynamic>? ?? {};
+      // isAvailableInstant stored in therapist profile
+      final isAvail = user['is_available_instant'] as bool? ?? false;
+      if (mounted) setState(() => _isInstantAvailable = isAvail);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleInstant(bool value) async {
+    setState(() => _isInstantAvailable = value);
+    try {
+      await getIt<ApiClient>().toggleInstantAvailability(value);
+    } catch (e) {
+      // revert on error
+      if (mounted) {
+        setState(() => _isInstantAvailable = !value);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+      }
+    }
   }
 
   @override
@@ -70,7 +96,7 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
                 padding: const EdgeInsets.only(left: 16),
                 child: Switch(
                   value: _isInstantAvailable,
-                  onChanged: (v) => setState(() => _isInstantAvailable = v),
+                  onChanged: _toggleInstant,
                   activeColor: AppTheme.successColor,
                 ),
               ),

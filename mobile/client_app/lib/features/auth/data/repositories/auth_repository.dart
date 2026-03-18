@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/storage_service.dart';
 import 'dart:convert';
@@ -42,6 +43,9 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    await _storage.clearAll();
+    await _storage.clearSession();
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
   }
 }

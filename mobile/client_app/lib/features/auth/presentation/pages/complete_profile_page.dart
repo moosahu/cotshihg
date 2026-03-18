@@ -28,7 +28,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
         listener: (context, state) {
           if (state is AuthAuthenticated) {
             final role = state.user['role'] as String? ?? 'client';
-            context.go(role == 'coach' ? '/coach/dashboard' : '/home');
+            context.go((role == 'coach' || role == 'therapist') ? '/coach/dashboard' : '/home');
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('خطأ: ${state.message}'), backgroundColor: Colors.red),

@@ -25,6 +25,10 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('حجوزاتي'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_forward_ios),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/profile'),
+        ),
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppTheme.primaryColor,

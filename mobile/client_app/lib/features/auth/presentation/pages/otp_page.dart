@@ -177,7 +177,7 @@ class _OtpPageState extends State<OtpPage> {
               context.go('/complete-profile');
             } else {
               final role = user['role'] as String? ?? 'client';
-              context.go(role == 'coach' ? '/coach/dashboard' : '/home');
+              context.go((role == 'coach' || role == 'therapist') ? '/coach/dashboard' : '/home');
             }
           } else if (state is AuthError) {
             setState(() => _isVerifying = false);

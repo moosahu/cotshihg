@@ -9,6 +9,7 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/therapists/presentation/pages/therapists_list_page.dart';
 import '../../features/therapists/presentation/pages/therapist_detail_page.dart';
 import '../../features/booking/presentation/pages/booking_page.dart';
+import '../../features/booking/presentation/pages/instant_booking_page.dart';
 import '../../features/session/presentation/pages/chat_session_page.dart';
 import '../../features/session/presentation/pages/video_call_page.dart';
 import '../../features/mood/presentation/pages/mood_tracker_page.dart';
@@ -84,12 +85,25 @@ class AppRouter {
       ),
       GoRoute(
         path: '/video-call/:bookingId',
-        builder: (_, state) => VideoCallPage(bookingId: state.pathParameters['bookingId']!),
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return VideoCallPage(
+            bookingId: state.pathParameters['bookingId']!,
+            sessionType: extra?['sessionType'] as String? ?? 'video',
+          );
+        },
       ),
       GoRoute(
         path: '/coach/video/:bookingId',
-        builder: (_, state) => VideoCallPage(bookingId: state.pathParameters['bookingId']!),
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return VideoCallPage(
+            bookingId: state.pathParameters['bookingId']!,
+            sessionType: extra?['sessionType'] as String? ?? 'video',
+          );
+        },
       ),
+      GoRoute(path: '/instant-booking', builder: (_, __) => const InstantBookingPage()),
       GoRoute(path: '/my-bookings', builder: (_, __) => const MyBookingsPage()),
       GoRoute(path: '/my-payments', builder: (_, __) => const MyPaymentsPage()),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyPage()),

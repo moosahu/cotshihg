@@ -20,8 +20,8 @@ class _ChatSessionPageState extends State<ChatSessionPage> {
       appBar: AppBar(
         title: const Text('جلسة المحادثة'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/home'),
+          icon: const Icon(Icons.arrow_forward_ios),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
         ),
         actions: [
           IconButton(

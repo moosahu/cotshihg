@@ -102,6 +102,32 @@ class ApiClient {
     return res.data;
   }
 
+  Future<Map<String, dynamic>> toggleInstantAvailability(bool isAvailable) async {
+    final res = await _dio.put('/therapists/instant-availability', data: {'is_available': isAvailable});
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> createInstantBooking(String therapistId, String sessionType) async {
+    final res = await _dio.post('/bookings/instant', data: {'therapist_id': therapistId, 'session_type': sessionType});
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getInstantTherapists() async {
+    final res = await _dio.get('/therapists', queryParameters: {'instant': 'true'});
+    return res.data;
+  }
+
+  // Sessions (Agora)
+  Future<Map<String, dynamic>> startSession(String bookingId) async {
+    final res = await _dio.post('/sessions/$bookingId/start');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getAgoraToken(String bookingId) async {
+    final res = await _dio.get('/sessions/$bookingId/token');
+    return res.data;
+  }
+
   // Payments
   Future<Map<String, dynamic>> getPaymentHistory() async {
     final res = await _dio.get('/payments/history');

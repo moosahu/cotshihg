@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
@@ -42,7 +43,13 @@ class _MyPaymentsPageState extends State<MyPaymentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('سجل المدفوعات')),
+      appBar: AppBar(
+        title: const Text('سجل المدفوعات'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_forward_ios),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/profile'),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _payments.isEmpty

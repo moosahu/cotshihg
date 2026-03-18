@@ -53,8 +53,8 @@ exports.createInstantBooking = async (req, res) => {
     const priceMap = { chat: therapist.session_price_chat, voice: therapist.session_price_voice, video: therapist.session_price_video };
 
     const result = await pool.query(
-      `INSERT INTO bookings (client_id, therapist_id, session_type, scheduled_at, booking_type, price)
-       VALUES ($1,$2,$3,NOW(),'instant',$4) RETURNING *`,
+      `INSERT INTO bookings (client_id, therapist_id, session_type, scheduled_at, booking_type, price, status)
+       VALUES ($1,$2,$3,NOW(),'instant',$4,'confirmed') RETURNING *`,
       [req.user.id, therapist_id, session_type, priceMap[session_type]]
     );
 
