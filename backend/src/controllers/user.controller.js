@@ -4,7 +4,9 @@ const { successResponse, errorResponse } = require('../utils/response.utils');
 exports.getProfile = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.*, t.id as therapist_profile_id, t.bio, t.specializations, t.rating, t.session_price_video
+      `SELECT u.*, t.id as therapist_profile_id, t.bio, t.specializations, t.rating,
+              t.session_price_video, t.session_price_voice, t.session_price_chat,
+              t.is_available_instant, t.is_approved, t.years_experience
        FROM users u
        LEFT JOIN therapists t ON t.user_id = u.id
        WHERE u.id = $1`,
