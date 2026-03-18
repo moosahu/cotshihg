@@ -72,6 +72,17 @@ exports.updateUserRole = async (req, res) => {
       [role, id]
     );
     if (!result.rows[0]) return errorResponse(res, 'المستخدم غير موجود', 404);
+
+    // If promoted to coach/therapist, ensure therapists record exists
+    if (role === 'coach' || role === 'therapist') {
+      await pool.query(
+        `INSERT INTO therapists (user_id, is_approved)
+         VALUES ($1, true)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [id]
+      );
+    }
+
     successResponse(res, result.rows[0]);
   } catch (err) {
     errorResponse(res, err.message, 500);

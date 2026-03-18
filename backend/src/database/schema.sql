@@ -17,7 +17,7 @@ CREATE TABLE users (
 -- Therapists profile
 CREATE TABLE therapists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   bio TEXT,
   specializations TEXT[],
   languages TEXT[] DEFAULT '{"ar", "en"}',

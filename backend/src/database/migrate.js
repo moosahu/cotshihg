@@ -30,6 +30,19 @@ async function runMigration() {
 // Run patches on existing DB (safe to run multiple times)
 async function runPatches() {
   try {
+    // Patch 0: add UNIQUE constraint to therapists.user_id if missing
+    await pool.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE table_name='therapists' AND constraint_type='UNIQUE'
+          AND constraint_name='therapists_user_id_key'
+        ) THEN
+          ALTER TABLE therapists ADD CONSTRAINT therapists_user_id_key UNIQUE (user_id);
+        END IF;
+      END $$;
+    `);
+
     // Patch 1: add 'coach' to users role constraint
     await pool.query(`
       ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
