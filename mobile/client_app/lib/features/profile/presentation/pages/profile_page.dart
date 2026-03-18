@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:convert';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/services/storage_service.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
+  Map<String, dynamic> _getUser() {
+    final raw = getIt<StorageService>().getUser();
+    if (raw == null) return {};
+    return jsonDecode(raw) as Map<String, dynamic>;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = _getUser();
+    final name = (user['name'] as String?) ?? 'المستخدم';
+    final phone = (user['phone'] as String?) ?? '';
     return Scaffold(
       appBar: AppBar(title: const Text('حسابي')),
       body: ListView(
@@ -29,13 +41,13 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'اسم المستخدم',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  name,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const Text(
-                  '+966 5X XXX XXXX',
-                  style: TextStyle(color: AppTheme.textSecondary),
+                Text(
+                  phone.isNotEmpty ? phone : '',
+                  style: const TextStyle(color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton(

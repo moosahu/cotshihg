@@ -1,0 +1,147 @@
+const pool = require('../config/database');
+const jwt = require('jsonwebtoken');
+const { successResponse, errorResponse } = require('../utils/response.utils');
+
+// POST /admin/login — email+password from env vars
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@coaching.app';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@2024!';
+
+    if (email !== adminEmail || password !== adminPassword) {
+      return errorResponse(res, 'بيانات الدخول غير صحيحة', 401);
+    }
+
+    const token = jwt.sign(
+      { userId: 'admin', role: 'admin' },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    successResponse(res, { token }, 'تم تسجيل الدخول بنجاح');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /admin/stats
+exports.getStats = async (req, res) => {
+  try {
+    const [usersRes, therapistsRes, bookingsRes, paymentsRes] = await Promise.all([
+      pool.query("SELECT COUNT(*) FROM users WHERE role != 'admin'"),
+      pool.query("SELECT COUNT(*) FROM users WHERE role = 'therapist'"),
+      pool.query("SELECT COUNT(*) FROM bookings WHERE DATE(created_at) = CURRENT_DATE"),
+      pool.query("SELECT COALESCE(SUM(amount),0) as total FROM payments WHERE status = 'completed'"),
+    ]);
+
+    successResponse(res, {
+      totalUsers: parseInt(usersRes.rows[0].count),
+      totalTherapists: parseInt(therapistsRes.rows[0].count),
+      todaySessions: parseInt(bookingsRes.rows[0].count),
+      totalRevenue: parseFloat(paymentsRes.rows[0].total),
+    });
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /admin/users
+exports.getUsers = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, phone, email, gender, role, is_active, created_at,
+              (SELECT COUNT(*) FROM bookings WHERE client_id = users.id) as sessions
+       FROM users WHERE role != 'admin'
+       ORDER BY created_at DESC`
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/users/:id/ban
+exports.toggleBanUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING id, name, is_active',
+      [id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'المستخدم غير موجود', 404);
+    successResponse(res, result.rows[0]);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /admin/therapists
+exports.getTherapists = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.phone, u.is_active, u.created_at,
+              t.specializations, t.rating, t.total_sessions, t.session_price_video as price,
+              t.is_approved, t.id as therapist_id
+       FROM users u
+       LEFT JOIN therapists t ON t.user_id = u.id
+       WHERE u.role = 'therapist'
+       ORDER BY u.created_at DESC`
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/therapists/:id/approve
+exports.toggleApproveTherapist = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'UPDATE therapists SET is_approved = NOT is_approved WHERE id = $1 RETURNING id, is_approved',
+      [id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'الكوتش غير موجود', 404);
+    successResponse(res, result.rows[0]);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /admin/bookings
+exports.getBookings = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT b.id, b.session_type, b.status, b.price, b.scheduled_at, b.created_at,
+              c.name as client_name, c.phone as client_phone,
+              u.name as therapist_name
+       FROM bookings b
+       LEFT JOIN users c ON c.id = b.client_id
+       LEFT JOIN therapists t ON t.id = b.therapist_id
+       LEFT JOIN users u ON u.id = t.user_id
+       ORDER BY b.created_at DESC
+       LIMIT 100`
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /admin/payments
+exports.getPayments = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.id, p.amount, p.method, p.status, p.created_at,
+              u.name as user_name
+       FROM payments p
+       LEFT JOIN users u ON u.id = p.user_id
+       ORDER BY p.created_at DESC
+       LIMIT 100`
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};

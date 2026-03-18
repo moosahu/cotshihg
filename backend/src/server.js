@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth.routes');
+const adminRoutes = require('./routes/admin.routes');
 const userRoutes = require('./routes/user.routes');
 const therapistRoutes = require('./routes/therapist.routes');
 const sessionRoutes = require('./routes/session.routes');
@@ -41,6 +42,7 @@ app.use(rateLimiter);
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/therapists', therapistRoutes);
 app.use('/api/v1/sessions', sessionRoutes);

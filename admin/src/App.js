@@ -26,7 +26,7 @@ function Layout({ children }) {
 }
 
 export default function App() {
-  const isLoggedIn = true; // Replace with real auth
+  const isLoggedIn = !!localStorage.getItem('admin_token');
 
   return (
     <BrowserRouter>
