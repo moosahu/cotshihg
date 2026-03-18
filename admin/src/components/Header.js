@@ -1,7 +1,7 @@
 import React from 'react';
 import './Header.css';
 
-export default function Header({ onToggleSidebar }) {
+export default function Header({ onToggleSidebar, onLogout }) {
   return (
     <header className="header">
       <button className="toggle-btn" onClick={onToggleSidebar}>☰</button>
@@ -13,6 +13,11 @@ export default function Header({ onToggleSidebar }) {
         <div className="header-actions">
           <button className="icon-btn">🔔</button>
           <div className="header-avatar">A</div>
+          {onLogout && (
+            <button onClick={onLogout} style={{ marginRight: 8, background: 'none', border: '1px solid #E53935', color: '#E53935', borderRadius: 8, padding: '4px 12px', fontSize: 12, cursor: 'pointer' }}>
+              خروج
+            </button>
+          )}
         </div>
       </div>
     </header>

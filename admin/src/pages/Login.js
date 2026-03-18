@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import './Login.css';
 
-export default function Login() {
+export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,6 +17,7 @@ export default function Login() {
     try {
       const res = await api.login(email, password);
       localStorage.setItem('admin_token', res.data.token);
+      onLogin?.();
       navigate('/');
     } catch (err) {
       setError(err.message || 'بيانات الدخول غير صحيحة');
