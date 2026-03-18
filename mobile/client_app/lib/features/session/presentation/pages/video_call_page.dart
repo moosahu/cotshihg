@@ -31,6 +31,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   bool _isCameraOff = false;
   bool _loading = true;
   String? _errorMsg;
+  String? _debugInfo; // shows full error for diagnosis
   String? _roomId;
 
   // Timer — 45 minutes countdown
@@ -53,12 +54,16 @@ class _VideoCallPageState extends State<VideoCallPage> {
       final data = res['data'] as Map<String, dynamic>;
       _roomId = data['room_id'] as String? ?? widget.bookingId;
       final token = data['agora_token'] as String? ?? '';
+      _debugInfo = 'API ✓ | room: ${_roomId?.substring(0, 8)}... | token: ${token.isEmpty ? "EMPTY" : token.substring(0, 10) + "..."}';
       await _initAgora(token);
-    } catch (_) {
-      // Fallback: use bookingId as channel name with no token
-      // (works when Agora App Certificate is disabled)
+    } catch (e) {
+      _debugInfo = 'API Error: $e';
       _roomId = widget.bookingId;
-      await _initAgora('');
+      try {
+        await _initAgora('');
+      } catch (e2) {
+        if (mounted) setState(() { _loading = false; _errorMsg = 'فشل التهيئة'; _debugInfo = (_debugInfo ?? '') + '\nAgora init error: $e2'; });
+      }
     }
   }
 
@@ -85,7 +90,12 @@ class _VideoCallPageState extends State<VideoCallPage> {
         if (mounted) setState(() => _remoteUid = null);
       },
       onError: (ErrorCodeType err, String msg) {
-        if (mounted) setState(() { _loading = false; _errorMsg = msg; });
+        final detail = 'Agora error ${err.index}: $msg';
+        if (mounted) setState(() {
+          _loading = false;
+          _errorMsg = 'خطأ في الاتصال';
+          _debugInfo = (_debugInfo ?? '') + '\n$detail';
+        });
       },
     ));
 
@@ -176,7 +186,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
           if (_loading)
             const Center(child: CircularProgressIndicator(color: Colors.white))
           else if (_errorMsg != null)
-            Center(child: _ErrorView(msg: _errorMsg!, onRetry: _initSession))
+            Center(child: _ErrorView(msg: _errorMsg!, debug: _debugInfo, onRetry: _initSession))
           else
             _RemoteArea(
               engine: _engine,
@@ -413,8 +423,9 @@ class _RemoteArea extends StatelessWidget {
 
 class _ErrorView extends StatelessWidget {
   final String msg;
+  final String? debug;
   final VoidCallback onRetry;
-  const _ErrorView({required this.msg, required this.onRetry});
+  const _ErrorView({required this.msg, required this.onRetry, this.debug});
 
   @override
   Widget build(BuildContext context) {
@@ -431,8 +442,26 @@ class _ErrorView extends StatelessWidget {
               const Text('تعذر بدء الجلسة',
                   style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text(msg, style: const TextStyle(color: Colors.white54, fontSize: 13),
-                  textAlign: TextAlign.center),
+              if (msg.isNotEmpty)
+                Text(msg, style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    textAlign: TextAlign.center),
+              if (debug != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: SelectableText(
+                    debug!,
+                    style: const TextStyle(color: Colors.orange, fontSize: 11, fontFamily: 'monospace'),
+                    textAlign: TextAlign.left,
+                    textDirection: TextDirection.ltr,
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               ElevatedButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
             ],
