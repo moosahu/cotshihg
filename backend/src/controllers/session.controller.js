@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const { v4: uuidv4 } = require('uuid');
+const { getIo } = require('../socket/socket.instance');
 const crypto = require('crypto');
 const zlib = require('zlib');
 
@@ -139,6 +140,23 @@ exports.startSession = async (req, res) => {
       `UPDATE bookings SET status='in_progress', updated_at=NOW() WHERE id=$1`,
       [req.params.bookingId]
     );
+
+    // Notify coach via socket
+    const therapistUser = await pool.query(
+      `SELECT u.id, u.name FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1`,
+      [booking.rows[0].therapist_id]
+    );
+    if (therapistUser.rows[0]) {
+      const io = getIo();
+      const clientUser = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+      io?.to(`user_${therapistUser.rows[0].id}`).emit('incoming_call', {
+        booking_id: req.params.bookingId,
+        from_name: clientUser.rows[0]?.name ?? 'عميل',
+        call_type: booking.rows[0].session_type,
+        room_id: roomId,
+        agora_token: agoraToken,
+      });
+    }
 
     successResponse(res, { session: session.rows[0], room_id: roomId, agora_token: agoraToken });
   } catch (err) {

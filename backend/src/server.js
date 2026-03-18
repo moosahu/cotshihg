@@ -18,6 +18,7 @@ const paymentRoutes = require('./routes/payment.routes');
 const moodRoutes = require('./routes/mood.routes');
 
 const socketHandler = require('./socket/socket.handler');
+const socketInstance = require('./socket/socket.instance');
 const errorHandler = require('./middleware/error.middleware');
 const rateLimiter = require('./middleware/rateLimit.middleware');
 const runMigration = require('./database/migrate');
@@ -57,6 +58,7 @@ app.get('/health', (req, res) => {
 });
 
 // Socket.io
+socketInstance.setIo(io);
 socketHandler(io);
 
 // Error Handler

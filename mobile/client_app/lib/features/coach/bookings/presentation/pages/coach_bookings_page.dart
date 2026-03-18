@@ -16,7 +16,7 @@ class _CoachBookingsPageState extends State<CoachBookingsPage> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -35,13 +35,14 @@ class _CoachBookingsPageState extends State<CoachBookingsPage> with SingleTicker
           controller: _tabController,
           labelColor: AppTheme.primaryColor,
           indicatorColor: AppTheme.primaryColor,
-          tabs: const [Tab(text: 'القادمة'), Tab(text: 'المعلقة'), Tab(text: 'المكتملة')],
+          tabs: const [Tab(text: 'القادمة'), Tab(text: 'جارية'), Tab(text: 'المعلقة'), Tab(text: 'المكتملة')],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
           _BookingsList(status: 'confirmed'),
+          _BookingsList(status: 'in_progress'),
           _BookingsList(status: 'pending'),
           _BookingsList(status: 'completed'),
         ],
@@ -81,9 +82,11 @@ class _BookingsListState extends State<_BookingsList> {
 
   String get _emptyMsg => widget.status == 'confirmed'
       ? 'لا توجد حجوزات قادمة'
-      : widget.status == 'pending'
-          ? 'لا توجد طلبات معلقة'
-          : 'لا توجد جلسات مكتملة';
+      : widget.status == 'in_progress'
+          ? 'لا توجد جلسات جارية'
+          : widget.status == 'pending'
+              ? 'لا توجد طلبات معلقة'
+              : 'لا توجد جلسات مكتملة';
 
   static const Map<String, String> _typeLabels = {'video': 'فيديو', 'voice': 'صوتي', 'chat': 'دردشة'};
   static const Map<String, IconData> _typeIcons = {'video': Icons.videocam_outlined, 'voice': Icons.mic_outlined, 'chat': Icons.chat_bubble_outline};
@@ -177,6 +180,20 @@ class _BookingsListState extends State<_BookingsList> {
                           child: const Text('رفض'),
                         )),
                       ],
+                    ),
+                  ] else if (widget.status == 'in_progress') ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                        onPressed: () => context.go(
+                          '/coach/video/${b['id']}',
+                          extra: {'sessionType': b['session_type'] as String? ?? 'video'},
+                        ),
+                        icon: const Icon(Icons.login),
+                        label: const Text('انضم للجلسة الجارية'),
+                      ),
                     ),
                   ] else if (widget.status == 'confirmed') ...[
                     const SizedBox(height: 12),

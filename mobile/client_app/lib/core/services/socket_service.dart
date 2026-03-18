@@ -14,7 +14,7 @@ class SocketService {
     if (token == null) return;
 
     _socket = IO.io(
-      'http://localhost:3000',
+      'https://coaching-backend-ft67.onrender.com',
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .setAuth({'token': token})

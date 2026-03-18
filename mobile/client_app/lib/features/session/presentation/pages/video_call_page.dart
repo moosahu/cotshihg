@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/socket_service.dart';
 
 const _agoraAppId = '45772ce780f046808740a6d07c34781b';
 
@@ -82,6 +83,11 @@ class _VideoCallPageState extends State<VideoCallPage> {
       onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
         if (mounted) setState(() { _isJoined = true; _loading = false; });
         _startTimer();
+        // Notify coach via socket
+        final socket = getIt<SocketService>();
+        socket.connect();
+        socket.joinBooking(widget.bookingId);
+        socket.initiateCall(widget.bookingId, widget.sessionType);
       },
       onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
         if (mounted) setState(() => _remoteUid = remoteUid);

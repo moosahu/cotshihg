@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../core/services/storage_service.dart';
+import '../../../../../core/services/socket_service.dart';
 import '../../../../../core/network/api_client.dart';
 
 class CoachDashboardPage extends StatefulWidget {
@@ -20,6 +21,62 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
   void initState() {
     super.initState();
     _loadUser();
+    _connectSocket();
+  }
+
+  void _connectSocket() {
+    final socket = getIt<SocketService>();
+    socket.connect();
+    socket.onIncomingCall(_onIncomingCall);
+  }
+
+  void _onIncomingCall(dynamic data) {
+    if (!mounted) return;
+    final d = data as Map<String, dynamic>;
+    final bookingId = d['booking_id'] as String? ?? '';
+    final fromName = d['from_name'] as String? ?? 'عميل';
+    final callType = d['call_type'] as String? ?? 'video';
+    final isVoice = callType == 'voice';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: Row(children: [
+          Icon(isVoice ? Icons.phone : Icons.videocam, color: AppTheme.primaryColor),
+          const SizedBox(width: 8),
+          const Text('طلب جلسة فورية'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$fromName يطلب ${isVoice ? "مكالمة صوتية" : "مكالمة فيديو"}',
+                textAlign: TextAlign.center),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('رفض', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              context.push('/coach/video/$bookingId',
+                  extra: {'sessionType': callType});
+            },
+            icon: Icon(isVoice ? Icons.phone : Icons.videocam),
+            label: const Text('قبول'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    getIt<SocketService>().disconnect();
+    super.dispose();
   }
 
   Future<void> _loadUser() async {
