@@ -117,6 +117,20 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+exports.getMyAvailability = async (req, res) => {
+  try {
+    const therapistResult = await pool.query('SELECT id FROM therapists WHERE user_id=$1', [req.user.id]);
+    if (!therapistResult.rows[0]) return successResponse(res, []);
+    const result = await pool.query(
+      'SELECT * FROM therapist_availability WHERE therapist_id=$1 AND is_active=true ORDER BY day_of_week, start_time',
+      [therapistResult.rows[0].id]
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
 exports.updateAvailability = async (req, res) => {
   try {
     const { availability } = req.body; // array of { day_of_week, start_time, end_time }
