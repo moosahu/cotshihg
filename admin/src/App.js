@@ -32,20 +32,14 @@ export default function App() {
     <BrowserRouter>
       <Toaster position="top-center" toastOptions={{ style: { fontFamily: 'Cairo' } }} />
       <Routes>
-        <Route path="/login" element={<Login onLogin={() => setIsLoggedIn(true)} />} />
-        {isLoggedIn ? (
-          <>
-            <Route path="/" element={<Layout onLogout={() => setIsLoggedIn(false)}><Dashboard /></Layout>} />
-            <Route path="/users" element={<Layout onLogout={() => setIsLoggedIn(false)}><Users /></Layout>} />
-            <Route path="/therapists" element={<Layout onLogout={() => setIsLoggedIn(false)}><Therapists /></Layout>} />
-            <Route path="/bookings" element={<Layout onLogout={() => setIsLoggedIn(false)}><Bookings /></Layout>} />
-            <Route path="/content" element={<Layout onLogout={() => setIsLoggedIn(false)}><Content /></Layout>} />
-            <Route path="/payments" element={<Layout onLogout={() => setIsLoggedIn(false)}><Payments /></Layout>} />
-          </>
-        ) : (
-          <Route path="*" element={<Navigate to="/login" />} />
-        )}
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login onLogin={() => setIsLoggedIn(true)} />} />
+        <Route path="/" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Dashboard /></Layout> : <Navigate to="/login" replace />} />
+        <Route path="/users" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Users /></Layout> : <Navigate to="/login" replace />} />
+        <Route path="/therapists" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Therapists /></Layout> : <Navigate to="/login" replace />} />
+        <Route path="/bookings" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Bookings /></Layout> : <Navigate to="/login" replace />} />
+        <Route path="/content" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Content /></Layout> : <Navigate to="/login" replace />} />
+        <Route path="/payments" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Payments /></Layout> : <Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to={isLoggedIn ? "/" : "/login"} replace />} />
       </Routes>
     </BrowserRouter>
   );
