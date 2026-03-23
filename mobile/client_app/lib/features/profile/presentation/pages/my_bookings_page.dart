@@ -149,6 +149,11 @@ class _BookingsListState extends State<_BookingsList>
           final sessionType = b['session_type'] as String? ?? '';
           final price = b['price_paid'] ?? b['session_price'] ?? 0;
           final id = b['id'].toString();
+          final scheduledDateTime = scheduledAt != null ? DateTime.tryParse(scheduledAt)?.toLocal() : null;
+          final now = DateTime.now();
+          final canStart = scheduledDateTime != null &&
+              now.isAfter(scheduledDateTime.subtract(const Duration(minutes: 15))) &&
+              now.isBefore(scheduledDateTime.add(const Duration(hours: 2)));
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -202,18 +207,18 @@ class _BookingsListState extends State<_BookingsList>
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () {
+                            onPressed: canStart ? () {
                               if (sessionType == 'chat') {
                                 context.go('/chat/$id');
                               } else {
                                 context.go('/video-call/$id', extra: {'sessionType': sessionType});
                               }
-                            },
+                            } : null,
                             icon: Icon(
                               sessionType == 'chat' ? Icons.chat_bubble_outline : Icons.videocam_outlined,
                               size: 18,
                             ),
-                            label: const Text('ابدأ الجلسة'),
+                            label: Text(canStart ? 'ابدأ الجلسة' : 'تبدأ في ${scheduledDateTime != null ? "${scheduledDateTime.hour.toString().padLeft(2,'0')}:${scheduledDateTime.minute.toString().padLeft(2,'0')}" : ""}'),
                           ),
                         ),
                         const SizedBox(width: 8),
