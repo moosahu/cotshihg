@@ -13,12 +13,18 @@ import 'features/notifications/presentation/bloc/notification_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  Stripe.publishableKey = 'pk_test_51TDxKQCwcETFsfV6rh7HzIFqhWmZjAlshkrhsnyZ3uAyPm3NCDfDFTS5GSIKEYzmgc9Y050UPWFjDZIPqq9pB9sj00xiotbLV7';
-  await Stripe.instance.applySettings();
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {}
+  try {
+    Stripe.publishableKey = 'pk_test_51TDxKQCwcETFsfV6rh7HzIFqhWmZjAlshkrhsnyZ3uAyPm3NCDfDFTS5GSIKEYzmgc9Y050UPWFjDZIPqq9pB9sj00xiotbLV7';
+    await Stripe.instance.applySettings();
+  } catch (_) {}
   await setupDependencies();
-  NotificationService.setNavigatorKey(AppRouter.navigatorKey);
-  await NotificationService.init();
+  try {
+    NotificationService.setNavigatorKey(AppRouter.navigatorKey);
+    await NotificationService.init();
+  } catch (_) {}
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
