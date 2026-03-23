@@ -33,7 +33,7 @@ exports.initiatePayment = async (req, res) => {
     );
     if (existing.rows[0]) {
       await pool.query(
-        'UPDATE payments SET provider_payment_id=$1, updated_at=NOW() WHERE id=$2',
+        'UPDATE payments SET provider_payment_id=$1 WHERE id=$2',
         [paymentIntent.id, existing.rows[0].id]
       );
     } else {
