@@ -123,9 +123,16 @@ exports.startSession = async (req, res) => {
       `SELECT * FROM sessions WHERE booking_id=$1 AND status='active'`,
       [req.params.bookingId]
     );
+    // Fetch coach name for both paths
+    const coachRow = await pool.query(
+      `SELECT u.id, u.name FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1`,
+      [booking.rows[0].therapist_id]
+    );
+    const coachName = coachRow.rows[0]?.name ?? 'الكوتش';
+
     if (existing.rows[0]) {
       const s = existing.rows[0];
-      return successResponse(res, { session: s, room_id: s.room_id, agora_token: generateAgoraToken(s.room_id) });
+      return successResponse(res, { session: s, room_id: s.room_id, agora_token: generateAgoraToken(s.room_id), coach_name: coachName });
     }
 
     const roomId = uuidv4();
@@ -143,14 +150,10 @@ exports.startSession = async (req, res) => {
     );
 
     // Notify coach via socket
-    const therapistUser = await pool.query(
-      `SELECT u.id, u.name FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1`,
-      [booking.rows[0].therapist_id]
-    );
-    if (therapistUser.rows[0]) {
+    if (coachRow.rows[0]) {
       const io = getIo();
       const clientUser = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
-      io?.to(`user_${therapistUser.rows[0].id}`).emit('incoming_call', {
+      io?.to(`user_${coachRow.rows[0].id}`).emit('incoming_call', {
         booking_id: req.params.bookingId,
         from_name: clientUser.rows[0]?.name ?? 'عميل',
         call_type: booking.rows[0].session_type,
@@ -159,7 +162,7 @@ exports.startSession = async (req, res) => {
       });
     }
 
-    successResponse(res, { session: session.rows[0], room_id: roomId, agora_token: agoraToken });
+    successResponse(res, { session: session.rows[0], room_id: roomId, agora_token: agoraToken, coach_name: coachName });
   } catch (err) {
     errorResponse(res, err.message, 500);
   }

@@ -1,6 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/network/api_client.dart';
 
 // Events
 abstract class AuthEvent extends Equatable {
@@ -75,6 +78,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final user = await _repository.getCurrentUser();
       if (user != null) {
         emit(AuthAuthenticated(user: user));
+        // Refresh FCM token on every app open (token may have changed)
+        _uploadFcmToken();
       } else {
         emit(AuthUnauthenticated());
       }
@@ -98,9 +103,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final result = await _repository.verifyOTP(event.firebaseToken, event.phone);
       emit(AuthAuthenticated(user: result['user']));
+      // Send FCM token to backend (non-blocking)
+      _uploadFcmToken();
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }
+  }
+
+  Future<void> _uploadFcmToken() async {
+    try {
+      final token = await NotificationService.getFcmToken();
+      if (token != null) {
+        await getIt<ApiClient>().saveFcmToken(token);
+      }
+    } catch (_) {}
   }
 
   Future<void> _onRegister(RegisterEvent event, Emitter<AuthState> emit) async {
@@ -112,6 +128,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         role: event.role,
       );
       emit(AuthAuthenticated(user: result));
+      _uploadFcmToken();
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }

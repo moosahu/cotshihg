@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/di/injection.dart';
+import 'core/services/notification_service.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/notifications/presentation/bloc/notification_bloc.dart';
 
@@ -13,6 +14,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await setupDependencies();
+  NotificationService.setNavigatorKey(AppRouter.navigatorKey);
+  await NotificationService.init();
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -33,7 +36,7 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => getIt<NotificationBloc>()),
       ],
       child: MaterialApp.router(
-        title: 'Coaching',
+        title: 'كوتشينج',
         theme: AppTheme.lightTheme,
         routerConfig: AppRouter.router,
         debugShowCheckedModeBanner: false,

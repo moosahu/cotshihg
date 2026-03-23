@@ -73,6 +73,49 @@ async function runPatches() {
       AND created_at < NOW() - INTERVAL '30 minutes'
     `);
 
+    // Patch: session_files table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS session_files (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+        uploaded_by UUID REFERENCES users(id),
+        file_name VARCHAR(255) NOT NULL,
+        file_path VARCHAR(500) NOT NULL,
+        file_size INTEGER,
+        mime_type VARCHAR(100),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Patch: questionnaire_templates table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS questionnaire_templates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        therapist_id UUID REFERENCES therapists(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        questions JSONB NOT NULL DEFAULT '[]',
+        is_default BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Patch: questionnaire_assignments table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS questionnaire_assignments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        template_id UUID REFERENCES questionnaire_templates(id) ON DELETE CASCADE,
+        booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+        client_id UUID REFERENCES users(id),
+        status VARCHAR(50) DEFAULT 'pending',
+        answers JSONB DEFAULT '{}',
+        assigned_at TIMESTAMP DEFAULT NOW(),
+        completed_at TIMESTAMP,
+        UNIQUE(template_id, booking_id)
+      )
+    `);
+
     console.log('✅ DB patches applied');
   } catch (err) {
     console.error('⚠️  Patch error (non-fatal):', err.message);

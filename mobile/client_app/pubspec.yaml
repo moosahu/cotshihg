@@ -58,6 +58,7 @@ dependencies:
   permission_handler: ^11.1.0
   get_it: ^7.6.4
 
+  flutter_local_notifications: ^17.2.4
   cupertino_icons: ^1.0.2
 
 dev_dependencies:
@@ -67,6 +68,15 @@ dev_dependencies:
   build_runner: ^2.4.7
   retrofit_generator: ^8.0.4
   json_serializable: ^6.7.1
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_logo.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#22909A"
+  adaptive_icon_foreground: "assets/images/app_logo.png"
 
 flutter:
   uses-material-design: true
@@ -74,6 +84,7 @@ flutter:
     - assets/images/
     - assets/animations/
     - assets/icons/
+    - assets/sounds/
   fonts:
     - family: Cairo
       fonts:

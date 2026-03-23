@@ -4,9 +4,22 @@ import 'package:go_router/go_router.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/coaching_logo.dart';
+import '../../../../core/services/notification_service.dart';
 
-class SplashPage extends StatelessWidget {
+class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
+  @override
+  State<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends State<SplashPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.requestPermission();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +46,7 @@ class SplashPage extends StatelessWidget {
                 const SizedBox(height: 28),
                 // App Name
                 const Text(
-                  'Coaching',
+                  'كوتشينج',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 36,

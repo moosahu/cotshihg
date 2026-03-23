@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/notification_service.dart';
+import 'help_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -46,6 +49,53 @@ class _ProfilePageState extends State<ProfilePage> {
       final list = (res['data'] as List?) ?? [];
       if (mounted) setState(() => _sessionCount = list.length);
     } catch (_) {}
+  }
+
+  Future<void> _handleNotifications() async {
+    final status = await Permission.notification.status;
+    if (status.isGranted) {
+      // Already granted — open system notification settings
+      await openAppSettings();
+    } else if (status.isPermanentlyDenied) {
+      // Permanently denied — must open settings
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('تفعيل الإشعارات'),
+            content: const Text(
+                'الإشعارات محجوبة. يرجى تفعيلها من إعدادات التطبيق.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  openAppSettings();
+                },
+                child: const Text('فتح الإعدادات'),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      // Not yet asked — request permission
+      await NotificationService.requestPermission();
+      if (mounted) {
+        final newStatus = await Permission.notification.status;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(newStatus.isGranted
+              ? 'تم تفعيل الإشعارات'
+              : 'لم يتم تفعيل الإشعارات'),
+          backgroundColor: newStatus.isGranted
+              ? AppTheme.successColor
+              : AppTheme.errorColor,
+        ));
+      }
+    }
   }
 
   void _editProfile() {
@@ -180,7 +230,7 @@ class _ProfilePageState extends State<ProfilePage> {
             _MenuItem(
               icon: Icons.notifications_outlined,
               title: 'الإشعارات',
-              onTap: () {},
+              onTap: _handleNotifications,
             ),
             _MenuItem(
               icon: Icons.lock_outline,
@@ -193,12 +243,12 @@ class _ProfilePageState extends State<ProfilePage> {
             _MenuItem(
               icon: Icons.help_outline,
               title: 'الأسئلة الشائعة',
-              onTap: () {},
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpPage())),
             ),
             _MenuItem(
               icon: Icons.support_agent_outlined,
               title: 'تواصل معنا',
-              onTap: () {},
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpPage())),
             ),
             _MenuItem(
               icon: Icons.logout,
@@ -212,7 +262,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ]),
           const SizedBox(height: 32),
           const Center(
-            child: Text('Coaching v1.0.0',
+            child: Text('كوتشينج v1.0.0',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           ),
           const SizedBox(height: 16),

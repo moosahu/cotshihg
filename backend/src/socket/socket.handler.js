@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
+const admin = require('../config/firebase');
 
 const socketHandler = (io) => {
   // Auth middleware for socket
@@ -70,14 +71,73 @@ const socketHandler = (io) => {
       });
     });
 
-    // Call events
-    socket.on('call_initiated', ({ booking_id, call_type }) => {
-      socket.to(`booking_${booking_id}`).emit('incoming_call', {
-        from: socket.user.id,
-        from_name: socket.user.name,
-        call_type,
-        booking_id,
-      });
+    // Call events — emit to coach's personal room + FCM for background
+    socket.on('call_initiated', async ({ booking_id, call_type }) => {
+      try {
+        const booking = await pool.query(
+          `SELECT t.user_id AS coach_user_id, u.fcm_token
+           FROM bookings b
+           JOIN therapists t ON t.id = b.therapist_id
+           JOIN users u ON u.id = t.user_id
+           WHERE b.id = $1`,
+          [booking_id]
+        );
+        if (booking.rows[0]) {
+          const { coach_user_id, fcm_token } = booking.rows[0];
+
+          // Real-time socket (app in foreground)
+          io.to(`user_${coach_user_id}`).emit('incoming_call', {
+            booking_id,
+            from_name: socket.user.name,
+            call_type,
+          });
+
+          // FCM push (app in background/killed)
+          if (fcm_token && admin.apps.length > 0) {
+            const isVoice = call_type === 'voice';
+            const title = isVoice ? '📞 مكالمة صوتية واردة' : '📹 مكالمة فيديو واردة';
+            const body = `${socket.user.name || 'عميل'} يطلب ${isVoice ? 'مكالمة صوتية' : 'مكالمة فيديو'}`;
+            admin.messaging().send({
+              token: fcm_token,
+              data: {
+                type: 'incoming_call',
+                booking_id: String(booking_id),
+                from_name: socket.user.name || 'عميل',
+                call_type: call_type || 'video',
+              },
+              android: {
+                priority: 'high',
+                notification: {
+                  title,
+                  body,
+                  channelId: 'incoming_call_channel',
+                  priority: 'max',
+                },
+              },
+              apns: {
+                headers: {
+                  'apns-priority': '10',
+                  'apns-push-type': 'alert',
+                },
+                payload: {
+                  aps: {
+                    alert: { title, body },
+                    sound: 'default',
+                    'content-available': 1,
+                    category: 'INCOMING_CALL',
+                  },
+                },
+              },
+            }).then(() => {
+              console.log(`📱 FCM sent to coach ${coach_user_id}`);
+            }).catch((err) => {
+              console.error('❌ FCM error:', err.message);
+            });
+          } else {
+            console.warn(`⚠️ No FCM token for coach ${coach_user_id}`);
+          }
+        }
+      } catch (_) {}
     });
 
     socket.on('call_accepted', ({ booking_id }) => {

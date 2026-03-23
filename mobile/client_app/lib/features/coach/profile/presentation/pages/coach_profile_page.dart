@@ -7,6 +7,7 @@ import '../../../../../core/di/injection.dart';
 import '../../../../../core/services/storage_service.dart';
 import '../../../../../core/network/api_client.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../../profile/presentation/pages/help_page.dart';
 
 class CoachProfilePage extends StatefulWidget {
   const CoachProfilePage({super.key});
@@ -160,7 +161,7 @@ class _CoachProfilePageState extends State<CoachProfilePage> {
             _tile(Icons.notifications_outlined, 'الإشعارات', () {}),
           ]),
           _section('الحساب', [
-            _tile(Icons.help_outline, 'المساعدة', () {}),
+            _tile(Icons.help_outline, 'المساعدة', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpPage()))),
             _tile(Icons.logout, 'تسجيل الخروج', () {
               context.read<AuthBloc>().add(LogoutEvent());
               context.go('/login');

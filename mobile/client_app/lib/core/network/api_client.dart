@@ -132,6 +132,17 @@ class ApiClient {
     await _dio.post('/sessions/$sessionId/end');
   }
 
+  Future<void> saveFcmToken(String token) async {
+    await _dio.put('/users/fcm-token', data: {'fcm_token': token});
+  }
+
+  Future<void> submitReview(String bookingId, int rating, {String? comment}) async {
+    await _dio.post('/bookings/$bookingId/review', data: {
+      'rating': rating,
+      if (comment != null && comment.isNotEmpty) 'comment': comment,
+    });
+  }
+
   // Payments
   Future<Map<String, dynamic>> getPaymentHistory() async {
     final res = await _dio.get('/payments/history');

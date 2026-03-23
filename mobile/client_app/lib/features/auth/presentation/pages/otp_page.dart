@@ -23,22 +23,24 @@ class OtpPage extends StatefulWidget {
   State<OtpPage> createState() => _OtpPageState();
 }
 
-class _OtpPageState extends State<OtpPage> {
+class _OtpPageState extends State<OtpPage> with WidgetsBindingObserver {
   final List<TextEditingController> _controllers =
       List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   int _secondsLeft = 60;
   Timer? _timer;
+  Timer? _clipboardTimer; // periodic clipboard checker
   bool _isVerifying = false;
   String? _currentVerificationId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentVerificationId = widget.verificationId;
     _startTimer();
 
-    // If auto-verified (Android), process immediately
+    // Auto-verified on Android — process immediately
     if (widget.autoToken != null && widget.autoToken!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<AuthBloc>().add(
@@ -46,6 +48,64 @@ class _OtpPageState extends State<OtpPage> {
         );
       });
     }
+
+    // Check clipboard on load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkClipboard();
+      _startClipboardTimer();
+    });
+
+    // Listen to each focus node — check clipboard when field is focused
+    for (int i = 0; i < 6; i++) {
+      _focusNodes[i].addListener(() {
+        if (_focusNodes[i].hasFocus) _checkClipboard();
+      });
+    }
+  }
+
+  // Called when app returns to foreground (user switched to SMS app and came back)
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkClipboard();
+    }
+  }
+
+  void _startClipboardTimer() {
+    _clipboardTimer?.cancel();
+    // Check every 2 seconds until OTP is filled
+    _clipboardTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (_otp.length == 6 || _isVerifying) {
+        _clipboardTimer?.cancel();
+        return;
+      }
+      _checkClipboard();
+    });
+  }
+
+  /// Checks clipboard for a 6-digit code and fills automatically
+  Future<void> _checkClipboard() async {
+    if (_isVerifying) return;
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.replaceAll(RegExp(r'\D'), '') ?? '';
+      if (text.length == 6) {
+        _fillOtp(text);
+      }
+    } catch (_) {}
+  }
+
+  /// Distributes 6 digits across all boxes and auto-verifies
+  void _fillOtp(String digits) {
+    if (digits.length < 6) return;
+    _clipboardTimer?.cancel(); // stop polling once filled
+    for (int i = 0; i < 6; i++) {
+      _controllers[i].text = digits[i];
+    }
+    _focusNodes[5].requestFocus();
+    setState(() {});
+    // Small delay so UI updates before verifying
+    Future.delayed(const Duration(milliseconds: 100), _verify);
   }
 
   void _startTimer() {
@@ -62,7 +122,9 @@ class _OtpPageState extends State<OtpPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _clipboardTimer?.cancel();
     for (final c in _controllers) c.dispose();
     for (final f in _focusNodes) f.dispose();
     super.dispose();
@@ -71,6 +133,29 @@ class _OtpPageState extends State<OtpPage> {
   String get _otp => _controllers.map((c) => c.text).join();
 
   void _onChanged(String val, int index) {
+    // Paste detection: value longer than 1 digit
+    if (val.length > 1) {
+      final digits = val.replaceAll(RegExp(r'\D'), '');
+      if (digits.length >= 6) {
+        // Full code pasted — fill all boxes from start
+        _fillOtp(digits);
+      } else {
+        // Partial paste — fill from current box onward
+        int pos = index;
+        for (final ch in digits.characters) {
+          if (pos < 6) {
+            _controllers[pos].text = ch;
+            pos++;
+          }
+        }
+        if (pos < 6) _focusNodes[pos].requestFocus();
+        setState(() {});
+        if (_otp.length == 6) _verify();
+      }
+      return;
+    }
+
+    // Normal single-digit input
     if (val.length == 1 && index < 5) {
       _focusNodes[index + 1].requestFocus();
     }
@@ -205,17 +290,15 @@ class _OtpPageState extends State<OtpPage> {
               Text(
                 'أرسلنا رمزاً مكوناً من 6 أرقام إلى\n${widget.phone}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  height: 1.5,
-                ),
+                style: const TextStyle(color: AppTheme.textSecondary, height: 1.5),
               ),
               const SizedBox(height: 40),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(
-                  6,
-                  (i) => SizedBox(
+              // OTP boxes — LTR so digits flow left to right
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(6, (i) => SizedBox(
                     width: 48,
                     height: 56,
                     child: TextField(
@@ -223,8 +306,9 @@ class _OtpPageState extends State<OtpPage> {
                       focusNode: _focusNodes[i],
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
-                      maxLength: 1,
+                      textDirection: TextDirection.ltr,
                       enabled: !_isVerifying,
+                      // No maxLength — allows paste detection in onChanged
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
                         counterText: '',
@@ -238,22 +322,42 @@ class _OtpPageState extends State<OtpPage> {
                             width: 2,
                           ),
                         ),
+                        filled: _controllers[i].text.isNotEmpty,
+                        fillColor: AppTheme.primaryColor.withOpacity(0.06),
                       ),
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
                       ),
                       onChanged: (v) => _onChanged(v, i),
                     ),
-                  ),
+                  )),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+              // Paste button
+              TextButton.icon(
+                onPressed: _isVerifying ? null : _checkClipboard,
+                icon: const Icon(Icons.content_paste_rounded, size: 16),
+                label: const Text('لصق الرمز من الحافظة'),
+                style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+              ),
+              const SizedBox(height: 16),
               BlocBuilder<AuthBloc, AuthState>(
                 builder: (context, state) {
                   final loading = _isVerifying || state is AuthLoading;
                   if (loading) {
-                    return const CircularProgressIndicator();
+                    return Column(
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'جاري التحقق...',
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                        ),
+                      ],
+                    );
                   }
                   return ElevatedButton(
                     onPressed: _otp.length == 6 ? _verify : null,

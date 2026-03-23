@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const { sendPushNotification } = require('../utils/notifications.utils');
 const { v4: uuidv4 } = require('uuid');
+const { autoAssignOnBooking } = require('./questionnaire.controller');
 
 exports.createBooking = async (req, res) => {
   try {
@@ -58,7 +59,10 @@ exports.createInstantBooking = async (req, res) => {
       [req.user.id, therapist_id, session_type, priceMap[session_type]]
     );
 
-    successResponse(res, result.rows[0], 'Instant booking created', 201);
+    const booking = result.rows[0];
+    await autoAssignOnBooking(booking.id, booking.client_id, booking.therapist_id);
+
+    successResponse(res, booking, 'Instant booking created', 201);
   } catch (err) {
     errorResponse(res, err.message, 500);
   }
@@ -130,6 +134,9 @@ exports.confirmBooking = async (req, res) => {
     );
 
     if (!result.rows[0]) return errorResponse(res, 'Booking not found or already processed', 404);
+
+    // Auto-assign default questionnaire if coach has one set
+    await autoAssignOnBooking(result.rows[0].id, result.rows[0].client_id, result.rows[0].therapist_id);
 
     // Notify client
     const bookingDetails = await pool.query('SELECT client_id FROM bookings WHERE id=$1', [req.params.id]);

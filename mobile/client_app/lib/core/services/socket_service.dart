@@ -9,7 +9,14 @@ class SocketService {
 
   bool get isConnected => _socket?.connected ?? false;
 
+  /// Connects only once — ignores call if already connected/connecting
   void connect() {
+    if (_socket != null) {
+      // Reconnect if disconnected, otherwise keep existing socket
+      if (!_socket!.connected) _socket!.connect();
+      return;
+    }
+
     final token = _storage.getToken();
     if (token == null) return;
 
@@ -22,16 +29,27 @@ class SocketService {
           .build(),
     );
 
-    _socket!.onConnect((_) => print('Socket connected'));
-    _socket!.onDisconnect((_) => print('Socket disconnected'));
-    _socket!.onError((err) => print('Socket error: $err'));
+    _socket!.onConnect((_) => print('✅ Socket connected'));
+    _socket!.onDisconnect((_) => print('🔌 Socket disconnected'));
+    _socket!.onError((err) => print('❌ Socket error: $err'));
   }
 
-  void joinBooking(String bookingId) {
-    _socket?.emit('join_booking', bookingId);
+  /// Joins booking room — waits for connection if not yet connected
+  void joinBookingWhenReady(String bookingId) {
+    if (_socket == null) return;
+    if (_socket!.connected) {
+      _socket!.emit('join_booking', bookingId);
+    } else {
+      // Emit once after connection is established
+      _socket!.once('connect', (_) => _socket?.emit('join_booking', bookingId));
+    }
   }
 
-  void sendMessage(String bookingId, String content, {String type = 'text', String? mediaUrl}) {
+  /// Legacy alias — use joinBookingWhenReady for video calls
+  void joinBooking(String bookingId) => joinBookingWhenReady(bookingId);
+
+  void sendMessage(String bookingId, String content,
+      {String type = 'text', String? mediaUrl}) {
     _socket?.emit('send_message', {
       'booking_id': bookingId,
       'content': content,
@@ -44,15 +62,19 @@ class SocketService {
     _socket?.emit('typing', {'booking_id': bookingId, 'is_typing': isTyping});
   }
 
+  /// Registers new_message listener — replaces any previous one
   void onNewMessage(Function(dynamic) callback) {
+    _socket?.off('new_message');
     _socket?.on('new_message', callback);
   }
 
   void onTyping(Function(dynamic) callback) {
+    _socket?.off('user_typing');
     _socket?.on('user_typing', callback);
   }
 
   void onIncomingCall(Function(dynamic) callback) {
+    _socket?.off('incoming_call');
     _socket?.on('incoming_call', callback);
   }
 
@@ -70,6 +92,19 @@ class SocketService {
 
   void endCall(String bookingId) {
     _socket?.emit('call_ended', {'booking_id': bookingId});
+  }
+
+  void onCallEnded(Function(dynamic) callback) {
+    _socket?.off('call_ended');
+    _socket?.on('call_ended', callback);
+  }
+
+  void offCallEnded() {
+    _socket?.off('call_ended');
+  }
+
+  void offNewMessage() {
+    _socket?.off('new_message');
   }
 
   void disconnect() {

@@ -1,5 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
+import '../../core/di/injection.dart';
+import '../../core/services/socket_service.dart';
+import '../../core/services/notification_service.dart';
+import '../../core/theme/app_theme.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/onboarding_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
@@ -12,6 +19,7 @@ import '../../features/booking/presentation/pages/booking_page.dart';
 import '../../features/booking/presentation/pages/instant_booking_page.dart';
 import '../../features/session/presentation/pages/chat_session_page.dart';
 import '../../features/session/presentation/pages/video_call_page.dart';
+import '../../features/session/presentation/pages/rating_page.dart';
 import '../../features/mood/presentation/pages/mood_tracker_page.dart';
 import '../../features/content/presentation/pages/content_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -26,7 +34,10 @@ import '../../features/coach/earnings/presentation/pages/coach_earnings_page.dar
 import '../../features/coach/profile/presentation/pages/coach_profile_page.dart';
 
 class AppRouter {
+  static final navigatorKey = GlobalKey<NavigatorState>();
+
   static final router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/splash',
     routes: [
       // ─── Auth ───
@@ -100,6 +111,17 @@ class AppRouter {
           return VideoCallPage(
             bookingId: state.pathParameters['bookingId']!,
             sessionType: extra?['sessionType'] as String? ?? 'video',
+            isCoach: true,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/rating/:bookingId',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return RatingPage(
+            bookingId: state.pathParameters['bookingId']!,
+            coachName: extra?['coachName'] as String? ?? 'الكوتش',
           );
         },
       ),
@@ -122,6 +144,15 @@ class ClientShell extends StatefulWidget {
 class _ClientShellState extends State<ClientShell> {
   int _selectedIndex = 0;
   final List<String> _routes = ['/home', '/therapists', '/mood', '/content', '/profile'];
+
+  @override
+  void initState() {
+    super.initState();
+    // Request notification permission once user is logged in
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.requestPermission();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +193,101 @@ class _CoachShellState extends State<CoachShell> {
     '/coach/earnings',
     '/coach/profile',
   ];
+
+  final AudioPlayer _ringtonePlayer = AudioPlayer();
+  Timer? _vibrateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initRingtone();
+    _initSocket();
+    // Request notification permission once coach is logged in
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.requestPermission();
+    });
+  }
+
+  Future<void> _initRingtone() async {
+    try {
+      await _ringtonePlayer.setAsset('assets/sounds/ringtone.wav');
+      await _ringtonePlayer.setLoopMode(LoopMode.one);
+    } catch (_) {}
+  }
+
+  void _startRinging() {
+    _ringtonePlayer.play();
+    // Vibrate every second
+    _vibrateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      HapticFeedback.heavyImpact();
+    });
+  }
+
+  void _stopRinging() {
+    _ringtonePlayer.stop();
+    _vibrateTimer?.cancel();
+    _vibrateTimer = null;
+  }
+
+  void _initSocket() {
+    final socket = getIt<SocketService>();
+    socket.connect();
+    socket.onIncomingCall(_onIncomingCall);
+  }
+
+  void _onIncomingCall(dynamic data) {
+    if (!mounted) return;
+    final d = data as Map<String, dynamic>;
+    final bookingId = d['booking_id'] as String? ?? '';
+    final fromName = d['from_name'] as String? ?? 'عميل';
+    final callType = d['call_type'] as String? ?? 'video';
+    final isVoice = callType == 'voice';
+
+    _startRinging();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: Row(children: [
+          Icon(isVoice ? Icons.phone : Icons.videocam, color: AppTheme.primaryColor),
+          const SizedBox(width: 8),
+          const Text('طلب جلسة فورية'),
+        ]),
+        content: Text(
+          '$fromName يطلب ${isVoice ? "مكالمة صوتية" : "مكالمة فيديو"}',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _stopRinging();
+              Navigator.pop(context);
+            },
+            child: const Text('رفض', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              _stopRinging();
+              Navigator.pop(context);
+              context.push('/coach/video/$bookingId',
+                  extra: {'sessionType': callType});
+            },
+            icon: Icon(isVoice ? Icons.phone : Icons.videocam),
+            label: const Text('قبول'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _stopRinging();
+    _ringtonePlayer.dispose();
+    getIt<SocketService>().disconnect();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

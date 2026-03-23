@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
@@ -7,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/socket_service.dart';
+import '../../../../core/services/storage_service.dart';
 
 const _agoraAppId = '45772ce780f046808740a6d07c34781b';
 
@@ -37,6 +39,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   String? _debugInfo; // shows full error for diagnosis
   String? _roomId;
   String? _sessionId;
+  String? _coachName;
 
   // Timer — 45 minutes countdown
   static const _totalSeconds = 45 * 60;
@@ -44,12 +47,33 @@ class _VideoCallPageState extends State<VideoCallPage> {
   Timer? _timer;
   bool _showWarning = false;
 
+  bool _isEnding = false; // prevent recursive end
+
+  // Chat
+  bool _showChat = false;
+  final List<Map<String, dynamic>> _messages = [];
+  final TextEditingController _chatController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
+  int _unreadCount = 0;
+  String? _myUserId;
+
   bool get _isVoiceOnly => widget.sessionType == 'voice';
 
   @override
   void initState() {
     super.initState();
+    _loadMyId();
     _initSession();
+  }
+
+  void _loadMyId() {
+    final raw = getIt<StorageService>().getUser();
+    if (raw != null) {
+      try {
+        final user = jsonDecode(raw) as Map<String, dynamic>;
+        _myUserId = user['id']?.toString();
+      } catch (_) {}
+    }
   }
 
   Future<void> _initSession() async {
@@ -60,6 +84,9 @@ class _VideoCallPageState extends State<VideoCallPage> {
       final token = data['agora_token'] as String? ?? '';
       final session = data['session'] as Map<String, dynamic>?;
       _sessionId = session?['id'] as String?;
+      _coachName = data['coach_name'] as String? ??
+          (session?['therapist_name'] as String?) ??
+          'الكوتش';
       _debugInfo = 'API ✓ | room: ${_roomId?.substring(0, 8)}... | token: ${token.isEmpty ? "EMPTY" : token.substring(0, 10) + "..."}';
       await _initAgora(token);
     } catch (e) {
@@ -88,11 +115,17 @@ class _VideoCallPageState extends State<VideoCallPage> {
       onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
         if (mounted) setState(() { _isJoined = true; _loading = false; });
         _startTimer();
-        // Only client notifies coach — coach doesn't re-notify
+        // Both coach and client join booking room for chat
+        final socket = getIt<SocketService>();
+        socket.connect();
+        socket.joinBooking(widget.bookingId);
+        socket.onNewMessage(_onNewMessage);
+        // Listen for remote party ending the call
+        socket.onCallEnded((_) {
+          if (!_isEnding) _endCall(notifyRemote: false);
+        });
+        // Only client notifies coach of incoming call
         if (!widget.isCoach) {
-          final socket = getIt<SocketService>();
-          socket.connect();
-          socket.joinBooking(widget.bookingId);
           socket.initiateCall(widget.bookingId, widget.sessionType);
         }
       },
@@ -136,13 +169,49 @@ class _VideoCallPageState extends State<VideoCallPage> {
       if (!mounted) { t.cancel(); return; }
       setState(() {
         _remainingSeconds--;
-        if (_remainingSeconds == 5 * 60) _showWarning = true; // 5 min warning
+        if (_remainingSeconds == 5 * 60) {
+          _showWarning = true;
+          _showTimeWarningDialog(5);
+        }
+        if (_remainingSeconds == 60) {
+          _showTimeWarningDialog(1);
+        }
         if (_remainingSeconds <= 0) {
           t.cancel();
           _endCall();
         }
       });
     });
+  }
+
+  void _showTimeWarningDialog(int minutes) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.red.shade900,
+        title: Row(children: [
+          const Icon(Icons.timer_outlined, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(
+            minutes == 1 ? 'دقيقة واحدة متبقية!' : 'تبقى $minutes دقائق!',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ]),
+        content: Text(
+          minutes == 1
+              ? 'الجلسة ستنتهي تلقائياً بعد دقيقة واحدة.'
+              : 'الجلسة ستنتهي تلقائياً بعد $minutes دقائق.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('حسناً', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   String get _timerText {
@@ -157,24 +226,72 @@ class _VideoCallPageState extends State<VideoCallPage> {
     return Colors.white70;
   }
 
-  Future<void> _endCall() async {
+  Future<void> _confirmEndCall() async {
+    if (_isEnding) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('إنهاء المكالمة'),
+        content: const Text('هل أنت متأكد من إنهاء المكالمة؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('إنهاء', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) _endCall();
+  }
+
+  Future<void> _endCall({bool notifyRemote = true}) async {
+    if (_isEnding) return;
+    _isEnding = true;
     _timer?.cancel();
-    await _engine?.leaveChannel();
-    await _engine?.release();
-    _engine = null;
-    // End session in DB so both sides see it as completed
-    if (_sessionId != null) {
-      try {
-        await getIt<ApiClient>().endSession(_sessionId!);
-      } catch (_) {}
+
+    // Notify the other party
+    if (notifyRemote) {
+      getIt<SocketService>().endCall(widget.bookingId);
     }
+    final socket = getIt<SocketService>();
+    socket.offCallEnded();
+    socket.offNewMessage();
+
+    // Navigate immediately — don't block on cleanup
     if (mounted) {
-      if (context.canPop()) {
-        context.pop();
+      if (widget.isCoach) {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/coach/dashboard');
+        }
       } else {
-        context.go(widget.isCoach ? '/coach/dashboard' : '/home');
+        context.go(
+          '/rating/${widget.bookingId}',
+          extra: {'coachName': _coachName ?? 'الكوتش'},
+        );
       }
     }
+
+    // Cleanup in background (after navigation)
+    final engine = _engine;
+    _engine = null;
+    final sessionId = _sessionId;
+    Future(() async {
+      try { await engine?.leaveChannel(); } catch (_) {}
+      try { await engine?.release(); } catch (_) {}
+      if (sessionId != null) {
+        try {
+          await getIt<ApiClient>().endSession(sessionId)
+              .timeout(const Duration(seconds: 10));
+        } catch (_) {}
+      }
+    });
   }
 
   void _toggleMute() async {
@@ -189,11 +306,39 @@ class _VideoCallPageState extends State<VideoCallPage> {
     setState(() => _isCameraOff = off);
   }
 
+  void _onNewMessage(dynamic data) {
+    if (!mounted) return;
+    final msg = Map<String, dynamic>.from(data as Map);
+    setState(() {
+      _messages.add(msg);
+      if (!_showChat) _unreadCount++;
+    });
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (_chatScrollController.hasClients) {
+        _chatScrollController.animateTo(
+          _chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _sendChatMessage() {
+    final text = _chatController.text.trim();
+    if (text.isEmpty) return;
+    getIt<SocketService>().sendMessage(widget.bookingId, text);
+    _chatController.clear();
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    getIt<SocketService>().offCallEnded();
     _engine?.leaveChannel();
     _engine?.release();
+    _chatController.dispose();
+    _chatScrollController.dispose();
     super.dispose();
   }
 
@@ -254,7 +399,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_forward_ios, color: Colors.white),
-                      onPressed: _endCall,
+                      onPressed: _confirmEndCall,
                     ),
                     const Spacer(),
                     // Timer
@@ -342,7 +487,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
                   ),
                   _CallButton(
                     icon: Icons.call_end,
-                    onTap: _endCall,
+                    onTap: _confirmEndCall,
                     color: Colors.red,
                     size: 68,
                     label: 'إنهاء',
@@ -361,12 +506,191 @@ class _VideoCallPageState extends State<VideoCallPage> {
                       color: _isCameraOff ? Colors.red.shade700 : Colors.white24,
                       label: _isCameraOff ? 'كاميرا متوقفة' : 'كاميرا',
                     ),
+                  // Chat button with unread badge
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _CallButton(
+                        icon: Icons.chat_bubble_outline,
+                        onTap: () => setState(() {
+                          _showChat = !_showChat;
+                          if (_showChat) _unreadCount = 0;
+                        }),
+                        color: _showChat ? AppTheme.primaryColor : Colors.white24,
+                        label: 'دردشة',
+                      ),
+                      if (_unreadCount > 0)
+                        Positioned(
+                          top: -4, right: -4,
+                          child: Container(
+                            width: 18, height: 18,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$_unreadCount',
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
+              ),
+            ),
+
+          // Chat panel — slides up from bottom
+          if (_showChat && !_loading && _errorMsg == null)
+            Positioned(
+              bottom: 0, left: 0, right: 0,
+              height: MediaQuery.of(context).size.height * 0.45,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0F0F20),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  border: Border(top: BorderSide(color: Colors.white12)),
+                ),
+                child: Column(
+                  children: [
+                    // Handle + header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.chat_bubble_outline, color: Colors.white70, size: 18),
+                          const SizedBox(width: 8),
+                          const Text('دردشة الجلسة',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => setState(() => _showChat = false),
+                            child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(color: Colors.white10, height: 1),
+
+                    // Messages list
+                    Expanded(
+                      child: _messages.isEmpty
+                          ? const Center(
+                              child: Text('لا توجد رسائل بعد',
+                                  style: TextStyle(color: Colors.white38, fontSize: 13)),
+                            )
+                          : ListView.builder(
+                              controller: _chatScrollController,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              itemCount: _messages.length,
+                              itemBuilder: (_, i) {
+                                final msg = _messages[i];
+                                final isMe = _myUserId != null &&
+                                    msg['sender_id']?.toString() == _myUserId;
+                                final text = msg['content'] as String? ?? '';
+                                final time = msg['created_at'] != null
+                                    ? _formatTime(msg['created_at'].toString())
+                                    : '';
+                                return Align(
+                                  alignment: isMe ? Alignment.centerLeft : Alignment.centerRight,
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    constraints: BoxConstraints(
+                                      maxWidth: MediaQuery.of(context).size.width * 0.7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isMe
+                                          ? AppTheme.primaryColor.withOpacity(0.85)
+                                          : Colors.white12,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: isMe
+                                          ? CrossAxisAlignment.end
+                                          : CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(text,
+                                            style: const TextStyle(color: Colors.white, fontSize: 14)),
+                                        if (time.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(time,
+                                              style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+
+                    // Input row
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(12, 8, 12,
+                            MediaQuery.of(context).viewInsets.bottom > 0 ? 8 : 12),
+                        child: Directionality(
+                          textDirection: TextDirection.rtl,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _chatController,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  decoration: InputDecoration(
+                                    hintText: 'اكتب رسالة...',
+                                    hintStyle: const TextStyle(color: Colors.white38),
+                                    filled: true,
+                                    fillColor: Colors.white10,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                  onSubmitted: (_) => _sendChatMessage(),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _sendChatMessage,
+                                child: Container(
+                                  width: 42, height: 42,
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.primaryColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.send, color: Colors.white, size: 18),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
         ],
       ),
     );
+  }
+
+  String _formatTime(String isoString) {
+    try {
+      final dt = DateTime.parse(isoString).toLocal();
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    } catch (_) {
+      return '';
+    }
   }
 }
 
