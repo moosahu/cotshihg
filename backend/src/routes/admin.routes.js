@@ -30,6 +30,7 @@ router.put('/therapists/:id/discount', adminAuth, adminController.updateTherapis
 router.get('/bookings', adminAuth, adminController.getBookings);
 router.put('/bookings/:id/cancel', adminAuth, adminController.cancelBooking);
 router.get('/payments', adminAuth, adminController.getPayments);
+router.post('/payments/:id/refund', adminAuth, adminController.refundPayment);
 router.get('/content', adminAuth, adminController.getContent);
 router.post('/content', adminAuth, adminController.createContent);
 router.put('/content/:id/publish', adminAuth, adminController.togglePublishContent);

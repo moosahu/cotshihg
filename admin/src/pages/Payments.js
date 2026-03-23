@@ -7,13 +7,30 @@ import toast from 'react-hot-toast';
 export default function Payments() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refunding, setRefunding] = useState(null);
 
-  useEffect(() => {
+  const load = () => {
     api.getPayments()
       .then(res => setPayments(res.data || []))
       .catch(err => toast.error(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleRefund = async (id) => {
+    if (!window.confirm('هل تريد استرداد هذا المبلغ عبر Stripe؟')) return;
+    setRefunding(id);
+    try {
+      await api.refundPayment(id);
+      toast.success('تم استرداد المبلغ بنجاح ✓');
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRefunding(null);
+    }
+  };
 
   const paid = payments.filter(p => p.status === 'paid');
   const totalRevenue = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
@@ -85,6 +102,22 @@ export default function Payments() {
           {statusLabel(v)}
         </span>
       )
+    },
+    {
+      key: 'id', label: 'إجراء',
+      render: (id, row) => row.status === 'paid' ? (
+        <button
+          onClick={() => handleRefund(id)}
+          disabled={refunding === id}
+          style={{
+            padding: '4px 12px', borderRadius: 6, border: '1px solid #9C27B0',
+            background: 'transparent', color: '#9C27B0', cursor: 'pointer',
+            fontSize: 12, fontWeight: 600, opacity: refunding === id ? 0.6 : 1
+          }}
+        >
+          {refunding === id ? '...' : 'استرداد'}
+        </button>
+      ) : '—'
     },
   ];
 

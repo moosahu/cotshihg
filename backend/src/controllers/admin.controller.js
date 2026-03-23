@@ -268,6 +268,33 @@ exports.deleteContent = async (req, res) => {
   }
 };
 
+// POST /admin/payments/:id/refund
+exports.refundPayment = async (req, res) => {
+  try {
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const payment = await pool.query('SELECT * FROM payments WHERE id=$1', [req.params.id]);
+    if (!payment.rows[0]) return errorResponse(res, 'Payment not found', 404);
+    const p = payment.rows[0];
+    if (p.status === 'refunded') return errorResponse(res, 'Already refunded', 400);
+    if (p.status !== 'paid') return errorResponse(res, 'Payment not paid', 400);
+    if (!p.provider_payment_id) return errorResponse(res, 'No Stripe payment ID', 400);
+
+    await stripe.refunds.create({ payment_intent: p.provider_payment_id });
+
+    await pool.query('UPDATE payments SET status=$1, updated_at=NOW() WHERE id=$2', ['refunded', p.id]);
+    await pool.query(
+      'UPDATE bookings SET payment_status=$1, updated_at=NOW() WHERE id=(SELECT booking_id FROM payments WHERE id=$2)',
+      ['refunded', p.id]
+    );
+
+    successResponse(res, null, 'تم استرداد المبلغ بنجاح');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
 // GET /admin/payments
 exports.getPayments = async (req, res) => {
   try {
