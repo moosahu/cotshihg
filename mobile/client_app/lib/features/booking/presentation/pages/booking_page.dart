@@ -175,6 +175,9 @@ class _BookingPageState extends State<BookingPage> {
     // Present Payment Sheet
     await Stripe.instance.presentPaymentSheet();
 
+    // Auto-confirm booking after successful payment
+    await getIt<ApiClient>().confirmBookingAfterPayment(bookingId);
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -176,6 +176,20 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
+exports.confirmAfterPayment = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE bookings SET status='confirmed', updated_at=NOW()
+       WHERE id=$1 AND client_id=$2 AND status='pending' RETURNING *`,
+      [req.params.id, req.user.id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'Booking not found', 404);
+    successResponse(res, result.rows[0], 'Booking confirmed');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
 exports.submitReview = async (req, res) => {
   try {
     const { rating, comment } = req.body;

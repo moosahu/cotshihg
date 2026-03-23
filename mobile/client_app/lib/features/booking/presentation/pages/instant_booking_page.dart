@@ -168,6 +168,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
           ),
         );
         await Stripe.instance.presentPaymentSheet();
+        await getIt<ApiClient>().confirmBookingAfterPayment(bookingId);
       }
 
       if (mounted) {

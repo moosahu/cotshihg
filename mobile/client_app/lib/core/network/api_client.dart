@@ -144,6 +144,11 @@ class ApiClient {
   }
 
   // Payments
+  Future<Map<String, dynamic>> confirmBookingAfterPayment(String bookingId) async {
+    final res = await _dio.put('/bookings/$bookingId/confirm-payment');
+    return res.data;
+  }
+
   Future<Map<String, dynamic>> initiatePayment(String bookingId) async {
     final res = await _dio.post('/payments/initiate', data: {'booking_id': bookingId});
     return res.data;
