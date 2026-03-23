@@ -110,8 +110,17 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
     if (_session == null) return const SizedBox.shrink();
     final therapistName = _session!['therapist_name'] as String? ?? 'الكوتش';
     final scheduledAt = _session!['scheduled_at'] as String?;
-    final dateStr = scheduledAt != null
-        ? DateTime.tryParse(scheduledAt)?.toLocal().toString().substring(0, 16) ?? scheduledAt
+    final scheduledDateTime = scheduledAt != null ? DateTime.tryParse(scheduledAt)?.toLocal() : null;
+    final dateStr = scheduledDateTime != null
+        ? scheduledDateTime.toString().substring(0, 16)
+        : scheduledAt ?? '';
+    final now = DateTime.now();
+    final canJoin = scheduledDateTime != null &&
+        now.isAfter(scheduledDateTime.subtract(const Duration(minutes: 15))) &&
+        now.isBefore(scheduledDateTime.add(const Duration(hours: 2)));
+    final sessionType = _session!['session_type'] as String? ?? 'video';
+    final timeLabel = scheduledDateTime != null
+        ? '${scheduledDateTime.hour.toString().padLeft(2, '0')}:${scheduledDateTime.minute.toString().padLeft(2, '0')}'
         : '';
     return Card(
       color: AppTheme.primaryColor,
@@ -132,9 +141,15 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
               ),
             ),
             ElevatedButton(
-              onPressed: () => context.go('/chat/${_session!['id']}'),
+              onPressed: canJoin ? () {
+                if (sessionType == 'chat') {
+                  context.go('/chat/${_session!['id']}');
+                } else {
+                  context.go('/video-call/${_session!['id']}', extra: {'sessionType': sessionType});
+                }
+              } : null,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppTheme.primaryColor),
-              child: const Text('انضم'),
+              child: Text(canJoin ? 'انضم' : timeLabel),
             ),
           ],
         ),

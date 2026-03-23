@@ -121,7 +121,7 @@ class _BookingPageState extends State<BookingPage> {
       final bookingRes = await getIt<ApiClient>().createBooking({
         'therapist_id': widget.therapistId,
         'session_type': _sessionType,
-        'scheduled_at': scheduledAt.toIso8601String(),
+        'scheduled_at': scheduledAt.toUtc().toIso8601String(),
         'duration_minutes': 60,
       });
       final bookingId = bookingRes['data']?['id']?.toString();
