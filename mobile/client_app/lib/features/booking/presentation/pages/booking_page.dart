@@ -26,6 +26,7 @@ class _BookingPageState extends State<BookingPage> {
   bool _loading = false;
   bool _loadingData = true;
   bool _policyAccepted = false;
+  String? _pendingBookingId; // track booking created before payment
   Map<String, dynamic>? _therapist;
 
   // availability: list of {day_of_week, start_time, end_time}
@@ -169,6 +170,7 @@ class _BookingPageState extends State<BookingPage> {
         'duration_minutes': 60,
       });
       final bookingId = bookingRes['data']?['id']?.toString();
+      _pendingBookingId = bookingId;
 
       // 2. If price > 0, initiate Stripe payment
       if (_price > 0 && bookingId != null) {
@@ -183,9 +185,12 @@ class _BookingPageState extends State<BookingPage> {
         }
       }
     } catch (e) {
-      // Ignore user-cancelled payment sheet
       if (e is StripeException && e.error.code == FailureCode.Canceled) {
-        // do nothing
+        // User cancelled payment — delete the pending booking so the slot is free again
+        if (_pendingBookingId != null) {
+          try { await getIt<ApiClient>().cancelBooking(_pendingBookingId!); } catch (_) {}
+          _pendingBookingId = null;
+        }
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(_extractError(e)), backgroundColor: AppTheme.errorColor));
