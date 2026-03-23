@@ -183,7 +183,10 @@ class _BookingPageState extends State<BookingPage> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      // Ignore user-cancelled payment sheet
+      if (e is StripeException && e.error.code == FailureCode.Canceled) {
+        // do nothing
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(_extractError(e)), backgroundColor: AppTheme.errorColor));
       }
