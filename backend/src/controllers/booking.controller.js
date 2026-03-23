@@ -171,6 +171,7 @@ exports.confirmBooking = async (req, res) => {
 
 exports.cancelBooking = async (req, res) => {
   try {
+    console.log(`🔴 cancelBooking: id=${req.params.id} user=${req.user.id} role=${req.user.role}`);
     const result = await pool.query(
       `UPDATE bookings SET status='cancelled', updated_at=NOW()
        WHERE id=$1 AND (client_id=$2 OR therapist_id=(SELECT id FROM therapists WHERE user_id=$2)
@@ -178,6 +179,7 @@ exports.cancelBooking = async (req, res) => {
        AND status IN ('pending','confirmed') RETURNING *`,
       [req.params.id, req.user.id]
     );
+    console.log(`🔴 cancelBooking result: ${result.rowCount} rows`);
 
     if (!result.rows[0]) return errorResponse(res, 'لا يمكن إلغاء هذا الحجز', 400);
 
