@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
@@ -141,15 +142,33 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
   Future<void> _book(String coachId, String sessionType) async {
     try {
       final res = await getIt<ApiClient>().createInstantBooking(coachId, sessionType);
-      final bookingId = (res['data'] as Map<String, dynamic>?)?['id']?.toString();
+      final data = res['data'] as Map<String, dynamic>?;
+      final bookingId = data?['id']?.toString();
+      if (bookingId == null) throw Exception('فشل إنشاء الحجز');
+
+      final price = double.tryParse(data?['price']?.toString() ?? '0') ?? 0;
+
+      // If price > 0 → process payment first
+      if (price > 0) {
+        final paymentRes = await getIt<ApiClient>().initiatePayment(bookingId);
+        final clientSecret = paymentRes['data']?['client_secret'] as String?;
+        if (clientSecret == null) throw Exception('فشل إنشاء الدفع');
+
+        await Stripe.instance.initPaymentSheet(
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            paymentIntentClientSecret: clientSecret,
+            merchantDisplayName: 'كوتشينج',
+            style: ThemeMode.light,
+          ),
+        );
+        await Stripe.instance.presentPaymentSheet();
+      }
+
       if (mounted) {
         if (sessionType == 'chat') {
-          context.go('/chat/${bookingId ?? ''}');
+          context.go('/chat/$bookingId');
         } else {
-          context.go(
-            '/video-call/${bookingId ?? ''}',
-            extra: {'sessionType': sessionType},
-          );
+          context.go('/video-call/$bookingId', extra: {'sessionType': sessionType});
         }
       }
     } catch (e) {
