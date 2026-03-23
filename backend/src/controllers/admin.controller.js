@@ -283,7 +283,7 @@ exports.refundPayment = async (req, res) => {
 
     await stripe.refunds.create({ payment_intent: p.provider_payment_id });
 
-    await pool.query('UPDATE payments SET status=$1, updated_at=NOW() WHERE id=$2', ['refunded', p.id]);
+    await pool.query('UPDATE payments SET status=$1 WHERE id=$2', ['refunded', p.id]);
     await pool.query(
       'UPDATE bookings SET payment_status=$1, updated_at=NOW() WHERE id=(SELECT booking_id FROM payments WHERE id=$2)',
       ['refunded', p.id]
