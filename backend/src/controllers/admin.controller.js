@@ -237,12 +237,15 @@ exports.deleteContent = async (req, res) => {
 exports.getPayments = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT p.id, p.amount, p.method, p.status, p.created_at,
-              u.name as user_name
+      `SELECT p.id, p.amount, p.currency, p.provider, p.provider_payment_id,
+              p.status, p.created_at,
+              u.name as user_name,
+              b.session_type, b.scheduled_at
        FROM payments p
        LEFT JOIN users u ON u.id = p.user_id
+       LEFT JOIN bookings b ON b.id = p.booking_id
        ORDER BY p.created_at DESC
-       LIMIT 100`
+       LIMIT 200`
     );
     successResponse(res, result.rows);
   } catch (err) {

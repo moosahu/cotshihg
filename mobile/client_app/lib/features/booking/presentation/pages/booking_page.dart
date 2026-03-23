@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
@@ -116,18 +117,26 @@ class _BookingPageState extends State<BookingPage> {
 
     setState(() => _loading = true);
     try {
-      await getIt<ApiClient>().createBooking({
+      // 1. Create booking
+      final bookingRes = await getIt<ApiClient>().createBooking({
         'therapist_id': widget.therapistId,
         'session_type': _sessionType,
         'scheduled_at': scheduledAt.toIso8601String(),
         'duration_minutes': 60,
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('تم إرسال طلب الحجز بنجاح ✓'),
-                backgroundColor: AppTheme.successColor));
-        context.go('/home');
+      final bookingId = bookingRes['data']?['id']?.toString();
+
+      // 2. If price > 0, initiate Stripe payment
+      if (_price > 0 && bookingId != null) {
+        await _processPayment(bookingId);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('تم إرسال طلب الحجز بنجاح ✓'),
+                  backgroundColor: AppTheme.successColor));
+          context.go('/home');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -136,6 +145,36 @@ class _BookingPageState extends State<BookingPage> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _processPayment(String bookingId) async {
+    // Get PaymentIntent client_secret from backend
+    final paymentRes = await getIt<ApiClient>().initiatePayment(bookingId);
+    final clientSecret = paymentRes['data']?['client_secret'] as String?;
+    if (clientSecret == null) throw Exception('فشل إنشاء الدفع');
+
+    // Initialize Payment Sheet
+    await Stripe.instance.initPaymentSheet(
+      paymentSheetParameters: SetupPaymentSheetParameters(
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: 'كوتشينج',
+        style: ThemeMode.light,
+        billingDetailsCollectionConfiguration: const BillingDetailsCollectionConfiguration(
+          name: CollectionMode.always,
+        ),
+      ),
+    );
+
+    // Present Payment Sheet
+    await Stripe.instance.presentPaymentSheet();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('تم الدفع والحجز بنجاح ✓'),
+              backgroundColor: AppTheme.successColor));
+      context.go('/home');
     }
   }
 
@@ -389,7 +428,7 @@ class _BookingPageState extends State<BookingPage> {
                       ? const SizedBox(
                           width: 24, height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('تأكيد الحجز', style: TextStyle(fontSize: 16)),
+                      : Text(_price > 0 ? 'الدفع والحجز' : 'تأكيد الحجز', style: const TextStyle(fontSize: 16)),
                 ),
               ),
             ],

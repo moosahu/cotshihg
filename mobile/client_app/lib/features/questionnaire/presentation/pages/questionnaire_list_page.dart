@@ -207,7 +207,23 @@ class _QuestionnaireListPageState extends State<QuestionnaireListPage> {
               );
               return confirmed ?? false;
             },
-            onDismissed: (_) => _delete(id),
+            onDismissed: (_) async {
+                try {
+                  await getIt<ApiClient>().deleteQuestionnaire(id);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم حذف الاستبيان')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor),
+                    );
+                  }
+                }
+                _load();
+              },
             child: GestureDetector(
               onLongPress: () => _delete(id),
               child: Card(

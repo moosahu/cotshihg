@@ -15,22 +15,74 @@ export default function Payments() {
       .finally(() => setLoading(false));
   }, []);
 
-  const total = payments.filter(p => p.status === 'completed').reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+  const paid = payments.filter(p => p.status === 'paid');
+  const totalRevenue = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+
+  const statusLabel = (s) => {
+    const map = { paid: 'مدفوع', pending: 'معلق', failed: 'فاشل', refunded: 'مسترد' };
+    return map[s] || s || '—';
+  };
+  const statusColor = (s) => {
+    const colors = { paid: '#e8f8ee', pending: '#fff8e1', failed: '#fdecea', refunded: '#f3e5f5' };
+    const text = { paid: '#2ECC71', pending: '#F59E0B', failed: '#E53935', refunded: '#9C27B0' };
+    return { background: colors[s] || '#f5f5f5', color: text[s] || '#666' };
+  };
+
+  const sessionTypeLabel = (t) => {
+    const map = { video: 'فيديو', voice: 'صوتي', chat: 'نصي' };
+    return map[t] || t || '—';
+  };
 
   const columns = [
-    { key: 'id', label: 'رقم العملية', render: v => v ? v.slice(0, 8).toUpperCase() : '—' },
-    { key: 'user_name', label: 'المستخدم', render: v => v || '—' },
-    { key: 'amount', label: 'المبلغ (ر.س)' },
-    { key: 'method', label: 'طريقة الدفع', render: v => v || '—' },
     {
-      key: 'created_at', label: 'التاريخ',
-      render: v => v ? new Date(v).toLocaleDateString('ar-SA') : '—'
+      key: 'id', label: 'رقم العملية',
+      render: (v, row) => (
+        <div>
+          <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600 }}>
+            {v ? v.toString().slice(0, 8).toUpperCase() : '—'}
+          </div>
+          {row.provider_payment_id && (
+            <div style={{ fontSize: 11, color: '#8A94A6', marginTop: 2 }}>
+              {row.provider_payment_id.slice(0, 20)}...
+            </div>
+          )}
+        </div>
+      )
+    },
+    { key: 'user_name', label: 'المستخدم', render: v => v || '—' },
+    {
+      key: 'amount', label: 'المبلغ',
+      render: (v, row) => (
+        <span style={{ fontWeight: 700, color: '#1A6B72' }}>
+          {parseFloat(v || 0).toLocaleString()} {row.currency || 'SAR'}
+        </span>
+      )
+    },
+    {
+      key: 'provider', label: 'طريقة الدفع',
+      render: v => (
+        <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
+          {v === 'stripe' ? '💳 Stripe' : v || '—'}
+        </span>
+      )
+    },
+    {
+      key: 'session_type', label: 'نوع الجلسة',
+      render: v => sessionTypeLabel(v)
+    },
+    {
+      key: 'scheduled_at', label: 'موعد الجلسة',
+      render: v => v ? new Date(v).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+    },
+    {
+      key: 'created_at', label: 'تاريخ الدفع',
+      render: v => v ? new Date(v).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
     },
     {
       key: 'status', label: 'الحالة',
       render: v => (
-        <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: v === 'completed' ? '#e8f8ee' : '#fdecea', color: v === 'completed' ? '#2ECC71' : '#E53935' }}>
-          {v === 'completed' ? 'ناجح' : v === 'refunded' ? 'مسترد' : v || '—'}
+        <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, ...statusColor(v) }}>
+          {statusLabel(v)}
         </span>
       )
     },
@@ -42,12 +94,13 @@ export default function Payments() {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>المدفوعات</h1>
-        <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>سجل جميع المعاملات المالية</p>
+        <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>سجل جميع المعاملات المالية عبر Stripe</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
-        <StatCard title="إجمالي الإيرادات" value={`${total.toLocaleString()} ر.س`} change={null} icon="💰" color="#1A6B72" />
-        <StatCard title="المعاملات الناجحة" value={String(payments.filter(p => p.status === 'completed').length)} change={null} icon="✅" color="#2ECC71" />
-        <StatCard title="المبالغ المستردة" value={String(payments.filter(p => p.status === 'refunded').length)} change={null} icon="↩️" color="#E53935" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        <StatCard title="إجمالي الإيرادات" value={`${totalRevenue.toLocaleString()} ر.س`} change={null} icon="💰" color="#1A6B72" />
+        <StatCard title="المعاملات الناجحة" value={String(paid.length)} change={null} icon="✅" color="#2ECC71" />
+        <StatCard title="معلقة" value={String(payments.filter(p => p.status === 'pending').length)} change={null} icon="⏳" color="#F59E0B" />
+        <StatCard title="فاشلة" value={String(payments.filter(p => p.status === 'failed').length)} change={null} icon="❌" color="#E53935" />
       </div>
       <DataTable title="سجل المعاملات" columns={columns} data={payments} />
     </div>

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/di/injection.dart';
@@ -13,6 +14,8 @@ import 'features/notifications/presentation/bloc/notification_bloc.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  Stripe.publishableKey = 'pk_test_51TDxKQCwcETFsfV6rh7HzIFqhWmZjAlshkrhsnyZ3uAyPm3NCDfDFTS5GSIKEYzmgc9Y050UPWFjDZIPqq9pB9sj00xiotbLV7';
+  await Stripe.instance.applySettings();
   await setupDependencies();
   NotificationService.setNavigatorKey(AppRouter.navigatorKey);
   await NotificationService.init();
