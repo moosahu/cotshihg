@@ -196,11 +196,18 @@ exports.cancelBooking = async (req, res) => {
 exports.confirmAfterPayment = async (req, res) => {
   try {
     const result = await pool.query(
-      `UPDATE bookings SET status='confirmed', updated_at=NOW()
+      `UPDATE bookings SET status='confirmed', payment_status='paid', updated_at=NOW()
        WHERE id=$1 AND client_id=$2 AND status='pending' RETURNING *`,
       [req.params.id, req.user.id]
     );
     if (!result.rows[0]) return errorResponse(res, 'Booking not found', 404);
+
+    // Mark payment record as paid
+    await pool.query(
+      `UPDATE payments SET status='paid', updated_at=NOW() WHERE booking_id=$1 AND status='pending'`,
+      [req.params.id]
+    );
+
     successResponse(res, result.rows[0], 'Booking confirmed');
   } catch (err) {
     errorResponse(res, err.message, 500);
