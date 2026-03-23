@@ -206,7 +206,7 @@ exports.confirmAfterPayment = async (req, res) => {
 
     // Mark payment record as paid
     await pool.query(
-      `UPDATE payments SET status='paid', updated_at=NOW() WHERE booking_id=$1 AND status='pending'`,
+      `UPDATE payments SET status='paid' WHERE booking_id=$1 AND status='pending'`,
       [req.params.id]
     );
 
