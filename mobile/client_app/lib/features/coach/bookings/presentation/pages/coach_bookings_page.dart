@@ -117,6 +117,11 @@ class _BookingsListState extends State<_BookingsList> {
           final price = b['price'];
           final clientName = b['client_name'] as String? ?? '—';
           final scheduledAt = b['scheduled_at'] as String?;
+          final scheduledDateTime = scheduledAt != null ? DateTime.tryParse(scheduledAt)?.toLocal() : null;
+          final now = DateTime.now();
+          final canStart = scheduledDateTime != null &&
+              now.isAfter(scheduledDateTime.subtract(const Duration(minutes: 15))) &&
+              now.isBefore(scheduledDateTime.add(const Duration(hours: 2)));
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             child: Padding(
@@ -200,12 +205,12 @@ class _BookingsListState extends State<_BookingsList> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => context.go(
+                        onPressed: canStart ? () => context.go(
                           '/coach/video/${b['id']}',
                           extra: {'sessionType': b['session_type'] as String? ?? 'video'},
-                        ),
+                        ) : null,
                         icon: const Icon(Icons.play_arrow),
-                        label: const Text('بدء الجلسة'),
+                        label: Text(canStart ? 'بدء الجلسة' : 'تبدأ في ${scheduledDateTime != null ? "${scheduledDateTime.hour.toString().padLeft(2,'0')}:${scheduledDateTime.minute.toString().padLeft(2,'0')}" : ""}'),
                       ),
                     ),
                   ],
