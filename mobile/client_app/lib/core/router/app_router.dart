@@ -158,6 +158,7 @@ class AppRouter {
       GoRoute(path: '/my-payments', builder: (_, __) => const MyPaymentsPage()),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyPage()),
     ],
+    errorBuilder: (context, state) => const SplashPage(),
   );
 }
 
