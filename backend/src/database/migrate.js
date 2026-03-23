@@ -121,6 +121,29 @@ async function runPatches() {
       ALTER TABLE therapists ADD COLUMN IF NOT EXISTS discount_percent INTEGER DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100)
     `);
 
+    // Patch: payment columns on bookings
+    await pool.query(`
+      ALTER TABLE bookings
+        ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'pending',
+        ADD COLUMN IF NOT EXISTS payment_id TEXT
+    `);
+
+    // Patch: payments table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id),
+        amount DECIMAL(10,2) NOT NULL,
+        currency VARCHAR(10) DEFAULT 'SAR',
+        provider VARCHAR(50) DEFAULT 'stripe',
+        provider_payment_id TEXT,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
     console.log('✅ DB patches applied');
   } catch (err) {
     console.error('⚠️  Patch error (non-fatal):', err.message);
