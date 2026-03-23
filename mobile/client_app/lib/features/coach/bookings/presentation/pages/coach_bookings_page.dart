@@ -147,7 +147,7 @@ class _BookingsListState extends State<_BookingsList> {
                         ),
                       ),
                       if (price != null)
-                        Text('$price ر.س', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                        Text('$price ﷼', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   if (widget.status == 'pending') ...[

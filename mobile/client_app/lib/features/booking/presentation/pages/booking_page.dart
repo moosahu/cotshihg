@@ -80,7 +80,7 @@ class _BookingPageState extends State<BookingPage> {
       'voice': _therapist!['session_price_voice'],
       'video': _therapist!['session_price_video'],
     };
-    return ((prices[_sessionType] ?? 0) as num).toDouble();
+    return double.tryParse(prices[_sessionType]?.toString() ?? '0') ?? 0;
   }
 
   String _formatDate(String dateKey) {
@@ -267,7 +267,7 @@ class _BookingPageState extends State<BookingPage> {
                               ),
                               if (_therapist != null)
                                 Text(
-                                  '${(((_therapist![e.$1 == 'chat' ? 'session_price_chat' : e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video']) ?? 0) as num).toInt()} ر.س',
+                                  '${(double.tryParse((_therapist![e.$1 == 'chat' ? 'session_price_chat' : e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video'])?.toString() ?? '0') ?? 0).toInt()} ﷼',
                                   style: const TextStyle(
                                       color: AppTheme.primaryColor,
                                       fontWeight: FontWeight.bold,
@@ -411,7 +411,7 @@ class _BookingPageState extends State<BookingPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('سعر الجلسة', style: TextStyle(color: AppTheme.textSecondary)),
-                      Text('${_price.toInt()} ر.س',
+                      Text('${_price.toInt()} ﷼',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,

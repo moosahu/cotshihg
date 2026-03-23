@@ -84,7 +84,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                 ('voice', 'مكالمة صوتية', Icons.phone_outlined, 'session_price_voice'),
                 ('video', 'مكالمة فيديو', Icons.videocam_outlined, 'session_price_video'),
               ].map((e) {
-                final price = ((coach[e.$4] ?? 0) as num).toInt();
+                final price = (double.tryParse(coach[e.$4]?.toString() ?? '0') ?? 0).toInt();
                 final selected = selectedType == e.$1;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
@@ -109,7 +109,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                                 style: TextStyle(
                                     fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
                           ),
-                          Text('$price ر.س',
+                          Text('$price ﷼',
                               style: const TextStyle(
                                   color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                         ],
@@ -230,10 +230,10 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                         final spec = specs != null && specs.isNotEmpty ? specs.first as String : '';
                         final rating = coach['rating'];
                         final minPrice = [
-                          (coach['session_price_chat'] ?? 0) as num,
-                          (coach['session_price_voice'] ?? 0) as num,
-                          (coach['session_price_video'] ?? 0) as num,
-                        ].where((p) => p > 0).fold<num>(0, (a, b) => a == 0 ? b : (b < a ? b : a));
+                          double.tryParse(coach['session_price_chat']?.toString() ?? '0') ?? 0,
+                          double.tryParse(coach['session_price_voice']?.toString() ?? '0') ?? 0,
+                          double.tryParse(coach['session_price_video']?.toString() ?? '0') ?? 0,
+                        ].where((p) => p > 0).fold<double>(0, (a, b) => a == 0 ? b : (b < a ? b : a));
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -283,7 +283,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                                             const SizedBox(width: 8),
                                           ],
                                           if (minPrice > 0)
-                                            Text('من ${minPrice.toInt()} ر.س',
+                                            Text('من ${minPrice.toInt()} ﷼',
                                                 style: const TextStyle(
                                                     color: AppTheme.primaryColor,
                                                     fontSize: 12,
