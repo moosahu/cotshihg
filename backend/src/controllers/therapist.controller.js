@@ -76,6 +76,24 @@ exports.getAvailability = async (req, res) => {
   }
 };
 
+exports.getBookedSlots = async (req, res) => {
+  try {
+    // Return scheduled_at for all pending/confirmed bookings in the next 30 days
+    const result = await pool.query(
+      `SELECT scheduled_at FROM bookings
+       WHERE therapist_id=$1
+         AND status IN ('pending','confirmed')
+         AND scheduled_at >= NOW()
+         AND scheduled_at <= NOW() + INTERVAL '30 days'`,
+      [req.params.id]
+    );
+    const slots = result.rows.map(r => r.scheduled_at);
+    successResponse(res, slots);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
 exports.getReviews = async (req, res) => {
   try {
     const result = await pool.query(

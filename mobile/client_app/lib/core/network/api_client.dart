@@ -37,6 +37,11 @@ class ApiClient {
     return res.data;
   }
 
+  Future<Map<String, dynamic>> getTherapistBookedSlots(String id) async {
+    final res = await _dio.get('/therapists/$id/booked-slots');
+    return res.data;
+  }
+
   // Bookings
   Future<Map<String, dynamic>> createBooking(Map<String, dynamic> data) async {
     final res = await _dio.post('/bookings', data: data);

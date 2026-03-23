@@ -86,12 +86,14 @@ class _BookingsListState extends State<_BookingsList>
     }
   }
 
-  Future<void> _cancel(String id) async {
+  Future<void> _cancel(String id, {bool isPaid = false}) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('إلغاء الحجز'),
-        content: const Text('هل أنت متأكد من إلغاء هذا الحجز؟'),
+        content: Text(isPaid
+            ? 'هل أنت متأكد من إلغاء هذا الحجز؟\nسيتم مراجعة طلب استرداد المبلغ من قبل الإدارة خلال 3-5 أيام عمل.'
+            : 'هل أنت متأكد من إلغاء هذا الحجز؟'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('لا')),
           TextButton(
@@ -105,6 +107,13 @@ class _BookingsListState extends State<_BookingsList>
     try {
       await getIt<ApiClient>().cancelBooking(id);
       _load();
+      if (mounted && isPaid) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تم إلغاء الحجز — سيتم التواصل معك بخصوص استرداد المبلغ'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 5),
+        ));
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
@@ -154,6 +163,10 @@ class _BookingsListState extends State<_BookingsList>
           final canStart = scheduledDateTime != null &&
               now.isAfter(scheduledDateTime.subtract(const Duration(minutes: 15))) &&
               now.isBefore(scheduledDateTime.add(const Duration(hours: 2)));
+          final isPaid = (price is num ? price.toDouble() : double.tryParse(price.toString()) ?? 0.0) > 0;
+          final hoursUntilSession = scheduledDateTime != null ? scheduledDateTime.difference(now).inHours : 999;
+          final canCancelPaid = isPaid && hoursUntilSession >= 24;
+          final tooLateToCancel = isPaid && hoursUntilSession < 24;
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -221,16 +234,34 @@ class _BookingsListState extends State<_BookingsList>
                             label: Text(canStart ? 'ابدأ الجلسة' : 'تبدأ في ${scheduledDateTime != null ? "${scheduledDateTime.hour.toString().padLeft(2,'0')}:${scheduledDateTime.minute.toString().padLeft(2,'0')}" : ""}'),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          onPressed: () => _cancel(id),
-                          style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.errorColor,
-                              side: const BorderSide(color: AppTheme.errorColor)),
-                          child: const Text('إلغاء'),
-                        ),
+                        if (!tooLateToCancel) ...[
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            onPressed: () => _cancel(id, isPaid: canCancelPaid),
+                            style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.errorColor,
+                                side: const BorderSide(color: AppTheme.errorColor)),
+                            child: const Text('إلغاء'),
+                          ),
+                        ],
                       ],
                     ),
+                    if (tooLateToCancel)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.info_outline, size: 14, color: AppTheme.textSecondary),
+                            SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'لا يمكن إلغاء الجلسة خلال 24 ساعة من موعدها — تواصل مع الإدارة',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ] else if (widget.status == 'pending') ...[
                     const SizedBox(height: 12),
                     SizedBox(

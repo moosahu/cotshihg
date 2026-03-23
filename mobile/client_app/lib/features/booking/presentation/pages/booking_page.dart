@@ -1,9 +1,18 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
+
+String _extractError(dynamic e) {
+  if (e is DioException) {
+    final msg = e.response?.data?['message'];
+    if (msg != null && msg.toString().isNotEmpty) return msg.toString();
+  }
+  return e.toString();
+}
 
 class BookingPage extends StatefulWidget {
   final String therapistId;
@@ -16,6 +25,7 @@ class _BookingPageState extends State<BookingPage> {
   String _sessionType = 'video';
   bool _loading = false;
   bool _loadingData = true;
+  bool _policyAccepted = false;
   Map<String, dynamic>? _therapist;
 
   // availability: list of {day_of_week, start_time, end_time}
@@ -24,6 +34,9 @@ class _BookingPageState extends State<BookingPage> {
   // Generated slots for next 30 days: Map<dateString, List<String>> where value is list of start_times
   Map<String, List<String>> _slotsByDate = {};
   List<String> _availableDates = []; // sorted date strings "yyyy-MM-dd"
+
+  // Already booked: Set of "yyyy-MM-dd|HH:mm" strings
+  Set<String> _bookedSlots = {};
 
   String? _selectedDate;
   String? _selectedTime;
@@ -42,9 +55,20 @@ class _BookingPageState extends State<BookingPage> {
       final results = await Future.wait([
         getIt<ApiClient>().getTherapistById(widget.therapistId),
         getIt<ApiClient>().getTherapistAvailability(widget.therapistId),
+        getIt<ApiClient>().getTherapistBookedSlots(widget.therapistId),
       ]);
       final therapist = results[0]['data'] as Map<String, dynamic>?;
       final avail = (results[1]['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final bookedRaw = (results[2]['data'] as List?) ?? [];
+      final booked = <String>{};
+      for (final slot in bookedRaw) {
+        final dt = DateTime.tryParse(slot.toString())?.toLocal();
+        if (dt != null) {
+          final dateKey = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+          final timeKey = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+          booked.add('$dateKey|$timeKey');
+        }
+      }
 
       // Build slots for next 30 days
       final slots = <String, List<String>>{};
@@ -65,6 +89,7 @@ class _BookingPageState extends State<BookingPage> {
           _availability = avail;
           _slotsByDate = slots;
           _availableDates = slots.keys.toList()..sort();
+          _bookedSlots = booked;
           _loadingData = false;
         });
       }
@@ -141,7 +166,7 @@ class _BookingPageState extends State<BookingPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+            SnackBar(content: Text(_extractError(e)), backgroundColor: AppTheme.errorColor));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -375,21 +400,46 @@ class _BookingPageState extends State<BookingPage> {
                       spacing: 8,
                       runSpacing: 8,
                       children: (_slotsByDate[_selectedDate!] ?? []).map((t) {
+                        final slotKey = '$_selectedDate|$t';
+                        final isBooked = _bookedSlots.contains(slotKey);
                         final selected = _selectedTime == t;
                         return GestureDetector(
-                          onTap: () => setState(() => _selectedTime = t),
+                          onTap: isBooked ? null : () => setState(() => _selectedTime = t),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: selected ? AppTheme.primaryColor : Colors.white,
+                              color: isBooked
+                                  ? const Color(0xFFF0F0F0)
+                                  : selected
+                                      ? AppTheme.primaryColor
+                                      : Colors.white,
                               border: Border.all(
-                                  color: selected ? AppTheme.primaryColor : const Color(0xFFE0E0E0)),
+                                  color: isBooked
+                                      ? const Color(0xFFDDDDDD)
+                                      : selected
+                                          ? AppTheme.primaryColor
+                                          : const Color(0xFFE0E0E0)),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(_formatTime(t),
-                                style: TextStyle(
-                                    color: selected ? Colors.white : AppTheme.textPrimary,
-                                    fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(_formatTime(t),
+                                    style: TextStyle(
+                                        color: isBooked
+                                            ? AppTheme.textSecondary
+                                            : selected
+                                                ? Colors.white
+                                                : AppTheme.textPrimary,
+                                        fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                                        decoration: isBooked ? TextDecoration.lineThrough : null)),
+                                if (isBooked) ...[
+                                  const SizedBox(width: 4),
+                                  const Text('محجوز',
+                                      style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                                ],
+                              ],
+                            ),
                           ),
                         );
                       }).toList(),
@@ -403,7 +453,7 @@ class _BookingPageState extends State<BookingPage> {
           ),
         ),
 
-        // Bottom: price + confirm button
+        // Bottom: cancellation policy + price + confirm button
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           decoration: BoxDecoration(
@@ -413,7 +463,7 @@ class _BookingPageState extends State<BookingPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_price > 0)
+              if (_price > 0) ...[
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(
@@ -428,11 +478,55 @@ class _BookingPageState extends State<BookingPage> {
                     ],
                   ),
                 ),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'سياسة الإلغاء: يمكن الإلغاء باسترداد كامل قبل 24 ساعة من الجلسة. بعد ذلك لا يمكن الإلغاء.',
+                              style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _policyAccepted,
+                            onChanged: (v) => setState(() => _policyAccepted = v ?? false),
+                            activeColor: AppTheme.primaryColor,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          const Expanded(
+                            child: Text(
+                              'أوافق على سياسة الإلغاء',
+                              style: TextStyle(fontSize: 12, color: Colors.black87),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: (_loading || _availableDates.isEmpty) ? null : _confirm,
+                  onPressed: (_loading || _availableDates.isEmpty || (_price > 0 && !_policyAccepted)) ? null : _confirm,
                   child: _loading
                       ? const SizedBox(
                           width: 24, height: 24,
