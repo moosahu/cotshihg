@@ -1,38 +1,44 @@
 const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+// ── Cloudinary config (env vars set in Render dashboard) ─────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  },
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => ({
+    folder: `coaching/bookings/${req.params.bookingId}`,
+    resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'image',
+    public_id: `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`,
+    allowed_formats: ['pdf', 'jpg', 'jpeg', 'png'],
+  }),
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
   fileFilter: (req, file, cb) => {
     const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-    cb(null, allowed.includes(file.mimetype));
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only PDF and images are allowed'), false);
   },
 });
 
 exports.uploadMiddleware = upload.single('file');
 
-// POST /api/v1/files/upload/:bookingId  (coach or client)
+// POST /api/v1/files/upload/:bookingId
 exports.uploadFile = async (req, res) => {
   try {
     if (!req.file) return errorResponse(res, 'No file uploaded or invalid type', 400);
     const { bookingId } = req.params;
 
-    // Verify access to booking
     const booking = await pool.query(
       `SELECT b.* FROM bookings b
        WHERE b.id=$1 AND (b.client_id=$2 OR b.therapist_id=(SELECT id FROM therapists WHERE user_id=$2))`,
@@ -40,13 +46,14 @@ exports.uploadFile = async (req, res) => {
     );
     if (!booking.rows[0]) return errorResponse(res, 'Booking not found', 404);
 
+    // Cloudinary returns the public URL in req.file.path
     const result = await pool.query(
       `INSERT INTO session_files (booking_id, uploaded_by, file_name, file_path, file_size, mime_type)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [bookingId, req.user.id, req.file.originalname, req.file.filename, req.file.size, req.file.mimetype]
+      [bookingId, req.user.id, req.file.originalname, req.file.path, req.file.size, req.file.mimetype]
     );
 
-    successResponse(res, result.rows[0], 'File uploaded');
+    successResponse(res, { ...result.rows[0], file_url: req.file.path }, 'File uploaded');
   } catch (err) {
     errorResponse(res, err.message, 500);
   }
@@ -69,31 +76,9 @@ exports.getBookingFiles = async (req, res) => {
        WHERE f.booking_id=$1 ORDER BY f.created_at DESC`,
       [bookingId]
     );
-    successResponse(res, files.rows);
-  } catch (err) {
-    errorResponse(res, err.message, 500);
-  }
-};
-
-// GET /api/v1/files/download/:fileId  — serves the file
-exports.downloadFile = async (req, res) => {
-  try {
-    const file = await pool.query(`SELECT * FROM session_files WHERE id=$1`, [req.params.fileId]);
-    if (!file.rows[0]) return errorResponse(res, 'File not found', 404);
-
-    // Verify access
-    const access = await pool.query(
-      `SELECT b.* FROM bookings b WHERE b.id=$1 AND (b.client_id=$2 OR b.therapist_id=(SELECT id FROM therapists WHERE user_id=$2))`,
-      [file.rows[0].booking_id, req.user.id]
-    );
-    if (!access.rows[0]) return errorResponse(res, 'Access denied', 403);
-
-    const filePath = path.join(uploadDir, file.rows[0].file_path);
-    if (!fs.existsSync(filePath)) return errorResponse(res, 'File not found on disk', 404);
-
-    res.setHeader('Content-Disposition', `inline; filename="${file.rows[0].file_name}"`);
-    res.setHeader('Content-Type', file.rows[0].mime_type);
-    fs.createReadStream(filePath).pipe(res);
+    // file_path IS the Cloudinary URL
+    const rows = files.rows.map(f => ({ ...f, file_url: f.file_path }));
+    successResponse(res, rows);
   } catch (err) {
     errorResponse(res, err.message, 500);
   }
@@ -108,8 +93,17 @@ exports.deleteFile = async (req, res) => {
     );
     if (!file.rows[0]) return errorResponse(res, 'File not found', 404);
 
-    const filePath = path.join(uploadDir, file.rows[0].file_path);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    // Delete from Cloudinary
+    try {
+      const url = file.rows[0].file_path;
+      const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
+      if (match) {
+        const isPdf = file.rows[0].mime_type === 'application/pdf';
+        await cloudinary.uploader.destroy(match[1], {
+          resource_type: isPdf ? 'raw' : 'image',
+        });
+      }
+    } catch (_) { /* non-fatal */ }
 
     await pool.query(`DELETE FROM session_files WHERE id=$1`, [req.params.fileId]);
     successResponse(res, null, 'File deleted');
