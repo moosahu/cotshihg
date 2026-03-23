@@ -188,7 +188,7 @@ class _BookingsListState extends State<_BookingsList>
                           color: AppTheme.primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text('$price ر.س',
+                        child: Text('$price ﷼',
                             style: const TextStyle(
                                 color: AppTheme.primaryColor,
                                 fontWeight: FontWeight.bold,

@@ -52,7 +52,7 @@ class _CoachEarningsPageState extends State<CoachEarningsPage> {
                       children: [
                         const Text('إجمالي الأرباح', style: TextStyle(color: Colors.white70, fontSize: 14)),
                         const SizedBox(height: 8),
-                        Text('${_total.toStringAsFixed(0)} ر.س',
+                        Text('${_total.toStringAsFixed(0)} ﷼',
                             style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                       ],
                     ),
@@ -83,7 +83,7 @@ class _CoachEarningsPageState extends State<CoachEarningsPage> {
                           ),
                           title: Text(t['user_name'] as String? ?? '—'),
                           subtitle: Text(dateStr, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                          trailing: Text('+$amount ر.س',
+                          trailing: Text('+$amount ﷼',
                               style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontSize: 15)),
                         ),
                       );

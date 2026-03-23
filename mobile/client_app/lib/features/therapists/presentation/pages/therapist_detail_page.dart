@@ -236,7 +236,7 @@ class _SessionTypeCard extends StatelessWidget {
           Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           const Spacer(),
           Text(
-            '$price ر.س',
+            '$price ﷼',
             style: const TextStyle(
               color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
