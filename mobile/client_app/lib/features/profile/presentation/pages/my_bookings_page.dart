@@ -98,15 +98,15 @@ class _BookingsListState extends State<_BookingsList>
   Future<void> _cancel(String id, {bool isPaid = false}) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('إلغاء الحجز'),
         content: Text(isPaid
             ? 'هل أنت متأكد من إلغاء هذا الحجز؟\nسيتم مراجعة طلب استرداد المبلغ من قبل الإدارة خلال 3-5 أيام عمل.'
             : 'هل أنت متأكد من إلغاء هذا الحجز؟'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('لا')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('لا')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('نعم، إلغاء', style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
