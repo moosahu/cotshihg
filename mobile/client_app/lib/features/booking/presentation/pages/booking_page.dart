@@ -152,7 +152,13 @@ class _BookingPageState extends State<BookingPage> {
     // Get PaymentIntent client_secret from backend
     final paymentRes = await getIt<ApiClient>().initiatePayment(bookingId);
     final clientSecret = paymentRes['data']?['client_secret'] as String?;
+    final publishableKey = paymentRes['data']?['publishable_key'] as String?;
     if (clientSecret == null) throw Exception('فشل إنشاء الدفع');
+
+    if (publishableKey != null && publishableKey.isNotEmpty) {
+      Stripe.publishableKey = publishableKey;
+      await Stripe.instance.applySettings();
+    }
 
     // Initialize Payment Sheet
     await Stripe.instance.initPaymentSheet(

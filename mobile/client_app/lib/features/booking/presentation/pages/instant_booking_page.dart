@@ -152,7 +152,13 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
       if (price > 0) {
         final paymentRes = await getIt<ApiClient>().initiatePayment(bookingId);
         final clientSecret = paymentRes['data']?['client_secret'] as String?;
+        final publishableKey = paymentRes['data']?['publishable_key'] as String?;
         if (clientSecret == null) throw Exception('فشل إنشاء الدفع');
+
+        if (publishableKey != null && publishableKey.isNotEmpty) {
+          Stripe.publishableKey = publishableKey;
+          await Stripe.instance.applySettings();
+        }
 
         await Stripe.instance.initPaymentSheet(
           paymentSheetParameters: SetupPaymentSheetParameters(
