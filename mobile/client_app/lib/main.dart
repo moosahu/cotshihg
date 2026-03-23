@@ -15,16 +15,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await Firebase.initializeApp();
-  } catch (_) {}
+  } catch (e) { debugPrint('❌ Firebase init error: $e'); }
   try {
     Stripe.publishableKey = 'pk_test_51TDxKQCwcETFsfV6rh7HzIFqhWmZjAlshkrhsnyZ3uAyPm3NCDfDFTS5GSIKEYzmgc9Y050UPWFjDZIPqq9pB9sj00xiotbLV7';
     await Stripe.instance.applySettings();
-  } catch (_) {}
+  } catch (e) { debugPrint('❌ Stripe init error: $e'); }
   await setupDependencies();
   try {
     NotificationService.setNavigatorKey(AppRouter.navigatorKey);
     await NotificationService.init();
-  } catch (_) {}
+  } catch (e) { debugPrint('❌ Notification init error: $e'); }
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
