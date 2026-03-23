@@ -173,12 +173,20 @@ exports.cancelBooking = async (req, res) => {
   try {
     const result = await pool.query(
       `UPDATE bookings SET status='cancelled', updated_at=NOW()
-       WHERE id=$1 AND (client_id=$2 OR therapist_id=(SELECT id FROM therapists WHERE user_id=$2))
+       WHERE id=$1 AND (client_id=$2 OR therapist_id=(SELECT id FROM therapists WHERE user_id=$2)
+         OR $2 IN (SELECT id FROM users WHERE role='admin'))
        AND status IN ('pending','confirmed') RETURNING *`,
       [req.params.id, req.user.id]
     );
 
-    if (!result.rows[0]) return errorResponse(res, 'Cannot cancel this booking', 400);
+    if (!result.rows[0]) return errorResponse(res, 'لا يمكن إلغاء هذا الحجز', 400);
+
+    // Clean up any pending payment records for this booking
+    await pool.query(
+      `DELETE FROM payments WHERE booking_id=$1 AND status='pending'`,
+      [req.params.id]
+    );
+
     successResponse(res, result.rows[0], 'Booking cancelled');
   } catch (err) {
     errorResponse(res, err.message, 500);

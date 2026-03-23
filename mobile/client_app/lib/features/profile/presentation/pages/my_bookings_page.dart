@@ -1,8 +1,17 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
+
+String _apiError(dynamic e) {
+  if (e is DioException) {
+    final msg = e.response?.data?['message'];
+    if (msg != null && msg.toString().isNotEmpty) return msg.toString();
+  }
+  return e.toString();
+}
 
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
@@ -116,7 +125,7 @@ class _BookingsListState extends State<_BookingsList>
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+          SnackBar(content: Text(_apiError(e)), backgroundColor: AppTheme.errorColor));
     }
   }
 

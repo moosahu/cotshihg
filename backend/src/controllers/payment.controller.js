@@ -26,12 +26,15 @@ exports.initiatePayment = async (req, res) => {
       metadata: { booking_id, user_id: String(req.user.id) },
     });
 
-    // Save/update payment record
-    const existing = await pool.query('SELECT id FROM payments WHERE booking_id=$1', [booking_id]);
+    // Save/update payment record (one record per booking)
+    const existing = await pool.query(
+      `SELECT id FROM payments WHERE booking_id=$1 AND status='pending' LIMIT 1`,
+      [booking_id]
+    );
     if (existing.rows[0]) {
       await pool.query(
-        'UPDATE payments SET provider_payment_id=$1, status=$2 WHERE booking_id=$3',
-        [paymentIntent.id, 'pending', booking_id]
+        'UPDATE payments SET provider_payment_id=$1, updated_at=NOW() WHERE id=$2',
+        [paymentIntent.id, existing.rows[0].id]
       );
     } else {
       await pool.query(
