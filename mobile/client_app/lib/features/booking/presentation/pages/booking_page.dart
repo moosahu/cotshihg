@@ -55,20 +55,24 @@ class _BookingPageState extends State<BookingPage> {
       final results = await Future.wait([
         getIt<ApiClient>().getTherapistById(widget.therapistId),
         getIt<ApiClient>().getTherapistAvailability(widget.therapistId),
-        getIt<ApiClient>().getTherapistBookedSlots(widget.therapistId),
       ]);
       final therapist = results[0]['data'] as Map<String, dynamic>?;
       final avail = (results[1]['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      final bookedRaw = (results[2]['data'] as List?) ?? [];
+
+      // Fetch booked slots separately — don't block availability if it fails
       final booked = <String>{};
-      for (final slot in bookedRaw) {
-        final dt = DateTime.tryParse(slot.toString())?.toLocal();
-        if (dt != null) {
-          final dateKey = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-          final timeKey = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-          booked.add('$dateKey|$timeKey');
+      try {
+        final bookedRes = await getIt<ApiClient>().getTherapistBookedSlots(widget.therapistId);
+        final bookedRaw = (bookedRes['data'] as List?) ?? [];
+        for (final slot in bookedRaw) {
+          final dt = DateTime.tryParse(slot.toString())?.toLocal();
+          if (dt != null) {
+            final dateKey = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+            final timeKey = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+            booked.add('$dateKey|$timeKey');
+          }
         }
-      }
+      } catch (_) {}
 
       // Build slots for next 30 days
       final slots = <String, List<String>>{};
@@ -79,7 +83,22 @@ class _BookingPageState extends State<BookingPage> {
         final matching = avail.where((a) => (a['day_of_week'] as int) == dow).toList();
         if (matching.isNotEmpty) {
           final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-          slots[dateKey] = matching.map((a) => a['start_time'] as String).toList()..sort();
+          final times = <String>{};
+          for (final a in matching) {
+            final startRaw = (a['start_time'] as String).substring(0, 5); // "09:00"
+            final endRaw = (a['end_time'] as String).substring(0, 5);     // "11:00"
+            final sp = startRaw.split(':');
+            final ep = endRaw.split(':');
+            int sh = int.parse(sp[0]), sm = int.parse(sp[1]);
+            final eh = int.parse(ep[0]), em = int.parse(ep[1]);
+            // Generate 60-minute slots within range
+            while (sh * 60 + sm + 60 <= eh * 60 + em) {
+              times.add('${sh.toString().padLeft(2, '0')}:${sm.toString().padLeft(2, '0')}');
+              sm += 60;
+              if (sm >= 60) { sh += sm ~/ 60; sm = sm % 60; }
+            }
+          }
+          if (times.isNotEmpty) slots[dateKey] = times.toList()..sort();
         }
       }
 
