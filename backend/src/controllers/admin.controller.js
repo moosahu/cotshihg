@@ -281,11 +281,24 @@ exports.refundPayment = async (req, res) => {
     if (p.status !== 'paid') return errorResponse(res, 'Payment not paid', 400);
     if (!p.provider_payment_id) return errorResponse(res, 'No Stripe payment ID', 400);
 
-    await stripe.refunds.create({ payment_intent: p.provider_payment_id });
+    try {
+      await stripe.refunds.create({ payment_intent: p.provider_payment_id });
+    } catch (stripeErr) {
+      // If already refunded in Stripe, sync our DB and return success
+      if (stripeErr.message && stripeErr.message.includes('already been refunded')) {
+        await pool.query('UPDATE payments SET status=$1 WHERE id=$2', ['refunded', p.id]);
+        await pool.query(
+          'UPDATE bookings SET payment_status=$1 WHERE id=(SELECT booking_id FROM payments WHERE id=$2)',
+          ['refunded', p.id]
+        );
+        return successResponse(res, null, 'تم تحديث الحالة — المبلغ مسترد مسبقاً في Stripe');
+      }
+      throw stripeErr;
+    }
 
     await pool.query('UPDATE payments SET status=$1 WHERE id=$2', ['refunded', p.id]);
     await pool.query(
-      'UPDATE bookings SET payment_status=$1, updated_at=NOW() WHERE id=(SELECT booking_id FROM payments WHERE id=$2)',
+      'UPDATE bookings SET payment_status=$1 WHERE id=(SELECT booking_id FROM payments WHERE id=$2)',
       ['refunded', p.id]
     );
 
