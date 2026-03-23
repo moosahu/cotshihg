@@ -147,7 +147,7 @@ class _BookingsListState extends State<_BookingsList>
                   scheduledAt
               : '';
           final sessionType = b['session_type'] as String? ?? '';
-          final price = b['price_paid'] ?? b['session_price'] ?? 0;
+          final price = b['price'] ?? 0;
           final id = b['id'].toString();
           final scheduledDateTime = scheduledAt != null ? DateTime.tryParse(scheduledAt)?.toLocal() : null;
           final now = DateTime.now();

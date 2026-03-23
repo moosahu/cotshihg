@@ -25,7 +25,7 @@ exports.createBooking = async (req, res) => {
       `SELECT id FROM bookings
        WHERE therapist_id=$1
        AND status IN ('pending','confirmed')
-       AND scheduled_at = $2`,
+       AND scheduled_at BETWEEN $2::timestamptz - INTERVAL '30 minutes' AND $2::timestamptz + INTERVAL '30 minutes'`,
       [therapist_id, scheduled_at]
     );
     if (conflict.rows[0]) return errorResponse(res, 'هذا الموعد محجوز مسبقاً', 409);

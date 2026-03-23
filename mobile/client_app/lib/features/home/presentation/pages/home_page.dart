@@ -101,7 +101,19 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
     try {
       final res = await getIt<ApiClient>().getMyBookings(status: 'confirmed');
       final list = (res['data'] as List?) ?? [];
-      if (list.isNotEmpty && mounted) setState(() => _session = list.first as Map<String, dynamic>);
+      final now = DateTime.now();
+      final upcoming = list.cast<Map<String, dynamic>>().where((b) {
+        final sat = b['scheduled_at'] as String?;
+        if (sat == null) return false;
+        final dt = DateTime.tryParse(sat)?.toLocal();
+        return dt != null && dt.isAfter(now.subtract(const Duration(hours: 2)));
+      }).toList()
+        ..sort((a, b) {
+          final da = DateTime.tryParse(a['scheduled_at'] as String? ?? '') ?? DateTime(2100);
+          final db = DateTime.tryParse(b['scheduled_at'] as String? ?? '') ?? DateTime(2100);
+          return da.compareTo(db);
+        });
+      if (upcoming.isNotEmpty && mounted) setState(() => _session = upcoming.first);
     } catch (_) {}
   }
 
