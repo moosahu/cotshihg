@@ -6,8 +6,10 @@ import toast from 'react-hot-toast';
 export default function Therapists() {
   const [therapists, setTherapists] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pricingModal, setPricingModal] = useState(null); // { therapistId, name, chat, voice, video }
+  const [pricingModal, setPricingModal] = useState(null);
   const [savingPrice, setSavingPrice] = useState(false);
+  const [discountModal, setDiscountModal] = useState(null); // { therapistId, name, discount }
+  const [savingDiscount, setSavingDiscount] = useState(false);
 
   useEffect(() => {
     api.getTherapists()
@@ -25,6 +27,34 @@ export default function Therapists() {
       toast.success(`تم ${res.data.is_approved ? 'اعتماد' : 'إيقاف'} ${name}`);
     } catch (err) {
       toast.error(err.message);
+    }
+  };
+
+  const openDiscount = (row) => {
+    setDiscountModal({
+      therapistId: row.therapist_id,
+      name: row.name,
+      discount: row.discount_percent ?? 0,
+    });
+  };
+
+  const saveDiscount = async () => {
+    setSavingDiscount(true);
+    try {
+      await api.updateTherapistDiscount(discountModal.therapistId, {
+        discount_percent: parseInt(discountModal.discount) || 0,
+      });
+      setTherapists(prev => prev.map(t =>
+        t.therapist_id === discountModal.therapistId
+          ? { ...t, discount_percent: discountModal.discount }
+          : t
+      ));
+      toast.success('تم تحديث الخصم');
+      setDiscountModal(null);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingDiscount(false);
     }
   };
 
@@ -70,6 +100,12 @@ export default function Therapists() {
     { key: 'total_sessions', label: 'الجلسات', render: v => v ?? 0 },
     { key: 'rating', label: 'التقييم', render: v => v ? `⭐ ${parseFloat(v).toFixed(1)}` : '—' },
     {
+      key: 'discount_percent', label: 'الخصم',
+      render: v => v > 0
+        ? <span style={{ padding: '3px 10px', borderRadius: 8, background: '#fff3e0', color: '#e65100', fontWeight: 700, fontSize: 13 }}>{v}% خصم</span>
+        : <span style={{ color: '#ccc', fontSize: 13 }}>لا يوجد</span>
+    },
+    {
       key: 'session_price_video', label: 'الأسعار (ر.س)',
       render: (v, row) => (
         <div style={{ fontSize: 12, lineHeight: 1.8 }}>
@@ -103,6 +139,12 @@ export default function Therapists() {
           >
             💰 الأسعار
           </button>
+          <button
+            onClick={() => openDiscount(row)}
+            style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #e65100', background: 'none', color: '#e65100', fontSize: 12, cursor: 'pointer' }}
+          >
+            🏷️ خصم
+          </button>
         </div>
       ) : <span style={{ color: '#8A94A6', fontSize: 12 }}>لم يكمل الملف</span>
     },
@@ -117,6 +159,46 @@ export default function Therapists() {
         <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>إدارة واعتماد الكوتشز وتحديد أسعار الجلسات</p>
       </div>
       <DataTable title={`إجمالي الكوتشز: ${therapists.length}`} columns={columns} data={therapists} />
+
+      {/* Discount Modal */}
+      {discountModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 340, direction: 'rtl' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>تحديد نسبة الخصم</h2>
+            <p style={{ color: '#8A94A6', fontSize: 13, marginBottom: 24 }}>{discountModal.name}</p>
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 8 }}>نسبة الخصم %</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={discountModal.discount}
+                onChange={e => setDiscountModal(prev => ({ ...prev, discount: e.target.value }))}
+                style={{ flex: 1, padding: '10px 14px', border: '1px solid #E0E0E0', borderRadius: 8, fontSize: 18, fontWeight: 700, textAlign: 'center' }}
+              />
+              <span style={{ fontSize: 22, color: '#e65100', fontWeight: 700 }}>%</span>
+            </div>
+            <p style={{ color: '#8A94A6', fontSize: 12, marginBottom: 24 }}>
+              {discountModal.discount > 0 ? `العميل يدفع ${100 - parseInt(discountModal.discount)}% من السعر الأصلي` : 'لا يوجد خصم حالياً'}
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={saveDiscount}
+                disabled={savingDiscount}
+                style={{ flex: 1, padding: '10px 0', background: '#e65100', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {savingDiscount ? 'جاري الحفظ...' : 'حفظ الخصم'}
+              </button>
+              <button
+                onClick={() => setDiscountModal(null)}
+                style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#333', border: 'none', borderRadius: 10, fontSize: 14, cursor: 'pointer' }}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pricing Modal */}
       {pricingModal && (

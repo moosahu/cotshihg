@@ -17,7 +17,9 @@ exports.createBooking = async (req, res) => {
 
     const therapist = therapistResult.rows[0];
     const priceMap = { chat: therapist.session_price_chat, voice: therapist.session_price_voice, video: therapist.session_price_video };
-    const price = priceMap[session_type];
+    const basePrice = parseFloat(priceMap[session_type] || 0);
+    const discount = parseInt(therapist.discount_percent || 0);
+    const price = discount > 0 ? +(basePrice * (1 - discount / 100)).toFixed(2) : basePrice;
 
     const result = await pool.query(
       `INSERT INTO bookings (client_id, therapist_id, session_type, scheduled_at, duration_minutes, price, notes)

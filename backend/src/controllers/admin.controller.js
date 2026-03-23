@@ -111,7 +111,7 @@ exports.getTherapists = async (req, res) => {
       `SELECT u.id, u.name, u.phone, u.is_active, u.created_at,
               t.specializations, t.rating, t.total_sessions,
               t.session_price_chat, t.session_price_voice, t.session_price_video,
-              t.is_approved, t.id as therapist_id
+              t.discount_percent, t.is_approved, t.id as therapist_id
        FROM users u
        LEFT JOIN therapists t ON t.user_id = u.id
        WHERE u.role IN ('therapist', 'coach')
@@ -135,6 +135,23 @@ exports.updateTherapistPricing = async (req, res) => {
     );
     if (!result.rows[0]) return errorResponse(res, 'الكوتش غير موجود', 404);
     successResponse(res, result.rows[0], 'تم تحديث الأسعار');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/therapists/:id/discount
+exports.updateTherapistDiscount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { discount_percent } = req.body;
+    if (discount_percent < 0 || discount_percent > 100) return errorResponse(res, 'الخصم يجب أن يكون بين 0 و 100', 400);
+    const result = await pool.query(
+      `UPDATE therapists SET discount_percent=$1, updated_at=NOW() WHERE id=$2 RETURNING id, discount_percent`,
+      [discount_percent, id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'الكوتش غير موجود', 404);
+    successResponse(res, result.rows[0], 'تم تحديث الخصم');
   } catch (err) {
     errorResponse(res, err.message, 500);
   }

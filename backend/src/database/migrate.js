@@ -116,6 +116,11 @@ async function runPatches() {
       )
     `);
 
+    // Patch: discount_percent column on therapists
+    await pool.query(`
+      ALTER TABLE therapists ADD COLUMN IF NOT EXISTS discount_percent INTEGER DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100)
+    `);
+
     console.log('✅ DB patches applied');
   } catch (err) {
     console.error('⚠️  Patch error (non-fatal):', err.message);
