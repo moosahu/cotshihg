@@ -159,4 +159,49 @@ class ApiClient {
     final res = await _dio.put('/users/profile', data: data);
     return res.data;
   }
+
+  // Questionnaires
+  Future<Map<String, dynamic>> getMyQuestionnaires() async {
+    final res = await _dio.get('/questionnaires');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> createQuestionnaire(Map<String, dynamic> data) async {
+    final res = await _dio.post('/questionnaires', data: data);
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> updateQuestionnaire(String id, Map<String, dynamic> data) async {
+    final res = await _dio.put('/questionnaires/$id', data: data);
+    return res.data;
+  }
+
+  Future<void> deleteQuestionnaire(String id) async {
+    await _dio.delete('/questionnaires/$id');
+  }
+
+  Future<Map<String, dynamic>> setDefaultQuestionnaire(String id) async {
+    final res = await _dio.put('/questionnaires/$id/set-default');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> assignQuestionnaire(String templateId, String bookingId) async {
+    final res = await _dio.post('/questionnaires/$templateId/assign/$bookingId');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getBookingAssignments(String bookingId) async {
+    final res = await _dio.get('/questionnaires/assignments/booking/$bookingId');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getAssignment(String assignmentId) async {
+    final res = await _dio.get('/questionnaires/assignments/$assignmentId');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> submitAnswers(String assignmentId, Map<String, dynamic> answers) async {
+    final res = await _dio.post('/questionnaires/assignments/$assignmentId/respond', data: {'answers': answers});
+    return res.data;
+  }
 }

@@ -32,6 +32,11 @@ import '../../features/coach/bookings/presentation/pages/coach_bookings_page.dar
 import '../../features/coach/availability/presentation/pages/coach_availability_page.dart';
 import '../../features/coach/earnings/presentation/pages/coach_earnings_page.dart';
 import '../../features/coach/profile/presentation/pages/coach_profile_page.dart';
+// Questionnaire screens
+import '../../features/questionnaire/presentation/pages/questionnaire_list_page.dart';
+import '../../features/questionnaire/presentation/pages/questionnaire_form_page.dart';
+import '../../features/questionnaire/presentation/pages/questionnaire_fill_page.dart';
+import '../../features/questionnaire/presentation/pages/questionnaire_responses_page.dart';
 
 class AppRouter {
   static final navigatorKey = GlobalKey<NavigatorState>();
@@ -78,10 +83,33 @@ class AppRouter {
           GoRoute(path: '/coach/schedule', builder: (_, __) => const CoachAvailabilityPage()),
           GoRoute(path: '/coach/earnings', builder: (_, __) => const CoachEarningsPage()),
           GoRoute(path: '/coach/profile', builder: (_, __) => const CoachProfilePage()),
+          GoRoute(path: '/coach/questionnaires', builder: (_, __) => const QuestionnaireListPage()),
         ],
       ),
 
       // ─── Shared ───
+      GoRoute(
+        path: '/coach/questionnaires/new',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return QuestionnaireFormPage(
+            templateId: extra?['templateId'] as String?,
+            existing: extra?['existing'] as Map<String, dynamic>?,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/questionnaire/fill/:assignmentId',
+        builder: (_, state) => QuestionnaireFillPage(
+          assignmentId: state.pathParameters['assignmentId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/questionnaire/responses/:assignmentId',
+        builder: (_, state) => QuestionnaireResponsesPage(
+          assignmentId: state.pathParameters['assignmentId']!,
+        ),
+      ),
       GoRoute(
         path: '/therapist/:id',
         builder: (_, state) => TherapistDetailPage(therapistId: state.pathParameters['id']!),
@@ -191,6 +219,7 @@ class _CoachShellState extends State<CoachShell> {
     '/coach/bookings',
     '/coach/schedule',
     '/coach/earnings',
+    '/coach/questionnaires',
     '/coach/profile',
   ];
 
@@ -304,6 +333,7 @@ class _CoachShellState extends State<CoachShell> {
           NavigationDestination(icon: Icon(Icons.calendar_today_outlined), selectedIcon: Icon(Icons.calendar_today), label: 'الحجوزات'),
           NavigationDestination(icon: Icon(Icons.schedule_outlined), selectedIcon: Icon(Icons.schedule), label: 'الجدول'),
           NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'الأرباح'),
+          NavigationDestination(icon: Icon(Icons.assignment_outlined), selectedIcon: Icon(Icons.assignment), label: 'استبيانات'),
           NavigationDestination(icon: Icon(Icons.person_outlined), selectedIcon: Icon(Icons.person), label: 'حسابي'),
         ],
       ),
