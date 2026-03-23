@@ -47,6 +47,7 @@ exports.initiatePayment = async (req, res) => {
       amount: price,
     }, 'Payment initiated');
   } catch (err) {
+    console.error('❌ Payment initiate error:', err.message, err.stack);
     errorResponse(res, err.message, 500);
   }
 };
