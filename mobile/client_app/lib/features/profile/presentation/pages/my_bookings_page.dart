@@ -202,8 +202,17 @@ class _BookingsListState extends State<_BookingsList>
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => context.go('/chat/$id'),
-                            icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                            onPressed: () {
+                              if (sessionType == 'chat') {
+                                context.go('/chat/$id');
+                              } else {
+                                context.go('/video-call/$id', extra: {'sessionType': sessionType});
+                              }
+                            },
+                            icon: Icon(
+                              sessionType == 'chat' ? Icons.chat_bubble_outline : Icons.videocam_outlined,
+                              size: 18,
+                            ),
                             label: const Text('ابدأ الجلسة'),
                           ),
                         ),
