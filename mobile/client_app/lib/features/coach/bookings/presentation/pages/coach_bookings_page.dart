@@ -80,6 +80,48 @@ class _BookingsListState extends State<_BookingsList> {
     }
   }
 
+  Future<void> _sendQuestionnaire(BuildContext context, String bookingId) async {
+    try {
+      final res = await getIt<ApiClient>().getMyQuestionnaires();
+      final questionnaires = (res['data'] as List?) ?? [];
+      if (questionnaires.isEmpty) {
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا توجد استبيانات — أنشئ استبياناً أولاً')));
+        return;
+      }
+      if (!context.mounted) return;
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        builder: (_) => ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(16),
+          children: [
+            const Text('اختر استبياناً', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            ...questionnaires.map((q) {
+              final qMap = q as Map<String, dynamic>;
+              return ListTile(
+                leading: const Icon(Icons.assignment_outlined),
+                title: Text(qMap['title'] as String? ?? ''),
+                trailing: (qMap['is_default'] == true)
+                    ? const Icon(Icons.star, color: Colors.amber, size: 18)
+                    : null,
+                onTap: () => Navigator.pop(context, qMap['id'].toString()),
+              );
+            }),
+          ],
+        ),
+      );
+      if (selected == null || !context.mounted) return;
+      await getIt<ApiClient>().assignQuestionnaire(selected, bookingId);
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم إرسال الاستبيان للعميل ✓'), backgroundColor: Colors.green));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    }
+  }
+
   String get _emptyMsg => widget.status == 'confirmed'
       ? 'لا توجد حجوزات قادمة'
       : widget.status == 'in_progress'
@@ -202,16 +244,25 @@ class _BookingsListState extends State<_BookingsList> {
                     ),
                   ] else if (widget.status == 'confirmed') ...[
                     const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: canStart ? () => context.go(
-                          '/coach/video/${b['id']}',
-                          extra: {'sessionType': b['session_type'] as String? ?? 'video'},
-                        ) : null,
-                        icon: const Icon(Icons.play_arrow),
-                        label: Text(canStart ? 'بدء الجلسة' : 'تبدأ في ${scheduledDateTime != null ? "${scheduledDateTime.hour.toString().padLeft(2,'0')}:${scheduledDateTime.minute.toString().padLeft(2,'0')}" : ""}'),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: canStart ? () => context.go(
+                              '/coach/video/${b['id']}',
+                              extra: {'sessionType': b['session_type'] as String? ?? 'video'},
+                            ) : null,
+                            icon: const Icon(Icons.play_arrow),
+                            label: Text(canStart ? 'بدء الجلسة' : '${scheduledDateTime != null ? "${scheduledDateTime.hour.toString().padLeft(2,'0')}:${scheduledDateTime.minute.toString().padLeft(2,'0')}" : ""}'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _sendQuestionnaire(context, b['id'].toString()),
+                          icon: const Icon(Icons.assignment_outlined, size: 18),
+                          label: const Text('استبيان'),
+                        ),
+                      ],
                     ),
                   ],
                 ],
