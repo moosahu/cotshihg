@@ -28,6 +28,7 @@ const api = {
   toggleBanUser: (id) => request(`/admin/users/${id}/ban`, { method: 'PUT' }),
   getTherapists: () => request('/admin/therapists'),
   toggleApproveTherapist: (id) => request(`/admin/therapists/${id}/approve`, { method: 'PUT' }),
+  updateTherapistPricing: (id, data) => request(`/admin/therapists/${id}/pricing`, { method: 'PUT', body: JSON.stringify(data) }),
   getBookings: () => request('/admin/bookings'),
   cancelBooking: (id) => request(`/admin/bookings/${id}/cancel`, { method: 'PUT' }),
   getPayments: () => request('/admin/payments'),

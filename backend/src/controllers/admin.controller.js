@@ -109,7 +109,8 @@ exports.getTherapists = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.name, u.phone, u.is_active, u.created_at,
-              t.specializations, t.rating, t.total_sessions, t.session_price_video as price,
+              t.specializations, t.rating, t.total_sessions,
+              t.session_price_chat, t.session_price_voice, t.session_price_video,
               t.is_approved, t.id as therapist_id
        FROM users u
        LEFT JOIN therapists t ON t.user_id = u.id
@@ -117,6 +118,23 @@ exports.getTherapists = async (req, res) => {
        ORDER BY u.created_at DESC`
     );
     successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/therapists/:id/pricing
+exports.updateTherapistPricing = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { session_price_chat, session_price_voice, session_price_video } = req.body;
+    const result = await pool.query(
+      `UPDATE therapists SET session_price_chat=$1, session_price_voice=$2, session_price_video=$3, updated_at=NOW()
+       WHERE id=$4 RETURNING id, session_price_chat, session_price_voice, session_price_video`,
+      [session_price_chat, session_price_voice, session_price_video, id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'الكوتش غير موجود', 404);
+    successResponse(res, result.rows[0], 'تم تحديث الأسعار');
   } catch (err) {
     errorResponse(res, err.message, 500);
   }
