@@ -43,6 +43,7 @@ class _CoachProfilePageState extends State<CoachProfilePage> {
   void _editProfile() {
     final nameCtrl = TextEditingController(text: _user['name'] as String? ?? '');
     final bioCtrl = TextEditingController(text: _user['bio'] as String? ?? '');
+    final yearsCtrl = TextEditingController(text: '${_user['years_experience'] ?? ''}');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -65,6 +66,12 @@ class _CoachProfilePageState extends State<CoachProfilePage> {
               maxLines: 3,
               decoration: const InputDecoration(labelText: 'نبذة تعريفية', prefixIcon: Icon(Icons.info_outline)),
             ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: yearsCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'سنوات الخبرة', prefixIcon: Icon(Icons.workspace_premium_outlined)),
+            ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -72,11 +79,16 @@ class _CoachProfilePageState extends State<CoachProfilePage> {
                 onPressed: () async {
                   Navigator.pop(ctx);
                   try {
+                    final years = int.tryParse(yearsCtrl.text.trim()) ?? 0;
                     await getIt<ApiClient>().updateProfile({'name': nameCtrl.text.trim()});
-                    await getIt<ApiClient>().updateTherapistProfile({'bio': bioCtrl.text.trim()});
+                    await getIt<ApiClient>().updateTherapistProfile({
+                      'bio': bioCtrl.text.trim(),
+                      'years_experience': years,
+                    });
                     final updated = Map<String, dynamic>.from(_user)
                       ..['name'] = nameCtrl.text.trim()
-                      ..['bio'] = bioCtrl.text.trim();
+                      ..['bio'] = bioCtrl.text.trim()
+                      ..['years_experience'] = years;
                     await getIt<StorageService>().saveUser(jsonEncode(updated));
                     setState(() => _user = updated);
                     if (mounted) {

@@ -134,6 +134,7 @@ export default function Therapists() {
       key: 'specializations', label: 'التخصص',
       render: v => Array.isArray(v) && v.length > 0 ? v[0] : '—'
     },
+    { key: 'years_experience', label: 'الخبرة', render: v => v > 0 ? `${v} سنة` : '—' },
     { key: 'total_sessions', label: 'الجلسات', render: v => v ?? 0 },
     { key: 'rating', label: 'التقييم', render: v => v ? `⭐ ${parseFloat(v).toFixed(1)}` : '—' },
     {

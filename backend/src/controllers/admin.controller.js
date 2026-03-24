@@ -109,7 +109,7 @@ exports.getTherapists = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.name, u.phone, u.is_active, u.created_at,
-              t.specializations, t.rating, t.total_sessions,
+              t.specializations, t.rating, t.total_sessions, t.years_experience,
               t.session_price_chat, t.session_price_voice, t.session_price_video,
               t.discount_percent, t.is_approved, t.id as therapist_id
        FROM users u
