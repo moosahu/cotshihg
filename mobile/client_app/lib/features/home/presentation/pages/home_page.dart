@@ -174,7 +174,7 @@ class _QuickAccessSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      {'icon': Icons.people, 'label': 'المعالجون', 'route': '/therapists', 'color': const Color(0xFF5C6BC0)},
+      {'icon': Icons.people, 'label': 'الكوتشيز', 'route': '/therapists', 'color': const Color(0xFF5C6BC0)},
       {'icon': Icons.flash_on, 'label': 'جلسة فورية', 'route': '/instant-booking', 'color': const Color(0xFFFF7043)},
       {'icon': Icons.library_books, 'label': 'المحتوى', 'route': '/content', 'color': const Color(0xFF26A69A)},
       {'icon': Icons.mood, 'label': 'تتبع المزاج', 'route': '/mood', 'color': const Color(0xFFAB47BC)},
@@ -248,7 +248,7 @@ class _FeaturedTherapistsSectionState extends State<_FeaturedTherapistsSection> 
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('الكوتشز المميزون', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('الكوتشيز المميزون', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             TextButton(onPressed: () => context.go('/therapists'), child: const Text('عرض الكل')),
           ],
         ),
@@ -258,7 +258,7 @@ class _FeaturedTherapistsSectionState extends State<_FeaturedTherapistsSection> 
           const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: Text('لا يوجد كوتشز متاحون بعد', style: TextStyle(color: AppTheme.textSecondary)),
+              child: Text('لا يوجد كوتشيز متاحون بعد', style: TextStyle(color: AppTheme.textSecondary)),
             ),
           )
         else

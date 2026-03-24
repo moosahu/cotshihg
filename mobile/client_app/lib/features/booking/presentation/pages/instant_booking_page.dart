@@ -206,7 +206,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                       Icon(Icons.flash_off, size: 72,
                           color: AppTheme.textSecondary.withOpacity(0.3)),
                       const SizedBox(height: 16),
-                      const Text('لا يوجد كوتشز متاحون الآن',
+                      const Text('لا يوجد كوتشيز متاحون الآن',
                           style: TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
                       const SizedBox(height: 8),
                       const Text('حاول مرة أخرى لاحقاً أو احجز موعداً مسبقاً',
@@ -241,7 +241,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'هؤلاء الكوتشز متاحون الآن للجلسات الفورية',
+                                'هؤلاء الكوتشيز متاحون الآن للجلسات الفورية',
                                 style: TextStyle(color: Color(0xFFFF7043), fontSize: 13),
                               ),
                             ),

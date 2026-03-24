@@ -39,7 +39,7 @@ export default function Dashboard() {
       {/* Stats */}
       <div className="stats-grid">
         <StatCard title="إجمالي المستخدمين" value={loading ? '...' : (stats?.totalUsers ?? 0).toLocaleString()} change={null} icon="👥" color="#1A6B72" />
-        <StatCard title="الكوتشز" value={loading ? '...' : (stats?.totalTherapists ?? 0).toLocaleString()} change={null} icon="🧑‍💼" color="#F5A623" />
+        <StatCard title="الكوتشيز" value={loading ? '...' : (stats?.totalTherapists ?? 0).toLocaleString()} change={null} icon="🧑‍💼" color="#F5A623" />
         <StatCard title="جلسات اليوم" value={loading ? '...' : (stats?.todaySessions ?? 0).toLocaleString()} change={null} icon="📅" color="#FF6B35" />
         <StatCard title="الإيرادات (﷼)" value={loading ? '...' : (stats?.totalRevenue ?? 0).toLocaleString()} change={null} icon="💰" color="#2ECC71" />
       </div>
@@ -69,7 +69,7 @@ export default function Dashboard() {
 
       {/* Recent bookings */}
       <div className="card">
-        <h3 style={{ marginBottom: 16 }}>آخر الحجوزات</h3>
+        <h3 style={{ marginBottom: 16 }}>آخر الجلسات</h3>
         {loading ? (
           <p style={{ color: '#8A94A6', textAlign: 'center', padding: 24 }}>جاري التحميل...</p>
         ) : bookings.length === 0 ? (

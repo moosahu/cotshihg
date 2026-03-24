@@ -157,7 +157,7 @@ class _CoachProfilePageState extends State<CoachProfilePage> {
           const SizedBox(height: 8),
           _section('الإعدادات', [
             _tile(Icons.edit_outlined, 'تعديل الملف الشخصي', _editProfile),
-            _tile(Icons.schedule_outlined, 'جدول التوفر', () => context.go('/coach/schedule')),
+            _tile(Icons.schedule_outlined, 'المواعيد المتاحة', () => context.go('/coach/schedule')),
             _tile(Icons.notifications_outlined, 'الإشعارات', () {}),
           ]),
           _section('الحساب', [

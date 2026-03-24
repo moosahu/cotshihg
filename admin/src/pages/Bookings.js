@@ -70,10 +70,10 @@ export default function Bookings() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>الحجوزات</h1>
-        <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>عرض وإدارة جميع الحجوزات</p>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>الجلسات</h1>
+        <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>عرض وإدارة جميع الجلسات</p>
       </div>
-      <DataTable title={`إجمالي الحجوزات: ${bookings.length}`} columns={columns} data={bookings} />
+      <DataTable title={`إجمالي الجلسات: ${bookings.length}`} columns={columns} data={bookings} />
     </div>
   );
 }

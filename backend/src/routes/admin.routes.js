@@ -27,6 +27,7 @@ router.get('/therapists', adminAuth, adminController.getTherapists);
 router.put('/therapists/:id/approve', adminAuth, adminController.toggleApproveTherapist);
 router.put('/therapists/:id/pricing', adminAuth, adminController.updateTherapistPricing);
 router.put('/therapists/:id/discount', adminAuth, adminController.updateTherapistDiscount);
+router.put('/therapists/:id/specializations', adminAuth, adminController.updateTherapistSpecializations);
 router.get('/bookings', adminAuth, adminController.getBookings);
 router.put('/bookings/:id/cancel', adminAuth, adminController.cancelBooking);
 router.get('/payments', adminAuth, adminController.getPayments);

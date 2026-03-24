@@ -26,14 +26,14 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('حجوزاتي'),
+        title: const Text('جلساتي'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios),
           onPressed: () => context.canPop() ? context.pop() : context.go('/profile'),
@@ -46,6 +46,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
             Tab(text: 'القادمة'),
             Tab(text: 'المعلقة'),
             Tab(text: 'المكتملة'),
+            Tab(text: 'الملغية'),
           ],
         ),
       ),
@@ -55,6 +56,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
           _BookingsList(status: 'confirmed'),
           _BookingsList(status: 'pending'),
           _BookingsList(status: 'completed'),
+          _BookingsList(status: 'cancelled'),
         ],
       ),
     );
@@ -142,7 +144,7 @@ class _BookingsListState extends State<_BookingsList>
             children: [
               Icon(Icons.calendar_today_outlined, size: 56, color: Colors.grey.shade300),
               const SizedBox(height: 12),
-              const Text('لا توجد حجوزات', style: TextStyle(color: AppTheme.textSecondary)),
+              const Text('لا توجد جلسات', style: TextStyle(color: AppTheme.textSecondary)),
             ],
           ),
         ),
@@ -223,7 +225,45 @@ class _BookingsListState extends State<_BookingsList>
                       ),
                     ],
                   ),
-                  if (widget.status == 'confirmed') ...[
+                  if (widget.status == 'cancelled') ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.errorColor.withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.errorColor.withOpacity(0.25)),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.cancel_outlined, size: 16, color: AppTheme.errorColor),
+                          SizedBox(width: 6),
+                          Text('تم إلغاء هذه الجلسة',
+                              style: TextStyle(fontSize: 12, color: AppTheme.errorColor, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ] else if (widget.status == 'completed') ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.withOpacity(0.25)),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.check_circle_outline, size: 16, color: Colors.green),
+                          SizedBox(width: 6),
+                          Text('اكتملت هذه الجلسة',
+                              style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ] else if (widget.status == 'confirmed') ...[
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -280,7 +320,7 @@ class _BookingsListState extends State<_BookingsList>
                         style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.errorColor,
                             side: const BorderSide(color: AppTheme.errorColor)),
-                        child: const Text('إلغاء الحجز'),
+                        child: const Text('إلغاء الجلسة'),
                       ),
                     ),
                   ],

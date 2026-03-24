@@ -17,7 +17,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _OnboardingData(
       icon: Icons.psychology_outlined,
       title: 'اكتشف إمكاناتك',
-      subtitle: 'تواصل مع أفضل الكوتشز المتخصصين في تطوير الذات والنجاح الشخصي',
+      subtitle: 'تواصل مع أفضل الكوتشيز المتخصصين في تطوير الذات والنجاح الشخصي',
       color: Color(0xFF1A6B72),
     ),
     _OnboardingData(

@@ -19,12 +19,13 @@ class _TherapistsListPageState extends State<TherapistsListPage> {
 
   final List<String> _specializations = [
     'الكل',
-    'تطوير ذات',
-    'قيادة',
-    'إنتاجية',
-    'علاقات',
-    'مهني',
-    'أسري',
+    'كوتش مالي',
+    'كوتش صحي',
+    'كوتش مهني',
+    'كوتش تعليمي',
+    'كوتش إداري',
+    'كوتش علاقات',
+    'كوتش حياة',
   ];
 
   @override
@@ -33,7 +34,7 @@ class _TherapistsListPageState extends State<TherapistsListPage> {
       create: (_) => getIt<TherapistBloc>()..add(const LoadTherapistsEvent()),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('الكوتشز'),
+          title: const Text('الكوتشيز'),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(56),
             child: Padding(
@@ -146,7 +147,7 @@ class _EmptyTherapists extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         const Text(
-          'لا يوجد كوتشز متاحون',
+          'لا يوجد كوتشيز متاحون',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
         ),
       ],

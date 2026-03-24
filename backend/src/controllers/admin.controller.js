@@ -157,6 +157,23 @@ exports.updateTherapistDiscount = async (req, res) => {
   }
 };
 
+// PUT /admin/therapists/:id/specializations
+exports.updateTherapistSpecializations = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { specializations } = req.body;
+    if (!Array.isArray(specializations)) return errorResponse(res, 'specializations يجب أن تكون مصفوفة', 400);
+    const result = await pool.query(
+      `UPDATE therapists SET specializations=$1, updated_at=NOW() WHERE id=$2 RETURNING id, specializations`,
+      [specializations, id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'الكوتش غير موجود', 404);
+    successResponse(res, result.rows[0], 'تم تحديث التخصص');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
 // PUT /admin/therapists/:id/approve
 exports.toggleApproveTherapist = async (req, res) => {
   try {

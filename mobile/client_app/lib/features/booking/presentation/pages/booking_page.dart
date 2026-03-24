@@ -184,14 +184,19 @@ class _BookingPageState extends State<BookingPage> {
           context.go('/home');
         }
       }
-    } catch (e) {
-      if (e is StripeException && e.error.code == FailureCode.Canceled) {
-        // User cancelled payment — delete the pending booking so the slot is free again
+    } on StripeException catch (e) {
+      if (e.error.code == FailureCode.Canceled) {
+        // User cancelled — delete the pending booking so the slot is free again
         if (_pendingBookingId != null) {
           try { await getIt<ApiClient>().cancelBooking(_pendingBookingId!); } catch (_) {}
           _pendingBookingId = null;
         }
       } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.error.localizedMessage ?? e.toString()), backgroundColor: AppTheme.errorColor));
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(_extractError(e)), backgroundColor: AppTheme.errorColor));
       }

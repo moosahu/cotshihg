@@ -5,8 +5,8 @@ import './Sidebar.css';
 const navItems = [
   { path: '/', icon: '📊', label: 'لوحة التحكم' },
   { path: '/users', icon: '👥', label: 'المستخدمون' },
-  { path: '/therapists', icon: '🧑‍💼', label: 'الكوتشز' },
-  { path: '/bookings', icon: '📅', label: 'الحجوزات' },
+  { path: '/therapists', icon: '🧑‍💼', label: 'الكوتشيز' },
+  { path: '/bookings', icon: '📅', label: 'الجلسات' },
   { path: '/content', icon: '📚', label: 'المحتوى' },
   { path: '/payments', icon: '💳', label: 'المدفوعات' },
 ];

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
@@ -96,6 +97,63 @@ class _ProfilePageState extends State<ProfilePage> {
         ));
       }
     }
+  }
+
+  Future<void> _openWhatsApp() async {
+    final uri = Uri.parse('https://wa.me/966500000000?text=مرحباً، أحتاج مساعدة في تطبيق كوتشينج');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _showContactSheet(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('تواصل معنا', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('فريق الدعم متاح من 9 صباحاً حتى 11 مساءً',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            const SizedBox(height: 20),
+            InkWell(
+              onTap: () { Navigator.pop(ctx); _openWhatsApp(); },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(color: const Color(0xFF25D366).withOpacity(0.1), shape: BoxShape.circle),
+                      child: const Icon(Icons.chat, color: Color(0xFF25D366), size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('واتساب', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          Text('+966 50 000 0000', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textSecondary),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   void _editProfile() {
@@ -216,7 +274,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _MenuSection(title: 'جلساتي', items: [
             _MenuItem(
               icon: Icons.calendar_today_outlined,
-              title: 'حجوزاتي',
+              title: 'جلساتي',
               onTap: () => context.push('/my-bookings'),
             ),
             _MenuItem(
@@ -248,7 +306,7 @@ class _ProfilePageState extends State<ProfilePage> {
             _MenuItem(
               icon: Icons.support_agent_outlined,
               title: 'تواصل معنا',
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpPage())),
+              onTap: () => _showContactSheet(context),
             ),
             _MenuItem(
               icon: Icons.logout,

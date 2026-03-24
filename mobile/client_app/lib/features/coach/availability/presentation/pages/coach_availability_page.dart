@@ -97,7 +97,7 @@ class _CoachAvailabilityPageState extends State<CoachAvailabilityPage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('جدول التوفر'),
+        title: const Text('المواعيد المتاحة'),
         actions: [
           if (_saving)
             const Padding(padding: EdgeInsets.all(16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))

@@ -3,13 +3,25 @@ import DataTable from '../components/DataTable';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
+const SPECIALIZATIONS = [
+  'كوتش مالي',
+  'كوتش صحي',
+  'كوتش مهني',
+  'كوتش تعليمي',
+  'كوتش إداري',
+  'كوتش علاقات',
+  'كوتش حياة',
+];
+
 export default function Therapists() {
   const [therapists, setTherapists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pricingModal, setPricingModal] = useState(null);
   const [savingPrice, setSavingPrice] = useState(false);
-  const [discountModal, setDiscountModal] = useState(null); // { therapistId, name, discount }
+  const [discountModal, setDiscountModal] = useState(null);
   const [savingDiscount, setSavingDiscount] = useState(false);
+  const [specModal, setSpecModal] = useState(null); // { therapistId, name, selected }
+  const [savingSpec, setSavingSpec] = useState(false);
 
   useEffect(() => {
     api.getTherapists()
@@ -55,6 +67,31 @@ export default function Therapists() {
       toast.error(err.message);
     } finally {
       setSavingDiscount(false);
+    }
+  };
+
+  const openSpec = (row) => {
+    setSpecModal({
+      therapistId: row.therapist_id,
+      name: row.name,
+      selected: Array.isArray(row.specializations) ? row.specializations[0] || '' : '',
+    });
+  };
+
+  const saveSpec = async () => {
+    setSavingSpec(true);
+    try {
+      const specs = specModal.selected ? [specModal.selected] : [];
+      await api.updateTherapistSpecializations(specModal.therapistId, { specializations: specs });
+      setTherapists(prev => prev.map(t =>
+        t.therapist_id === specModal.therapistId ? { ...t, specializations: specs } : t
+      ));
+      toast.success('تم تحديث التخصص');
+      setSpecModal(null);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingSpec(false);
     }
   };
 
@@ -145,6 +182,12 @@ export default function Therapists() {
           >
             🏷️ خصم
           </button>
+          <button
+            onClick={() => openSpec(row)}
+            style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #5C6BC0', background: 'none', color: '#5C6BC0', fontSize: 12, cursor: 'pointer' }}
+          >
+            🎯 تخصص
+          </button>
         </div>
       ) : <span style={{ color: '#8A94A6', fontSize: 12 }}>لم يكمل الملف</span>
     },
@@ -155,10 +198,10 @@ export default function Therapists() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700 }}>الكوتشز</h1>
-        <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>إدارة واعتماد الكوتشز وتحديد أسعار الجلسات</p>
+        <h1 style={{ fontSize: 22, fontWeight: 700 }}>الكوتشيز</h1>
+        <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>إدارة واعتماد الكوتشيز وتحديد أسعار الجلسات</p>
       </div>
-      <DataTable title={`إجمالي الكوتشز: ${therapists.length}`} columns={columns} data={therapists} />
+      <DataTable title={`إجمالي الكوتشيز: ${therapists.length}`} columns={columns} data={therapists} />
 
       {/* Discount Modal */}
       {discountModal && (
@@ -191,6 +234,46 @@ export default function Therapists() {
               </button>
               <button
                 onClick={() => setDiscountModal(null)}
+                style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#333', border: 'none', borderRadius: 10, fontSize: 14, cursor: 'pointer' }}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Specializations Modal */}
+      {specModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 360, direction: 'rtl' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>تحديد التخصص</h2>
+            <p style={{ color: '#8A94A6', fontSize: 13, marginBottom: 24 }}>{specModal.name}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+              {SPECIALIZATIONS.map(spec => (
+                <label key={spec} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: `2px solid ${specModal.selected === spec ? '#5C6BC0' : '#E0E0E0'}`, borderRadius: 10, cursor: 'pointer', background: specModal.selected === spec ? '#f0f1ff' : '#fff' }}>
+                  <input
+                    type="radio"
+                    name="spec"
+                    value={spec}
+                    checked={specModal.selected === spec}
+                    onChange={() => setSpecModal(prev => ({ ...prev, selected: spec }))}
+                    style={{ accentColor: '#5C6BC0', width: 18, height: 18 }}
+                  />
+                  <span style={{ fontSize: 14, fontWeight: specModal.selected === spec ? 700 : 400, color: specModal.selected === spec ? '#5C6BC0' : '#333' }}>{spec}</span>
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={saveSpec}
+                disabled={savingSpec || !specModal.selected}
+                style={{ flex: 1, padding: '10px 0', background: '#5C6BC0', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: !specModal.selected ? 0.5 : 1 }}
+              >
+                {savingSpec ? 'جاري الحفظ...' : 'حفظ التخصص'}
+              </button>
+              <button
+                onClick={() => setSpecModal(null)}
                 style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#333', border: 'none', borderRadius: 10, fontSize: 14, cursor: 'pointer' }}
               >
                 إلغاء
