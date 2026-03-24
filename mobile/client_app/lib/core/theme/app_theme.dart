@@ -36,6 +36,10 @@ class AppTheme {
         ),
         scaffoldBackgroundColor: backgroundColor,
         fontFamily: 'Cairo',
+        textTheme: const TextTheme().apply(
+          fontFamily: 'Cairo',
+          fontFamilyFallback: ['SaudiRiyal'],
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
           elevation: 0,

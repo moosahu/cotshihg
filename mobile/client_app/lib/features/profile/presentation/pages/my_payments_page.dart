@@ -68,7 +68,7 @@ class _MyPaymentsPageState extends State<MyPaymentsPage> {
                         const Text('إجمالي المدفوعات',
                             style: TextStyle(color: Colors.white70, fontSize: 13)),
                         const SizedBox(height: 6),
-                        Text('${_total.toStringAsFixed(0)} ﷼',
+                        Text('${_total.toStringAsFixed(0)} ',
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 28,
@@ -100,7 +100,7 @@ class _MyPaymentsPageState extends State<MyPaymentsPage> {
                           subtitle: Text(dateStr,
                               style: const TextStyle(
                                   color: AppTheme.textSecondary, fontSize: 12)),
-                          trailing: Text('$amount ﷼',
+                          trailing: Text('$amount ',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.primaryColor)),

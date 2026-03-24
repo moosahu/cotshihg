@@ -333,7 +333,7 @@ class _BookingPageState extends State<BookingPage> {
                               ),
                               if (_therapist != null)
                                 Text(
-                                  '${(double.tryParse((_therapist![e.$1 == 'chat' ? 'session_price_chat' : e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video'])?.toString() ?? '0') ?? 0).toInt()} ﷼',
+                                  '${(double.tryParse((_therapist![e.$1 == 'chat' ? 'session_price_chat' : e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video'])?.toString() ?? '0') ?? 0).toInt()} ',
                                   style: const TextStyle(
                                       color: AppTheme.primaryColor,
                                       fontWeight: FontWeight.bold,
@@ -502,7 +502,7 @@ class _BookingPageState extends State<BookingPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('سعر الجلسة', style: TextStyle(color: AppTheme.textSecondary)),
-                      Text('${_price.toInt()} ﷼',
+                      Text('${_price.toInt()} ',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,

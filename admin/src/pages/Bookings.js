@@ -43,7 +43,7 @@ export default function Bookings() {
       key: 'scheduled_at', label: 'التاريخ',
       render: v => v ? new Date(v).toLocaleDateString('ar-SA') : '—'
     },
-    { key: 'price', label: 'المبلغ (﷼)', render: v => v ?? '—' },
+    { key: 'price', label: 'المبلغ ()', render: v => v ?? '—' },
     {
       key: 'status', label: 'الحالة',
       render: v => (

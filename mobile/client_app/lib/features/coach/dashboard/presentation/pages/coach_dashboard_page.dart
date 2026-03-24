@@ -277,7 +277,7 @@ class _WeeklyEarningsCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('أرباح هذا الأسبوع', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                  Text('0 ﷼', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                  Text('0 ', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                 ],
               ),
             ),

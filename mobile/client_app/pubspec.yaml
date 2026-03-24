@@ -94,3 +94,6 @@ flutter:
           weight: 700
         - asset: assets/fonts/Cairo-SemiBold.ttf
           weight: 600
+    - family: SaudiRiyal
+      fonts:
+        - asset: assets/fonts/SaudiRiyal.ttf

@@ -7,6 +7,14 @@ body {
   color: #1A2332;
 }
 
+/* Saudi Riyal symbol — uses SaudiRiyal font for U+E900 */
+.icon-saudi_riyal_new,
+.icon-saudi_riyal {
+  font-style: normal;
+  font-size: 0.95em;
+  vertical-align: baseline;
+}
+
 :root {
   --primary: #1A6B72;
   --primary-light: #2E9EA8;

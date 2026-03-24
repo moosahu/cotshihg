@@ -251,7 +251,7 @@ class _TherapistCard extends StatelessWidget {
                         ),
                         const Spacer(),
                         Text(
-                          '${therapist['session_price_video'] ?? '--'} ﷼',
+                          '${therapist['session_price_video'] ?? '--'} ',
                           style: const TextStyle(
                             color: AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,

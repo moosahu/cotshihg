@@ -110,7 +110,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                                 style: TextStyle(
                                     fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
                           ),
-                          Text('$price ﷼',
+                          Text('$price ',
                               style: const TextStyle(
                                   color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                         ],
@@ -309,7 +309,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                                             const SizedBox(width: 8),
                                           ],
                                           if (minPrice > 0)
-                                            Text('من ${minPrice.toInt()} ﷼',
+                                            Text('من ${minPrice.toInt()} ',
                                                 style: const TextStyle(
                                                     color: AppTheme.primaryColor,
                                                     fontSize: 12,
