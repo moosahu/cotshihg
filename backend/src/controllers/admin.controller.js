@@ -344,3 +344,82 @@ exports.getPayments = async (req, res) => {
     errorResponse(res, err.message, 500);
   }
 };
+
+// ── Questionnaire Questions (admin CRUD) ─────────────────────────────────────
+
+// GET /admin/questionnaire/questions
+exports.getQuestionnaireQuestions = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM questionnaire_questions ORDER BY order_index ASC, created_at ASC`
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// POST /admin/questionnaire/questions
+exports.createQuestion = async (req, res) => {
+  try {
+    const { question_text, question_type = 'text', options, order_index = 0 } = req.body;
+    if (!question_text) return errorResponse(res, 'question_text required', 400);
+    const result = await pool.query(
+      `INSERT INTO questionnaire_questions (question_text, question_type, options, order_index)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [question_text, question_type, options ? JSON.stringify(options) : null, order_index]
+    );
+    successResponse(res, result.rows[0], 'Question created');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/questionnaire/questions/:id
+exports.updateQuestion = async (req, res) => {
+  try {
+    const { question_text, question_type, options, order_index, is_active } = req.body;
+    const result = await pool.query(
+      `UPDATE questionnaire_questions
+       SET question_text=COALESCE($1,question_text),
+           question_type=COALESCE($2,question_type),
+           options=COALESCE($3,options),
+           order_index=COALESCE($4,order_index),
+           is_active=COALESCE($5,is_active)
+       WHERE id=$6 RETURNING *`,
+      [question_text, question_type, options ? JSON.stringify(options) : null, order_index, is_active, req.params.id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'Not found', 404);
+    successResponse(res, result.rows[0]);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// DELETE /admin/questionnaire/questions/:id
+exports.deleteQuestion = async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM questionnaire_questions WHERE id=$1`, [req.params.id]);
+    successResponse(res, null, 'Deleted');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /admin/questionnaire/responses — all clients who submitted
+exports.getQuestionnaireResponses = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.id as client_id, u.name, u.phone,
+              COUNT(r.id) as answered_count,
+              MAX(r.created_at) as submitted_at
+       FROM questionnaire_responses r
+       JOIN users u ON u.id = r.client_id
+       GROUP BY u.id, u.name, u.phone
+       ORDER BY submitted_at DESC`
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};

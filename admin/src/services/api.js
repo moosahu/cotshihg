@@ -39,6 +39,12 @@ const api = {
   createContent: (data) => request('/admin/content', { method: 'POST', body: JSON.stringify(data) }),
   togglePublishContent: (id) => request(`/admin/content/${id}/publish`, { method: 'PUT' }),
   deleteContent: (id) => request(`/admin/content/${id}`, { method: 'DELETE' }),
+
+  // Questionnaire
+  getQuestionnaireQuestions: () => request('/admin/questionnaire/questions'),
+  createQuestion: (data) => request('/admin/questionnaire/questions', { method: 'POST', body: JSON.stringify(data) }),
+  updateQuestion: (id, data) => request(`/admin/questionnaire/questions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteQuestion: (id) => request(`/admin/questionnaire/questions/${id}`, { method: 'DELETE' }),
 };
 
 export default api;

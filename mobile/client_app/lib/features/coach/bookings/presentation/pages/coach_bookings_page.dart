@@ -159,6 +159,7 @@ class _BookingsListState extends State<_BookingsList> {
           final type = b['session_type'] as String? ?? 'chat';
           final price = b['price'];
           final clientName = b['client_name'] as String? ?? '—';
+          final clientId = b['client_id'] as String?;
           final scheduledAt = b['scheduled_at'] as String?;
           final scheduledDateTime = scheduledAt != null ? DateTime.tryParse(scheduledAt)?.toLocal() : null;
           final now = DateTime.now();
@@ -196,6 +197,20 @@ class _BookingsListState extends State<_BookingsList> {
                       ),
                       if (price != null)
                         RiyalText('$price', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                      if (clientId != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.assignment_outlined, size: 20),
+                          color: AppTheme.textSecondary,
+                          tooltip: 'استبيان العميل',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => context.push(
+                            '/coach/client-questionnaire/$clientId',
+                            extra: {'clientName': clientName},
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   if (widget.status == 'pending') ...[

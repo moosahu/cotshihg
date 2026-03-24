@@ -219,4 +219,26 @@ class ApiClient {
     final res = await _dio.post('/questionnaires/assignments/$assignmentId/respond', data: {'answers': answers});
     return res.data;
   }
+
+  // Questionnaire (admin-managed, client fills once)
+  Future<Map<String, dynamic>> getQuestionnaireQuestions({String? specialization}) async {
+    final res = await _dio.get('/questionnaires/questions',
+        queryParameters: specialization != null ? {'specialization': specialization} : null);
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getMyQuestionnaireResponse() async {
+    final res = await _dio.get('/questionnaires/my-response');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> submitQuestionnaire(List<Map<String, dynamic>> answers) async {
+    final res = await _dio.post('/questionnaires/submit', data: {'answers': answers});
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getClientQuestionnaire(String clientId) async {
+    final res = await _dio.get('/questionnaires/client/$clientId');
+    return res.data;
+  }
 }

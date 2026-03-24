@@ -37,4 +37,11 @@ router.post('/content', adminAuth, adminController.createContent);
 router.put('/content/:id/publish', adminAuth, adminController.togglePublishContent);
 router.delete('/content/:id', adminAuth, adminController.deleteContent);
 
+// Questionnaire questions (admin manages)
+router.get('/questionnaire/questions', adminAuth, adminController.getQuestionnaireQuestions);
+router.post('/questionnaire/questions', adminAuth, adminController.createQuestion);
+router.put('/questionnaire/questions/:id', adminAuth, adminController.updateQuestion);
+router.delete('/questionnaire/questions/:id', adminAuth, adminController.deleteQuestion);
+router.get('/questionnaire/responses', adminAuth, adminController.getQuestionnaireResponses);
+
 module.exports = router;

@@ -162,6 +162,27 @@ CREATE TABLE payments (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Questionnaire (admin-managed questions, client one-time response)
+CREATE TABLE questionnaire_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question_text TEXT NOT NULL,
+  question_type VARCHAR(20) DEFAULT 'text' CHECK (question_type IN ('text', 'rating', 'choice')),
+  options JSONB,
+  specialization TEXT, -- NULL = عام لكل التخصصات
+  order_index INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE questionnaire_responses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  question_id UUID REFERENCES questionnaire_questions(id) ON DELETE CASCADE,
+  answer TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(client_id, question_id)
+);
+
 -- Indexes
 CREATE INDEX idx_bookings_client ON bookings(client_id);
 CREATE INDEX idx_bookings_therapist ON bookings(therapist_id);

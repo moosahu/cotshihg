@@ -16,6 +16,8 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/therapists/presentation/pages/therapists_list_page.dart';
 import '../../features/therapists/presentation/pages/therapist_detail_page.dart';
 import '../../features/booking/presentation/pages/booking_page.dart';
+import '../../features/questionnaire/presentation/pages/questionnaire_page.dart';
+import '../../features/questionnaire/presentation/pages/client_questionnaire_page.dart';
 // TODO: جلسة فورية — معطلة مؤقتاً، أعد الاستيراد عند تفعيل الميزة
 // import '../../features/booking/presentation/pages/instant_booking_page.dart';
 import '../../features/session/presentation/pages/chat_session_page.dart';
@@ -156,6 +158,14 @@ class AppRouter {
       ),
       // TODO: جلسة فورية — معطلة مؤقتاً، أعد تفعيل هذا المسار عند الحاجة
       // GoRoute(path: '/instant-booking', builder: (_, __) => const InstantBookingPage()),
+      GoRoute(path: '/questionnaire', builder: (_, __) => const QuestionnairePage()),
+      GoRoute(
+        path: '/coach/client-questionnaire/:clientId',
+        builder: (_, state) => ClientQuestionnairePage(
+          clientId: state.pathParameters['clientId']!,
+          clientName: (state.extra as Map?)?['clientName'] as String? ?? 'العميل',
+        ),
+      ),
       GoRoute(path: '/my-bookings', builder: (_, __) => const MyBookingsPage()),
       GoRoute(path: '/my-payments', builder: (_, __) => const MyPaymentsPage()),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyPage()),

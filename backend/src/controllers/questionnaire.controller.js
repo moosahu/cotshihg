@@ -218,3 +218,94 @@ exports.setDefault = async (req, res) => {
     errorResponse(res, err.message, 500);
   }
 };
+
+// ── Admin-questionnaire: client fills once, coach reads ───────────────────────
+
+// GET /api/v1/questionnaire/questions?specialization=X
+// يرجع الأسئلة العامة (specialization IS NULL) + أسئلة التخصص المحدد
+exports.getActiveQuestions = async (req, res) => {
+  try {
+    const { specialization } = req.query;
+    const result = specialization
+      ? await pool.query(
+          `SELECT * FROM questionnaire_questions
+           WHERE is_active=true AND (specialization IS NULL OR specialization=$1)
+           ORDER BY order_index ASC`,
+          [specialization]
+        )
+      : await pool.query(
+          `SELECT * FROM questionnaire_questions WHERE is_active=true ORDER BY order_index ASC`
+        );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /api/v1/questionnaire/my-response  — client checks their own answers
+exports.getMyResponse = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT r.*, q.question_text, q.question_type, q.options
+       FROM questionnaire_responses r
+       JOIN questionnaire_questions q ON q.id = r.question_id
+       WHERE r.client_id=$1 ORDER BY q.order_index ASC`,
+      [req.user.id]
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// POST /api/v1/questionnaire/submit  — client submits/updates answers
+// body: { answers: [ { question_id, answer } ] }
+exports.submitResponse = async (req, res) => {
+  try {
+    const { answers } = req.body;
+    if (!Array.isArray(answers) || answers.length === 0)
+      return errorResponse(res, 'answers array required', 400);
+
+    for (const { question_id, answer } of answers) {
+      await pool.query(
+        `INSERT INTO questionnaire_responses (client_id, question_id, answer)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (client_id, question_id) DO UPDATE SET answer=$3, created_at=NOW()`,
+        [req.user.id, question_id, answer]
+      );
+    }
+    successResponse(res, null, 'Submitted');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /api/v1/questionnaire/client/:clientId  — coach views a client's answers
+exports.getClientResponse = async (req, res) => {
+  try {
+    // Ensure requester is a coach with at least one booking with this client
+    const access = await pool.query(
+      `SELECT 1 FROM bookings b
+       JOIN therapists t ON t.id = b.therapist_id
+       WHERE t.user_id=$1 AND b.client_id=$2 LIMIT 1`,
+      [req.user.id, req.params.clientId]
+    );
+    if (!access.rows[0]) return errorResponse(res, 'Access denied', 403);
+
+    const result = await pool.query(
+      `SELECT r.*, q.question_text, q.question_type, q.options
+       FROM questionnaire_responses r
+       JOIN questionnaire_questions q ON q.id = r.question_id
+       WHERE r.client_id=$1 ORDER BY q.order_index ASC`,
+      [req.params.clientId]
+    );
+
+    const client = await pool.query(
+      `SELECT id, name, phone FROM users WHERE id=$1`, [req.params.clientId]
+    );
+
+    successResponse(res, { client: client.rows[0], responses: result.rows });
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};

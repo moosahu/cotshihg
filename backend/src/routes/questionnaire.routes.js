@@ -16,4 +16,10 @@ router.get('/assignments/booking/:bookingId', authenticate, ctrl.getBookingAssig
 router.post('/assignments/:assignmentId/respond', authenticate, ctrl.submitAnswers);
 router.get('/assignments/:assignmentId', authenticate, ctrl.getAssignment);
 
+// Admin-questionnaire: client fills once, coach reads
+router.get('/questions', authenticate, ctrl.getActiveQuestions);
+router.get('/my-response', authenticate, ctrl.getMyResponse);
+router.post('/submit', authenticate, ctrl.submitResponse);
+router.get('/client/:clientId', authenticate, ctrl.getClientResponse);
+
 module.exports = router;

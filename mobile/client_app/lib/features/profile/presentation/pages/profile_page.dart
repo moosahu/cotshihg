@@ -278,6 +278,11 @@ class _ProfilePageState extends State<ProfilePage> {
               onTap: () => context.push('/my-bookings'),
             ),
             _MenuItem(
+              icon: Icons.assignment_outlined,
+              title: 'استبياني',
+              onTap: () => context.push('/questionnaire'),
+            ),
+            _MenuItem(
               icon: Icons.payment_outlined,
               title: 'سجل المدفوعات',
               onTap: () => context.push('/my-payments'),

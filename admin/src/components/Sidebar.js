@@ -9,6 +9,7 @@ const navItems = [
   { path: '/bookings', icon: '📅', label: 'الجلسات' },
   { path: '/content', icon: '📚', label: 'المحتوى' },
   { path: '/payments', icon: '💳', label: 'المدفوعات' },
+  { path: '/questionnaire', icon: '📋', label: 'الاستبيان' },
 ];
 
 export default function Sidebar({ open }) {
