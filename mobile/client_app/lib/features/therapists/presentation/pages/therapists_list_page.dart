@@ -17,6 +17,35 @@ class _TherapistsListPageState extends State<TherapistsListPage> {
   bool _instantOnly = false;
   final _searchController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List _filter(List all) {
+    final query = _searchController.text.trim().toLowerCase();
+    return all.where((t) {
+      final map = t as Map<String, dynamic>;
+      if (_instantOnly && map['is_available_instant'] != true) return false;
+      if (_selectedSpecialization != 'الكل') {
+        final specs = (map['specializations'] as List?) ?? [];
+        if (!specs.any((s) => s.toString() == _selectedSpecialization)) return false;
+      }
+      if (query.isNotEmpty) {
+        final name = (map['name'] as String? ?? '').toLowerCase();
+        if (!name.contains(query)) return false;
+      }
+      return true;
+    }).toList();
+  }
+
   final List<String> _specializations = [
     'الكل',
     'كوتش مالي',
@@ -42,7 +71,7 @@ class _TherapistsListPageState extends State<TherapistsListPage> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'ابحث عن كوتش...',
+                  hintText: 'ابحث عن كوتشيز...',
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: AppTheme.backgroundColor,
@@ -106,8 +135,8 @@ class _TherapistsListPageState extends State<TherapistsListPage> {
                     return Center(child: Text(state.message));
                   }
 
-                  final therapists =
-                      state is TherapistsLoaded ? state.therapists : [];
+                  final all = state is TherapistsLoaded ? state.therapists : [];
+                  final therapists = _filter(all);
 
                   if (therapists.isEmpty) {
                     return const Center(child: _EmptyTherapists());
