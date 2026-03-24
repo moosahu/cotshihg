@@ -162,6 +162,11 @@ async function runPatches() {
       ALTER TABLE questionnaire_sets ADD COLUMN IF NOT EXISTS timing VARCHAR(20) DEFAULT 'general'
     `);
 
+    // Patch: add set_id column to questionnaire_questions if missing
+    await pool.query(`
+      ALTER TABLE questionnaire_questions ADD COLUMN IF NOT EXISTS set_id UUID REFERENCES questionnaire_sets(id) ON DELETE CASCADE
+    `);
+
     // Patch: questionnaire_questions table (admin-managed)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS questionnaire_questions (
