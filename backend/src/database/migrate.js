@@ -170,6 +170,33 @@ async function runPatches() {
       )
     `);
 
+    // Seed: default questionnaire questions (only if table is empty)
+    const qCount = await pool.query(`SELECT COUNT(*) FROM questionnaire_questions`);
+    if (parseInt(qCount.rows[0].count) === 0) {
+      const defaultQuestions = [
+        // التحديات والأهداف
+        { text: 'ما هو التحدي الأكبر الذي تواجهه حالياً؟', type: 'text', spec: null, order: 1 },
+        { text: 'ما هي النتيجة المثالية التي ترغب في الخروج بها من هذه الجلسة؟', type: 'text', spec: null, order: 2 },
+        { text: 'ما الذي تحاول تحقيقه ولم تتمكن من ذلك حتى الآن؟', type: 'text', spec: null, order: 3 },
+        // الوعي الذاتي والقيم
+        { text: 'ما هي قيمك الشخصية أو المهنية التي تريد التركيز عليها؟', type: 'text', spec: null, order: 4 },
+        { text: 'ما هو أعظم إنجاز حققته في الستة أشهر الماضية؟', type: 'text', spec: null, order: 5 },
+        { text: 'ما هي نقاط القوة التي تعتمد عليها عادةً؟', type: 'text', spec: null, order: 6 },
+        // الالتزام والتغيير
+        { text: 'على مقياس من 1 إلى 10، ما مدى التزامك لتحقيق هذا الهدف؟', type: 'rating', spec: null, order: 7 },
+        { text: 'ما الذي سيختلف في حياتك أو عملك إذا حققت هدفك؟', type: 'text', spec: null, order: 8 },
+        { text: 'ما هي أول خطوة صغيرة ستتخذها بعد هذه الجلسة؟', type: 'text', spec: null, order: 9 },
+      ];
+      for (const q of defaultQuestions) {
+        await pool.query(
+          `INSERT INTO questionnaire_questions (question_text, question_type, specialization, order_index)
+           VALUES ($1, $2, $3, $4)`,
+          [q.text, q.type, q.spec, q.order]
+        );
+      }
+      console.log('🌱 Default questionnaire questions seeded');
+    }
+
     console.log('✅ DB patches applied');
   } catch (err) {
     console.error('⚠️  Patch error (non-fatal):', err.message);
