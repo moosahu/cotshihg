@@ -306,7 +306,7 @@ export default function Therapists() {
                     style={{ flex: 1, padding: '8px 12px', border: '1px solid #E0E0E0', borderRadius: 8, fontSize: 14, textAlign: 'right' }}
                     placeholder="0"
                   />
-                  <i className="icon-saudi_riyal_new" style={{ color: '#8A94A6', fontSize: 13 }} />
+                  <i className="icon-saudi_riyal_new" style={{ color: '#8A94A6', fontSize: 18 }} />
                 </div>
               </div>
             ))}

@@ -11,8 +11,8 @@ body {
 .icon-saudi_riyal_new,
 .icon-saudi_riyal {
   font-style: normal;
-  font-size: 0.95em;
-  vertical-align: baseline;
+  font-size: 1.1em;
+  vertical-align: middle;
 }
 
 :root {
