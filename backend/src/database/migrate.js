@@ -144,6 +144,32 @@ async function runPatches() {
       )
     `);
 
+    // Patch: questionnaire_questions table (admin-managed)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS questionnaire_questions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        question_text TEXT NOT NULL,
+        question_type VARCHAR(20) DEFAULT 'text' CHECK (question_type IN ('text', 'rating', 'choice')),
+        options JSONB,
+        specialization TEXT,
+        order_index INTEGER DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Patch: questionnaire_responses table (client one-time answers)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS questionnaire_responses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        client_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        question_id UUID REFERENCES questionnaire_questions(id) ON DELETE CASCADE,
+        answer TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(client_id, question_id)
+      )
+    `);
+
     console.log('✅ DB patches applied');
   } catch (err) {
     console.error('⚠️  Patch error (non-fatal):', err.message);
