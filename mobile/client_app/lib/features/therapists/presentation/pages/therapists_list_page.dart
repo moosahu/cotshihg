@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../bloc/therapist_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
+import 'package:coaching_client/core/widgets/riyal_text.dart';
 
 class TherapistsListPage extends StatefulWidget {
   const TherapistsListPage({super.key});
@@ -279,13 +280,10 @@ class _TherapistCard extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                        Text(
-                          '${therapist['session_price_video'] ?? '--'} ',
-                          style: const TextStyle(
+                        RiyalText('${therapist["session_price_video"] ?? "--"}', style: const TextStyle(
                             color: AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                          )),
                       ],
                     ),
                   ],

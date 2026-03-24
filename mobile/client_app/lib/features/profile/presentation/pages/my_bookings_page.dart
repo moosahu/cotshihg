@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
+import 'package:coaching_client/core/widgets/riyal_text.dart';
 
 String _apiError(dynamic e) {
   if (e is DioException) {
@@ -217,7 +218,7 @@ class _BookingsListState extends State<_BookingsList>
                           color: AppTheme.primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text('$price ',
+                        child: RiyalText('$price',
                             style: const TextStyle(
                                 color: AppTheme.primaryColor,
                                 fontWeight: FontWeight.bold,

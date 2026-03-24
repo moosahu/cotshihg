@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../core/services/storage_service.dart';
 import '../../../../../core/network/api_client.dart';
+import 'package:coaching_client/core/widgets/riyal_text.dart';
 
 class CoachDashboardPage extends StatefulWidget {
   const CoachDashboardPage({super.key});
@@ -277,7 +278,7 @@ class _WeeklyEarningsCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('أرباح هذا الأسبوع', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                  Text('0 ', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                  RiyalText('0', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                 ],
               ),
             ),

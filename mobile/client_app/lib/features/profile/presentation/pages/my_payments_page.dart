@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
+import 'package:coaching_client/core/widgets/riyal_text.dart';
 
 class MyPaymentsPage extends StatefulWidget {
   const MyPaymentsPage({super.key});
@@ -68,7 +69,7 @@ class _MyPaymentsPageState extends State<MyPaymentsPage> {
                         const Text('إجمالي المدفوعات',
                             style: TextStyle(color: Colors.white70, fontSize: 13)),
                         const SizedBox(height: 6),
-                        Text('${_total.toStringAsFixed(0)} ',
+                        RiyalText('${_total.toStringAsFixed(0)}',
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 28,
@@ -100,7 +101,7 @@ class _MyPaymentsPageState extends State<MyPaymentsPage> {
                           subtitle: Text(dateStr,
                               style: const TextStyle(
                                   color: AppTheme.textSecondary, fontSize: 12)),
-                          trailing: Text('$amount ',
+                          trailing: RiyalText('$amount',
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.primaryColor)),

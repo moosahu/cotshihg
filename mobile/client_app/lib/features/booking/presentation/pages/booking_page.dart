@@ -5,6 +5,7 @@ import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
+import 'package:coaching_client/core/widgets/riyal_text.dart';
 
 String _extractError(dynamic e) {
   if (e is DioException) {
@@ -332,8 +333,8 @@ class _BookingPageState extends State<BookingPage> {
                                             : FontWeight.normal)),
                               ),
                               if (_therapist != null)
-                                Text(
-                                  '${(double.tryParse((_therapist![e.$1 == 'chat' ? 'session_price_chat' : e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video'])?.toString() ?? '0') ?? 0).toInt()} ',
+                                RiyalText(
+                                  '${(double.tryParse((_therapist![e.$1 == 'chat' ? 'session_price_chat' : e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video'])?.toString() ?? '0') ?? 0).toInt()}',
                                   style: const TextStyle(
                                       color: AppTheme.primaryColor,
                                       fontWeight: FontWeight.bold,
@@ -502,7 +503,7 @@ class _BookingPageState extends State<BookingPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('سعر الجلسة', style: TextStyle(color: AppTheme.textSecondary)),
-                      Text('${_price.toInt()} ',
+                      RiyalText('${_price.toInt()}',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,

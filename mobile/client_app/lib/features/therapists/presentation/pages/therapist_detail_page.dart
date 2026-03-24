@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../bloc/therapist_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
+import 'package:coaching_client/core/widgets/riyal_text.dart';
 
 class TherapistDetailPage extends StatelessWidget {
   final String therapistId;
@@ -235,13 +236,10 @@ class _SessionTypeCard extends StatelessWidget {
           const SizedBox(width: 12),
           Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           const Spacer(),
-          Text(
-            '$price ',
-            style: const TextStyle(
+          RiyalText('$price', style: const TextStyle(
               color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
-            ),
-          ),
+            )),
         ],
       ),
     );

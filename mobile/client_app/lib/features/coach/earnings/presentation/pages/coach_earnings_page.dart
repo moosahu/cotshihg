@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../core/network/api_client.dart';
+import 'package:coaching_client/core/widgets/riyal_text.dart';
 
 class CoachEarningsPage extends StatefulWidget {
   const CoachEarningsPage({super.key});
@@ -52,7 +53,7 @@ class _CoachEarningsPageState extends State<CoachEarningsPage> {
                       children: [
                         const Text('إجمالي الأرباح', style: TextStyle(color: Colors.white70, fontSize: 14)),
                         const SizedBox(height: 8),
-                        Text('${_total.toStringAsFixed(0)} ',
+                        RiyalText('${_total.toStringAsFixed(0)}',
                             style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
                       ],
                     ),
@@ -83,7 +84,7 @@ class _CoachEarningsPageState extends State<CoachEarningsPage> {
                           ),
                           title: Text(t['user_name'] as String? ?? '—'),
                           subtitle: Text(dateStr, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                          trailing: Text('+$amount ',
+                          trailing: RiyalText('+$amount',
                               style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontSize: 15)),
                         ),
                       );

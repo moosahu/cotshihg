@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../core/network/api_client.dart';
+import 'package:coaching_client/core/widgets/riyal_text.dart';
 
 class CoachBookingsPage extends StatefulWidget {
   const CoachBookingsPage({super.key});
@@ -194,7 +195,7 @@ class _BookingsListState extends State<_BookingsList> {
                         ),
                       ),
                       if (price != null)
-                        Text('$price ', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                        RiyalText('$price', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   if (widget.status == 'pending') ...[
