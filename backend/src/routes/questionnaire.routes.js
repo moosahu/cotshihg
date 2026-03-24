@@ -23,6 +23,12 @@ router.get('/my-response', authenticate, ctrl.getMyResponse);
 router.post('/submit', authenticate, ctrl.submitResponse);
 router.get('/client/:clientId', authenticate, ctrl.getClientResponse);
 
+// Set assignments (coach sends → client fills)
+router.post('/sets/:setId/send/:bookingId', authenticate, ctrl.sendSetToClient);
+router.get('/my-assignments', authenticate, ctrl.getMyAssignments);
+router.post('/set-assignments/:id/complete', authenticate, ctrl.completeAssignment);
+router.get('/booking/:bookingId/assignments', authenticate, ctrl.getBookingSetAssignments);
+
 // Legacy flat questions route (kept for backward compat)
 router.get('/questions', authenticate, ctrl.getActiveQuestions);
 

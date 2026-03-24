@@ -193,6 +193,22 @@ async function runPatches() {
       )
     `);
 
+    // Patch: set_assignments — coach sends admin questionnaire set to client per booking
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS set_assignments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        set_id UUID REFERENCES questionnaire_sets(id) ON DELETE CASCADE,
+        booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+        client_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        coach_id UUID REFERENCES users(id),
+        status VARCHAR(20) DEFAULT 'pending',
+        answers JSONB DEFAULT '{}',
+        assigned_at TIMESTAMP DEFAULT NOW(),
+        completed_at TIMESTAMP,
+        UNIQUE(set_id, booking_id)
+      )
+    `);
+
     // Seed: default questionnaire sets
     // Run if table is empty OR if no questions have set_id yet (partial/failed seed)
     const sCount = await pool.query(`SELECT COUNT(*) FROM questionnaire_sets`);

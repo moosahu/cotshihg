@@ -13,6 +13,7 @@ class QuestionnairePage extends StatefulWidget {
 
 class _QuestionnairePageState extends State<QuestionnairePage> {
   List<Map<String, dynamic>> _sets = [];
+  List<Map<String, dynamic>> _assignments = [];
   bool _loading = true;
 
   static const Map<String, String> _timingLabels = {
@@ -44,10 +45,14 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
 
   Future<void> _load() async {
     try {
-      final res = await getIt<ApiClient>().getQuestionnaireSets();
+      final results = await Future.wait([
+        getIt<ApiClient>().getQuestionnaireSets(),
+        getIt<ApiClient>().getMyAssignments(),
+      ]);
       if (mounted) {
         setState(() {
-          _sets = (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          _sets = (results[0]['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          _assignments = (results[1]['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
           _loading = false;
         });
       }
@@ -86,8 +91,29 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
+                        // ── استبيانات مرسلة من الكوتش ──
+                        if (_assignments.isNotEmpty) ...[
+                          const Text('أرسل إليك كوتشك',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor)),
+                          const SizedBox(height: 8),
+                          ..._assignments.map((a) => _AssignmentCard(
+                                assignment: a,
+                                onTap: () => Navigator.of(context)
+                                    .push(MaterialPageRoute(
+                                      builder: (_) =>
+                                          _AssignmentFillPage(assignment: a),
+                                    ))
+                                    .then((_) => _load()),
+                              )),
+                          const SizedBox(height: 20),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                        ],
                         const Text(
-                          'اختر استبياناً لملئه',
+                          'قاعة الاستبيانات',
                           style: TextStyle(
                               fontSize: 13, color: AppTheme.textSecondary),
                         ),
@@ -557,4 +583,187 @@ class _ChoiceOption extends StatelessWidget {
             color: selected ? AppTheme.primaryColor : AppTheme.textPrimary,
             fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
   );
+}
+
+// ── Assignment Card (sent by coach) ─────────────────────────────────────────
+
+class _AssignmentCard extends StatelessWidget {
+  final Map<String, dynamic> assignment;
+  final VoidCallback onTap;
+  const _AssignmentCard({required this.assignment, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDone = assignment['status'] == 'completed';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        onTap: isDone ? null : onTap,
+        leading: CircleAvatar(
+          backgroundColor: isDone
+              ? const Color(0xFF2ECC71).withOpacity(0.1)
+              : AppTheme.primaryColor.withOpacity(0.1),
+          child: Icon(
+            isDone ? Icons.check_circle : Icons.assignment_outlined,
+            color: isDone ? const Color(0xFF2ECC71) : AppTheme.primaryColor,
+          ),
+        ),
+        title: Text(assignment['set_name'] as String? ?? '',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(
+          isDone ? 'تم الإجابة ✓' : 'من ${assignment['coach_name'] ?? 'الكوتش'} — في انتظار إجابتك',
+          style: TextStyle(
+              fontSize: 12,
+              color: isDone ? const Color(0xFF2ECC71) : AppTheme.textSecondary),
+        ),
+        trailing: isDone
+            ? null
+            : const Icon(Icons.chevron_left, color: AppTheme.primaryColor),
+      ),
+    );
+  }
+}
+
+// ── Assignment Fill Page ──────────────────────────────────────────────────────
+
+class _AssignmentFillPage extends StatefulWidget {
+  final Map<String, dynamic> assignment;
+  const _AssignmentFillPage({required this.assignment});
+  @override
+  State<_AssignmentFillPage> createState() => _AssignmentFillPageState();
+}
+
+class _AssignmentFillPageState extends State<_AssignmentFillPage> {
+  List<Map<String, dynamic>> _questions = [];
+  Map<String, String> _answers = {};
+  bool _loading = true;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await getIt<ApiClient>()
+          .getSetQuestions(widget.assignment['set_id'] as String);
+      if (mounted) {
+        setState(() {
+          _questions = (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    for (final q in _questions) {
+      if ((_answers[q['id'] as String] ?? '').trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('يرجى الإجابة على جميع الأسئلة'),
+            backgroundColor: AppTheme.errorColor));
+        return;
+      }
+    }
+    setState(() => _submitting = true);
+    try {
+      await getIt<ApiClient>().completeAssignment(
+          widget.assignment['id'] as String, _answers);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('تم إرسال إجاباتك للكوتش ✓'),
+            backgroundColor: AppTheme.successColor));
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.assignment['set_name'] as String? ?? 'استبيان'),
+        leading: IconButton(
+            icon: const Icon(Icons.arrow_forward_ios),
+            onPressed: () => Navigator.of(context).pop()),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _questions.length,
+                    itemBuilder: (_, i) {
+                      final q = _questions[i];
+                      final id = q['id'] as String;
+                      final type = q['question_type'] as String? ?? 'text';
+                      final options = (q['options'] as List?)?.cast<String>() ?? [];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)]),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(children: [
+                              Container(
+                                width: 28, height: 28,
+                                decoration: BoxDecoration(color: AppTheme.primaryColor.withOpacity(0.1), shape: BoxShape.circle),
+                                child: Center(child: Text('${i + 1}', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13))),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(q['question_text'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
+                            ]),
+                            const SizedBox(height: 12),
+                            if (type == 'text')
+                              _TextAnswer(initial: _answers[id] ?? '', onChanged: (v) => setState(() => _answers[id] = v))
+                            else if (type == 'rating')
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: List.generate(5, (r) => GestureDetector(
+                                  onTap: () => setState(() => _answers[id] = '${r + 1}'),
+                                  child: _RatingButton(value: r + 1, selected: _answers[id] == '${r + 1}'),
+                                )),
+                              )
+                            else if (type == 'choice')
+                              Column(children: options.map((opt) => GestureDetector(
+                                onTap: () => setState(() => _answers[id] = opt),
+                                child: _ChoiceOption(opt: opt, selected: _answers[id] == opt),
+                              )).toList()),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  child: SizedBox(
+                    width: double.infinity, height: 52,
+                    child: ElevatedButton(
+                      onPressed: _submitting ? null : _submit,
+                      child: _submitting
+                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('إرسال الإجابات للكوتش', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
 }

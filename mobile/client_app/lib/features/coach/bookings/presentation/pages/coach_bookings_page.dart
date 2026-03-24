@@ -82,6 +82,56 @@ class _BookingsListState extends State<_BookingsList> {
   }
 
 
+  Future<void> _sendQuestionnaire(BuildContext context, String bookingId) async {
+    try {
+      final res = await getIt<ApiClient>().getQuestionnaireSets();
+      final sets = (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (sets.isEmpty) {
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا توجد استبيانات متاحة')));
+        return;
+      }
+      if (!context.mounted) return;
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          builder: (_, ctrl) => ListView(
+            controller: ctrl,
+            padding: const EdgeInsets.all(16),
+            children: [
+              const Text('اختر استبياناً لإرساله',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              ...sets.map((s) => ListTile(
+                    leading: const Icon(Icons.assignment_outlined),
+                    title: Text(s['name'] as String? ?? ''),
+                    subtitle: Text(s['description'] as String? ?? '',
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: Text('${s['question_count'] ?? 0} سؤال',
+                        style: const TextStyle(fontSize: 12)),
+                    onTap: () => Navigator.pop(context, s['id'].toString()),
+                  )),
+            ],
+          ),
+        ),
+      );
+      if (selected == null || !context.mounted) return;
+      await getIt<ApiClient>().sendSetToClient(selected, bookingId);
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('تم إرسال الاستبيان للعميل ✓'),
+            backgroundColor: Colors.green));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    }
+  }
+
   String get _emptyMsg => widget.status == 'confirmed'
       ? 'لا توجد حجوزات قادمة'
       : widget.status == 'in_progress'
@@ -226,6 +276,12 @@ class _BookingsListState extends State<_BookingsList> {
                             icon: const Icon(Icons.play_arrow),
                             label: Text(canStart ? 'بدء الجلسة' : '${scheduledDateTime != null ? "${scheduledDateTime.hour.toString().padLeft(2,'0')}:${scheduledDateTime.minute.toString().padLeft(2,'0')}" : ""}'),
                           ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _sendQuestionnaire(context, b['id'].toString()),
+                          icon: const Icon(Icons.send_outlined, size: 18),
+                          label: const Text('استبيان'),
                         ),
                       ],
                     ),

@@ -250,6 +250,28 @@ class ApiClient {
     return res.data;
   }
 
+  // Set assignments
+  Future<Map<String, dynamic>> sendSetToClient(String setId, String bookingId) async {
+    final res = await _dio.post('/questionnaires/sets/$setId/send/$bookingId');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getMyAssignments() async {
+    final res = await _dio.get('/questionnaires/my-assignments');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> completeAssignment(String assignmentId, Map<String, String> answers) async {
+    final res = await _dio.post('/questionnaires/set-assignments/$assignmentId/complete',
+        data: {'answers': answers});
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getBookingSetAssignments(String bookingId) async {
+    final res = await _dio.get('/questionnaires/booking/$bookingId/assignments');
+    return res.data;
+  }
+
   // Legacy
   Future<Map<String, dynamic>> getQuestionnaireQuestions({String? specialization}) async {
     final res = await _dio.get('/questionnaires/questions',

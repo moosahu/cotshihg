@@ -365,3 +365,94 @@ exports.getClientResponse = async (req, res) => {
     errorResponse(res, err.message, 500);
   }
 };
+
+// ── Set Assignments (coach sends → client fills) ──────────────────────────────
+
+// POST /api/v1/questionnaires/sets/:setId/send/:bookingId — coach sends set to client
+exports.sendSetToClient = async (req, res) => {
+  try {
+    const { setId, bookingId } = req.params;
+    const booking = await pool.query(
+      `SELECT b.client_id FROM bookings b
+       JOIN therapists t ON t.id = b.therapist_id
+       WHERE b.id=$1 AND t.user_id=$2`,
+      [bookingId, req.user.id]
+    );
+    if (!booking.rows[0]) return errorResponse(res, 'Booking not found', 404);
+
+    const result = await pool.query(
+      `INSERT INTO set_assignments (set_id, booking_id, client_id, coach_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (set_id, booking_id) DO NOTHING RETURNING *`,
+      [setId, bookingId, booking.rows[0].client_id, req.user.id]
+    );
+    successResponse(res, result.rows[0] || null, 'Questionnaire sent');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /api/v1/questionnaires/my-assignments — client gets pending/completed assignments
+exports.getMyAssignments = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT sa.*, qs.name as set_name, qs.description as set_description, qs.timing,
+              u.name as coach_name
+       FROM set_assignments sa
+       JOIN questionnaire_sets qs ON qs.id = sa.set_id
+       JOIN users u ON u.id = sa.coach_id
+       WHERE sa.client_id=$1
+       ORDER BY sa.assigned_at DESC`,
+      [req.user.id]
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// POST /api/v1/questionnaires/set-assignments/:id/complete — client submits answers
+exports.completeAssignment = async (req, res) => {
+  try {
+    const { answers } = req.body; // { question_id: answer, ... }
+    if (!answers) return errorResponse(res, 'answers required', 400);
+
+    const assignment = await pool.query(
+      `SELECT * FROM set_assignments WHERE id=$1 AND client_id=$2`,
+      [req.params.id, req.user.id]
+    );
+    if (!assignment.rows[0]) return errorResponse(res, 'Assignment not found', 404);
+
+    const result = await pool.query(
+      `UPDATE set_assignments SET answers=$1, status='completed', completed_at=NOW()
+       WHERE id=$2 RETURNING *`,
+      [JSON.stringify(answers), req.params.id]
+    );
+    successResponse(res, result.rows[0], 'Submitted');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /api/v1/questionnaires/booking/:bookingId/assignments — coach sees assignments for booking
+exports.getBookingSetAssignments = async (req, res) => {
+  try {
+    const access = await pool.query(
+      `SELECT 1 FROM bookings b JOIN therapists t ON t.id=b.therapist_id
+       WHERE b.id=$1 AND t.user_id=$2`,
+      [req.params.bookingId, req.user.id]
+    );
+    if (!access.rows[0]) return errorResponse(res, 'Access denied', 403);
+
+    const result = await pool.query(
+      `SELECT sa.*, qs.name as set_name, qs.timing
+       FROM set_assignments sa
+       JOIN questionnaire_sets qs ON qs.id = sa.set_id
+       WHERE sa.booking_id=$1 ORDER BY sa.assigned_at DESC`,
+      [req.params.bookingId]
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
