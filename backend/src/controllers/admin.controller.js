@@ -345,13 +345,78 @@ exports.getPayments = async (req, res) => {
   }
 };
 
-// ── Questionnaire Questions (admin CRUD) ─────────────────────────────────────
+// ── Questionnaire Sets (admin CRUD) ──────────────────────────────────────────
 
-// GET /admin/questionnaire/questions
-exports.getQuestionnaireQuestions = async (req, res) => {
+// GET /admin/questionnaire/sets
+exports.getQuestionnaireSets = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT s.*,
+             COUNT(q.id) FILTER (WHERE q.is_active = true) AS question_count
+      FROM questionnaire_sets s
+      LEFT JOIN questionnaire_questions q ON q.set_id = s.id
+      GROUP BY s.id
+      ORDER BY s.created_at ASC
+    `);
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// POST /admin/questionnaire/sets
+exports.createQuestionnaireSet = async (req, res) => {
+  try {
+    const { name, description, specialization, timing } = req.body;
+    if (!name) return errorResponse(res, 'name required', 400);
+    const result = await pool.query(
+      `INSERT INTO questionnaire_sets (name, description, specialization, timing)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [name, description || null, specialization || null, timing || 'general']
+    );
+    successResponse(res, result.rows[0], 'Set created');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/questionnaire/sets/:id
+exports.updateQuestionnaireSet = async (req, res) => {
+  try {
+    const { name, description, specialization, timing, is_active } = req.body;
+    const result = await pool.query(
+      `UPDATE questionnaire_sets
+       SET name=COALESCE($1,name),
+           description=COALESCE($2,description),
+           specialization=$3,
+           timing=COALESCE($4,timing),
+           is_active=COALESCE($5,is_active)
+       WHERE id=$6 RETURNING *`,
+      [name, description || null, specialization || null, timing, is_active, req.params.id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'Not found', 404);
+    successResponse(res, result.rows[0]);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// DELETE /admin/questionnaire/sets/:id
+exports.deleteQuestionnaireSet = async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM questionnaire_sets WHERE id=$1`, [req.params.id]);
+    successResponse(res, null, 'Deleted');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /admin/questionnaire/sets/:setId/questions
+exports.getSetQuestions = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM questionnaire_questions ORDER BY order_index ASC, created_at ASC`
+      `SELECT * FROM questionnaire_questions WHERE set_id=$1 ORDER BY order_index ASC, created_at ASC`,
+      [req.params.setId]
     );
     successResponse(res, result.rows);
   } catch (err) {
@@ -359,15 +424,15 @@ exports.getQuestionnaireQuestions = async (req, res) => {
   }
 };
 
-// POST /admin/questionnaire/questions
-exports.createQuestion = async (req, res) => {
+// POST /admin/questionnaire/sets/:setId/questions
+exports.createSetQuestion = async (req, res) => {
   try {
     const { question_text, question_type = 'text', options, order_index = 0 } = req.body;
     if (!question_text) return errorResponse(res, 'question_text required', 400);
     const result = await pool.query(
-      `INSERT INTO questionnaire_questions (question_text, question_type, options, order_index)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [question_text, question_type, options ? JSON.stringify(options) : null, order_index]
+      `INSERT INTO questionnaire_questions (set_id, question_text, question_type, options, order_index)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.params.setId, question_text, question_type, options ? JSON.stringify(options) : null, order_index]
     );
     successResponse(res, result.rows[0], 'Question created');
   } catch (err) {
@@ -376,7 +441,7 @@ exports.createQuestion = async (req, res) => {
 };
 
 // PUT /admin/questionnaire/questions/:id
-exports.updateQuestion = async (req, res) => {
+exports.updateSetQuestion = async (req, res) => {
   try {
     const { question_text, question_type, options, order_index, is_active } = req.body;
     const result = await pool.query(
@@ -397,7 +462,7 @@ exports.updateQuestion = async (req, res) => {
 };
 
 // DELETE /admin/questionnaire/questions/:id
-exports.deleteQuestion = async (req, res) => {
+exports.deleteSetQuestion = async (req, res) => {
   try {
     await pool.query(`DELETE FROM questionnaire_questions WHERE id=$1`, [req.params.id]);
     successResponse(res, null, 'Deleted');

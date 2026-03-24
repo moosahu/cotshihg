@@ -16,10 +16,14 @@ router.get('/assignments/booking/:bookingId', authenticate, ctrl.getBookingAssig
 router.post('/assignments/:assignmentId/respond', authenticate, ctrl.submitAnswers);
 router.get('/assignments/:assignmentId', authenticate, ctrl.getAssignment);
 
-// Admin-questionnaire: client fills once, coach reads
-router.get('/questions', authenticate, ctrl.getActiveQuestions);
+// Questionnaire sets & client fill
+router.get('/sets', authenticate, ctrl.getActiveSets);
+router.get('/sets/:setId/questions', authenticate, ctrl.getSetQuestionsForClient);
 router.get('/my-response', authenticate, ctrl.getMyResponse);
 router.post('/submit', authenticate, ctrl.submitResponse);
 router.get('/client/:clientId', authenticate, ctrl.getClientResponse);
+
+// Legacy flat questions route (kept for backward compat)
+router.get('/questions', authenticate, ctrl.getActiveQuestions);
 
 module.exports = router;

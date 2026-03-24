@@ -37,11 +37,15 @@ router.post('/content', adminAuth, adminController.createContent);
 router.put('/content/:id/publish', adminAuth, adminController.togglePublishContent);
 router.delete('/content/:id', adminAuth, adminController.deleteContent);
 
-// Questionnaire questions (admin manages)
-router.get('/questionnaire/questions', adminAuth, adminController.getQuestionnaireQuestions);
-router.post('/questionnaire/questions', adminAuth, adminController.createQuestion);
-router.put('/questionnaire/questions/:id', adminAuth, adminController.updateQuestion);
-router.delete('/questionnaire/questions/:id', adminAuth, adminController.deleteQuestion);
+// Questionnaire sets (admin manages)
+router.get('/questionnaire/sets', adminAuth, adminController.getQuestionnaireSets);
+router.post('/questionnaire/sets', adminAuth, adminController.createQuestionnaireSet);
+router.put('/questionnaire/sets/:id', adminAuth, adminController.updateQuestionnaireSet);
+router.delete('/questionnaire/sets/:id', adminAuth, adminController.deleteQuestionnaireSet);
+router.get('/questionnaire/sets/:setId/questions', adminAuth, adminController.getSetQuestions);
+router.post('/questionnaire/sets/:setId/questions', adminAuth, adminController.createSetQuestion);
+router.put('/questionnaire/questions/:id', adminAuth, adminController.updateSetQuestion);
+router.delete('/questionnaire/questions/:id', adminAuth, adminController.deleteSetQuestion);
 router.get('/questionnaire/responses', adminAuth, adminController.getQuestionnaireResponses);
 
 module.exports = router;

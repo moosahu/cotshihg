@@ -5,20 +5,36 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
 
 class QuestionnairePage extends StatefulWidget {
-  /// اختياري: إذا جاء من صفحة الكوتش، نصفّي الأسئلة حسب تخصصه
-  final String? specialization;
-  const QuestionnairePage({super.key, this.specialization});
+  const QuestionnairePage({super.key});
 
   @override
   State<QuestionnairePage> createState() => _QuestionnairePageState();
 }
 
 class _QuestionnairePageState extends State<QuestionnairePage> {
-  List<Map<String, dynamic>> _questions = [];
-  Map<String, String> _answers = {}; // question_id → answer
+  List<Map<String, dynamic>> _sets = [];
   bool _loading = true;
-  bool _submitting = false;
-  bool _alreadySubmitted = false;
+
+  static const Map<String, String> _timingLabels = {
+    'before': 'قبل الجلسة',
+    'during': 'أثناء الجلسة',
+    'after': 'بعد الجلسة',
+    'general': 'عام',
+  };
+
+  static const Map<String, Color> _timingColors = {
+    'before': AppTheme.primaryColor,
+    'during': Color(0xFFF5A623),
+    'after': Color(0xFF2ECC71),
+    'general': AppTheme.textSecondary,
+  };
+
+  static const Map<String, IconData> _timingIcons = {
+    'before': Icons.assignment_outlined,
+    'during': Icons.edit_note_outlined,
+    'after': Icons.check_circle_outline,
+    'general': Icons.list_alt_outlined,
+  };
 
   @override
   void initState() {
@@ -28,28 +44,252 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
 
   Future<void> _load() async {
     try {
-      final questionsRes = await getIt<ApiClient>().getQuestionnaireQuestions(
-        specialization: widget.specialization,
-      );
-      final myRes = await getIt<ApiClient>().getMyQuestionnaireResponse();
-
-      final questions = (questionsRes['data'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          [];
-      final myAnswers = (myRes['data'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          [];
-
-      final Map<String, String> existing = {};
-      for (final r in myAnswers) {
-        existing[r['question_id'] as String] = r['answer'] as String? ?? '';
+      final res = await getIt<ApiClient>().getQuestionnaireSets();
+      if (mounted) {
+        setState(() {
+          _sets = (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          _loading = false;
+        });
       }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
+  void _openSet(Map<String, dynamic> set) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _QuestionnaireSetFillPage(set: set),
+      ),
+    ).then((_) => _load()); // refresh counts on return
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('استبياناتي'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_forward_ios),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/profile'),
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: _sets.isEmpty
+                  ? const Center(
+                      child: Text('لا توجد استبيانات حالياً',
+                          style: TextStyle(color: AppTheme.textSecondary)),
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        const Text(
+                          'اختر استبياناً لملئه',
+                          style: TextStyle(
+                              fontSize: 13, color: AppTheme.textSecondary),
+                        ),
+                        const SizedBox(height: 16),
+                        ...['before', 'during', 'after', 'general'].expand((timing) {
+                          final group = _sets
+                              .where((s) => (s['timing'] as String? ?? 'general') == timing)
+                              .toList();
+                          if (group.isEmpty) return <Widget>[];
+                          return [
+                            _TimingHeader(
+                              label: _timingLabels[timing]!,
+                              color: _timingColors[timing]!,
+                              icon: _timingIcons[timing]!,
+                            ),
+                            const SizedBox(height: 8),
+                            ...group.map((set) => _SetCard(
+                                  set: set,
+                                  timingColor: _timingColors[timing]!,
+                                  onTap: () => _openSet(set),
+                                )),
+                            const SizedBox(height: 20),
+                          ];
+                        }),
+                      ],
+                    ),
+            ),
+    );
+  }
+}
+
+class _TimingHeader extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData icon;
+  const _TimingHeader({required this.label, required this.color, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Text(label,
+            style: TextStyle(
+                fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+      ],
+    );
+  }
+}
+
+class _SetCard extends StatelessWidget {
+  final Map<String, dynamic> set;
+  final Color timingColor;
+  final VoidCallback onTap;
+  const _SetCard({required this.set, required this.timingColor, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final questionCount = int.tryParse('${set['question_count']}') ?? 0;
+    final answeredCount = int.tryParse('${set['answered_count']}') ?? 0;
+    final isComplete = questionCount > 0 && answeredCount >= questionCount;
+    final progress = questionCount > 0 ? answeredCount / questionCount : 0.0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          set['name'] as String? ?? '',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        if ((set['description'] as String?)?.isNotEmpty == true)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              set['description'] as String,
+                              style: const TextStyle(
+                                  color: AppTheme.textSecondary, fontSize: 12),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (isComplete)
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2ECC71).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle, color: Color(0xFF2ECC71), size: 14),
+                          SizedBox(width: 4),
+                          Text('مكتمل',
+                              style: TextStyle(
+                                  color: Color(0xFF2ECC71),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    )
+                  else
+                    const Icon(Icons.chevron_left, color: AppTheme.textSecondary),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: AppTheme.backgroundColor,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(timingColor),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '$answeredCount / $questionCount سؤال',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Fill Page ────────────────────────────────────────────────────────────────
+
+class _QuestionnaireSetFillPage extends StatefulWidget {
+  final Map<String, dynamic> set;
+  const _QuestionnaireSetFillPage({required this.set});
+
+  @override
+  State<_QuestionnaireSetFillPage> createState() =>
+      _QuestionnaireSetFillPageState();
+}
+
+class _QuestionnaireSetFillPageState
+    extends State<_QuestionnaireSetFillPage> {
+  List<Map<String, dynamic>> _questions = [];
+  Map<String, String> _answers = {};
+  bool _loading = true;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await getIt<ApiClient>()
+          .getSetQuestions(widget.set['id'] as String);
+      final questions =
+          (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final Map<String, String> existing = {};
+      for (final q in questions) {
+        final ea = q['existing_answer'] as String?;
+        if (ea != null && ea.isNotEmpty) {
+          existing[q['id'] as String] = ea;
+        }
+      }
       if (mounted) {
         setState(() {
           _questions = questions;
           _answers = existing;
-          _alreadySubmitted = existing.isNotEmpty;
           _loading = false;
         });
       }
@@ -59,7 +299,6 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
   }
 
   Future<void> _submit() async {
-    // تحقق أن كل الأسئلة لها إجابة
     for (final q in _questions) {
       final id = q['id'] as String;
       if ((_answers[id] ?? '').trim().isEmpty) {
@@ -81,22 +320,18 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
             .toList(),
       );
       if (mounted) {
-        setState(() => _alreadySubmitted = true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم حفظ إجاباتك ✓'),
             backgroundColor: AppTheme.successColor,
           ),
         );
-        context.pop();
+        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor),
         );
       }
     } finally {
@@ -108,36 +343,20 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الاستبيان'),
+        title: Text(widget.set['name'] as String? ?? 'الاستبيان'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios),
-          onPressed: () => context.canPop() ? context.pop() : context.go('/profile'),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _questions.isEmpty
               ? const Center(
-                  child: Text('لا توجد أسئلة حالياً',
+                  child: Text('لا توجد أسئلة في هذا الاستبيان',
                       style: TextStyle(color: AppTheme.textSecondary)))
               : Column(
                   children: [
-                    if (_alreadySubmitted)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        color: AppTheme.successColor.withOpacity(0.1),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.check_circle_outline,
-                                color: AppTheme.successColor, size: 18),
-                            SizedBox(width: 8),
-                            Text('لقد أجبت على الاستبيان مسبقاً — يمكنك تعديل إجاباتك',
-                                style: TextStyle(
-                                    color: AppTheme.successColor, fontSize: 13)),
-                          ],
-                        ),
-                      ),
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
@@ -195,25 +414,10 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                                 ),
                                 const SizedBox(height: 12),
                                 if (type == 'text')
-                                  TextField(
-                                    maxLines: 3,
-                                    controller: TextEditingController(
-                                        text: _answers[id] ?? '')
-                                      ..selection = TextSelection.collapsed(
-                                          offset:
-                                              (_answers[id] ?? '').length),
+                                  _TextAnswer(
+                                    initial: _answers[id] ?? '',
                                     onChanged: (v) =>
                                         setState(() => _answers[id] = v),
-                                    decoration: InputDecoration(
-                                      hintText: 'اكتب إجابتك هنا...',
-                                      filled: true,
-                                      fillColor: AppTheme.backgroundColor,
-                                      border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(10),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                    ),
                                   )
                                 else if (type == 'rating')
                                   Row(
@@ -224,32 +428,9 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                                       (r) => GestureDetector(
                                         onTap: () => setState(
                                             () => _answers[id] = '${r + 1}'),
-                                        child: Container(
-                                          width: 44,
-                                          height: 44,
-                                          decoration: BoxDecoration(
-                                            color: _answers[id] == '${r + 1}'
-                                                ? AppTheme.primaryColor
-                                                : AppTheme.backgroundColor,
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            border: Border.all(
-                                              color:
-                                                  _answers[id] == '${r + 1}'
-                                                      ? AppTheme.primaryColor
-                                                      : Colors.grey.shade300,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: Text('${r + 1}',
-                                                style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color:
-                                                        _answers[id] == '${r + 1}'
-                                                            ? Colors.white
-                                                            : AppTheme
-                                                                .textPrimary)),
-                                          ),
+                                        child: _RatingButton(
+                                          value: r + 1,
+                                          selected: _answers[id] == '${r + 1}',
                                         ),
                                       ),
                                     ),
@@ -260,41 +441,10 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                                         .map((opt) => GestureDetector(
                                               onTap: () => setState(
                                                   () => _answers[id] = opt),
-                                              child: Container(
-                                                width: double.infinity,
-                                                margin: const EdgeInsets.only(
-                                                    bottom: 8),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 14,
-                                                        vertical: 12),
-                                                decoration: BoxDecoration(
-                                                  color: _answers[id] == opt
-                                                      ? AppTheme.primaryColor
-                                                          .withOpacity(0.1)
-                                                      : AppTheme.backgroundColor,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  border: Border.all(
-                                                    color: _answers[id] == opt
-                                                        ? AppTheme.primaryColor
-                                                        : Colors.transparent,
-                                                  ),
-                                                ),
-                                                child: Text(opt,
-                                                    style: TextStyle(
-                                                        color:
-                                                            _answers[id] == opt
-                                                                ? AppTheme
-                                                                    .primaryColor
-                                                                : AppTheme
-                                                                    .textPrimary,
-                                                        fontWeight:
-                                                            _answers[id] == opt
-                                                                ? FontWeight.bold
-                                                                : FontWeight
-                                                                    .normal)),
-                                              ),
+                                              child: _ChoiceOption(
+                                                  opt: opt,
+                                                  selected:
+                                                      _answers[id] == opt),
                                             ))
                                         .toList(),
                                   ),
@@ -317,11 +467,8 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                                   height: 24,
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2, color: Colors.white))
-                              : Text(
-                                  _alreadySubmitted
-                                      ? 'تحديث الإجابات'
-                                      : 'حفظ الإجابات',
-                                  style: const TextStyle(fontSize: 16)),
+                              : const Text('حفظ الإجابات',
+                                  style: TextStyle(fontSize: 16)),
                         ),
                       ),
                     ),
@@ -329,4 +476,85 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                 ),
     );
   }
+}
+
+class _TextAnswer extends StatefulWidget {
+  final String initial;
+  final ValueChanged<String> onChanged;
+  const _TextAnswer({required this.initial, required this.onChanged});
+  @override
+  State<_TextAnswer> createState() => _TextAnswerState();
+}
+
+class _TextAnswerState extends State<_TextAnswer> {
+  late final TextEditingController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initial)
+      ..selection = TextSelection.collapsed(offset: widget.initial.length);
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => TextField(
+    maxLines: 3,
+    controller: _ctrl,
+    onChanged: widget.onChanged,
+    decoration: InputDecoration(
+      hintText: 'اكتب إجابتك هنا...',
+      filled: true,
+      fillColor: AppTheme.backgroundColor,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+    ),
+  );
+}
+
+class _RatingButton extends StatelessWidget {
+  final int value;
+  final bool selected;
+  const _RatingButton({required this.value, required this.selected});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 44, height: 44,
+    decoration: BoxDecoration(
+      color: selected ? AppTheme.primaryColor : AppTheme.backgroundColor,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(
+        color: selected ? AppTheme.primaryColor : Colors.grey.shade300,
+      ),
+    ),
+    child: Center(
+      child: Text('$value',
+          style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: selected ? Colors.white : AppTheme.textPrimary)),
+    ),
+  );
+}
+
+class _ChoiceOption extends StatelessWidget {
+  final String opt;
+  final bool selected;
+  const _ChoiceOption({required this.opt, required this.selected});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: selected ? AppTheme.primaryColor.withOpacity(0.1) : AppTheme.backgroundColor,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(
+        color: selected ? AppTheme.primaryColor : Colors.transparent,
+      ),
+    ),
+    child: Text(opt,
+        style: TextStyle(
+            color: selected ? AppTheme.primaryColor : AppTheme.textPrimary,
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+  );
 }

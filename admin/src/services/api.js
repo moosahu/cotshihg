@@ -40,9 +40,13 @@ const api = {
   togglePublishContent: (id) => request(`/admin/content/${id}/publish`, { method: 'PUT' }),
   deleteContent: (id) => request(`/admin/content/${id}`, { method: 'DELETE' }),
 
-  // Questionnaire
-  getQuestionnaireQuestions: () => request('/admin/questionnaire/questions'),
-  createQuestion: (data) => request('/admin/questionnaire/questions', { method: 'POST', body: JSON.stringify(data) }),
+  // Questionnaire sets
+  getQuestionnaireSets: () => request('/admin/questionnaire/sets'),
+  createQuestionnaireSet: (data) => request('/admin/questionnaire/sets', { method: 'POST', body: JSON.stringify(data) }),
+  updateQuestionnaireSet: (id, data) => request(`/admin/questionnaire/sets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteQuestionnaireSet: (id) => request(`/admin/questionnaire/sets/${id}`, { method: 'DELETE' }),
+  getSetQuestions: (setId) => request(`/admin/questionnaire/sets/${setId}/questions`),
+  createSetQuestion: (setId, data) => request(`/admin/questionnaire/sets/${setId}/questions`, { method: 'POST', body: JSON.stringify(data) }),
   updateQuestion: (id, data) => request(`/admin/questionnaire/questions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteQuestion: (id) => request(`/admin/questionnaire/questions/${id}`, { method: 'DELETE' }),
 };

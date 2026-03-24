@@ -220,10 +220,18 @@ class ApiClient {
     return res.data;
   }
 
-  // Questionnaire (admin-managed, client fills once)
-  Future<Map<String, dynamic>> getQuestionnaireQuestions({String? specialization}) async {
-    final res = await _dio.get('/questionnaires/questions',
-        queryParameters: specialization != null ? {'specialization': specialization} : null);
+  // Questionnaire sets (قاعة الاستبيانات)
+  Future<Map<String, dynamic>> getQuestionnaireSets({String? specialization, String? timing}) async {
+    final params = <String, dynamic>{};
+    if (specialization != null) params['specialization'] = specialization;
+    if (timing != null) params['timing'] = timing;
+    final res = await _dio.get('/questionnaires/sets',
+        queryParameters: params.isNotEmpty ? params : null);
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getSetQuestions(String setId) async {
+    final res = await _dio.get('/questionnaires/sets/$setId/questions');
     return res.data;
   }
 
@@ -239,6 +247,13 @@ class ApiClient {
 
   Future<Map<String, dynamic>> getClientQuestionnaire(String clientId) async {
     final res = await _dio.get('/questionnaires/client/$clientId');
+    return res.data;
+  }
+
+  // Legacy
+  Future<Map<String, dynamic>> getQuestionnaireQuestions({String? specialization}) async {
+    final res = await _dio.get('/questionnaires/questions',
+        queryParameters: specialization != null ? {'specialization': specialization} : null);
     return res.data;
   }
 }

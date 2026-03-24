@@ -221,16 +221,70 @@ exports.setDefault = async (req, res) => {
 
 // ── Admin-questionnaire: client fills once, coach reads ───────────────────────
 
+// GET /api/v1/questionnaire/sets?specialization=X&timing=before
+// يرجع قائمة الاستبيانات المتاحة مع عدد الأسئلة وعدد إجابات العميل
+exports.getActiveSets = async (req, res) => {
+  try {
+    const { specialization, timing } = req.query;
+    let whereClause = `s.is_active = true`;
+    const params = [req.user.id];
+    let paramIdx = 2;
+
+    if (timing) {
+      whereClause += ` AND s.timing = $${paramIdx++}`;
+      params.push(timing);
+    }
+    if (specialization) {
+      whereClause += ` AND (s.specialization IS NULL OR s.specialization = $${paramIdx++})`;
+      params.push(specialization);
+    }
+
+    const result = await pool.query(
+      `SELECT s.*,
+              COUNT(DISTINCT q.id) FILTER (WHERE q.is_active = true) AS question_count,
+              COUNT(DISTINCT r.id) AS answered_count
+       FROM questionnaire_sets s
+       LEFT JOIN questionnaire_questions q ON q.set_id = s.id AND q.is_active = true
+       LEFT JOIN questionnaire_responses r ON r.question_id = q.id AND r.client_id = $1
+       WHERE ${whereClause}
+       GROUP BY s.id
+       ORDER BY s.timing ASC, s.created_at ASC`,
+      params
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /api/v1/questionnaire/sets/:setId/questions — questions + client's existing answers
+exports.getSetQuestionsForClient = async (req, res) => {
+  try {
+    const questions = await pool.query(
+      `SELECT q.*, r.answer as existing_answer
+       FROM questionnaire_questions q
+       LEFT JOIN questionnaire_responses r ON r.question_id = q.id AND r.client_id = $1
+       WHERE q.set_id = $2 AND q.is_active = true
+       ORDER BY q.order_index ASC`,
+      [req.user.id, req.params.setId]
+    );
+    successResponse(res, questions.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
 // GET /api/v1/questionnaire/questions?specialization=X
-// يرجع الأسئلة العامة (specialization IS NULL) + أسئلة التخصص المحدد
+// (legacy — kept for backward compat)
 exports.getActiveQuestions = async (req, res) => {
   try {
     const { specialization } = req.query;
     const result = specialization
       ? await pool.query(
-          `SELECT * FROM questionnaire_questions
-           WHERE is_active=true AND (specialization IS NULL OR specialization=$1)
-           ORDER BY order_index ASC`,
+          `SELECT q.* FROM questionnaire_questions q
+           JOIN questionnaire_sets s ON s.id = q.set_id
+           WHERE q.is_active=true AND (s.specialization IS NULL OR s.specialization=$1)
+           ORDER BY q.order_index ASC`,
           [specialization]
         )
       : await pool.query(
@@ -293,10 +347,12 @@ exports.getClientResponse = async (req, res) => {
     if (!access.rows[0]) return errorResponse(res, 'Access denied', 403);
 
     const result = await pool.query(
-      `SELECT r.*, q.question_text, q.question_type, q.options
+      `SELECT r.*, q.question_text, q.question_type, q.options,
+              s.name as set_name, s.timing as set_timing
        FROM questionnaire_responses r
        JOIN questionnaire_questions q ON q.id = r.question_id
-       WHERE r.client_id=$1 ORDER BY q.order_index ASC`,
+       LEFT JOIN questionnaire_sets s ON s.id = q.set_id
+       WHERE r.client_id=$1 ORDER BY s.timing ASC, q.order_index ASC`,
       [req.params.clientId]
     );
 
