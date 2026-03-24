@@ -193,9 +193,13 @@ async function runPatches() {
       )
     `);
 
-    // Seed: default questionnaire sets (only if table is empty)
+    // Seed: default questionnaire sets
+    // Run if table is empty OR if no questions have set_id yet (partial/failed seed)
     const sCount = await pool.query(`SELECT COUNT(*) FROM questionnaire_sets`);
-    if (parseInt(sCount.rows[0].count) === 0) {
+    const qCount = await pool.query(`SELECT COUNT(*) FROM questionnaire_questions WHERE set_id IS NOT NULL`);
+    if (parseInt(sCount.rows[0].count) === 0 || parseInt(qCount.rows[0].count) === 0) {
+      // Clear any partial seed data before reseeding
+      await pool.query(`DELETE FROM questionnaire_sets`);
       const sets = [
         // ── قبل الجلسة ────────────────────────────────────────────
         {
