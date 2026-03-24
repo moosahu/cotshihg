@@ -143,7 +143,7 @@ export default function Therapists() {
         : <span style={{ color: '#ccc', fontSize: 13 }}>لا يوجد</span>
     },
     {
-      key: 'session_price_video', label: 'الأسعار (ر.س)',
+      key: 'session_price_video', label: <span>الأسعار <i className="icon-saudi_riyal_new" /></span>,
       render: (v, row) => (
         <div style={{ fontSize: 12, lineHeight: 1.8 }}>
           <div>📹 فيديو: <b>{row.session_price_video ?? '—'}</b> {row.session_price_video ? <i className="icon-saudi_riyal_new" /> : ''}</div>

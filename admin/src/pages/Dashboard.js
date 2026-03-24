@@ -41,7 +41,7 @@ export default function Dashboard() {
         <StatCard title="إجمالي المستخدمين" value={loading ? '...' : (stats?.totalUsers ?? 0).toLocaleString()} change={null} icon="👥" color="#1A6B72" />
         <StatCard title="الكوتشيز" value={loading ? '...' : (stats?.totalTherapists ?? 0).toLocaleString()} change={null} icon="🧑‍💼" color="#F5A623" />
         <StatCard title="جلسات اليوم" value={loading ? '...' : (stats?.todaySessions ?? 0).toLocaleString()} change={null} icon="📅" color="#FF6B35" />
-        <StatCard title="الإيرادات (ر.س)" value={loading ? '...' : (stats?.totalRevenue ?? 0).toLocaleString()} change={null} icon="💰" color="#2ECC71" />
+        <StatCard title={<span>الإيرادات <i className="icon-saudi_riyal_new" /></span>} value={loading ? '...' : (stats?.totalRevenue ?? 0).toLocaleString()} change={null} icon="💰" color="#2ECC71" />
       </div>
 
       {/* Charts row */}

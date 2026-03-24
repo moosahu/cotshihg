@@ -18,7 +18,10 @@ class RiyalText extends StatelessWidget {
           TextSpan(text: '$amount '),
           TextSpan(
             text: '\uE900',
-            style: const TextStyle(fontFamily: 'SaudiRiyal'),
+            style: TextStyle(
+              fontFamily: 'SaudiRiyal',
+              fontSize: (base.fontSize ?? 14) * 1.4,
+            ),
           ),
         ],
       ),

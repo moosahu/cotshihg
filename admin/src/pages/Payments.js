@@ -71,7 +71,7 @@ export default function Payments() {
       key: 'amount', label: 'المبلغ',
       render: (v, row) => (
         <span style={{ fontWeight: 700, color: '#1A6B72' }}>
-          {parseFloat(v || 0).toLocaleString()} {row.currency || 'SAR'}
+          {parseFloat(v || 0).toLocaleString()} <i className="icon-saudi_riyal_new" />
         </span>
       )
     },
@@ -130,7 +130,7 @@ export default function Payments() {
         <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>سجل جميع المعاملات المالية عبر Stripe</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        <StatCard title="إجمالي الإيرادات" value={totalRevenue.toLocaleString() + ' ر.س'} change={null} icon="💰" color="#1A6B72" />
+        <StatCard title="إجمالي الإيرادات" value={<span>{totalRevenue.toLocaleString()} <i className="icon-saudi_riyal_new" /></span>} change={null} icon="💰" color="#1A6B72" />
         <StatCard title="المعاملات الناجحة" value={String(paid.length)} change={null} icon="✅" color="#2ECC71" />
         <StatCard title="معلقة" value={String(payments.filter(p => p.status === 'pending').length)} change={null} icon="⏳" color="#F59E0B" />
         <StatCard title="فاشلة" value={String(payments.filter(p => p.status === 'failed').length)} change={null} icon="❌" color="#E53935" />
