@@ -146,9 +146,9 @@ export default function Therapists() {
       key: 'session_price_video', label: 'الأسعار (ر.س)',
       render: (v, row) => (
         <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-          <div>📹 فيديو: <b>{row.session_price_video ?? '—'}</b></div>
-          <div>🎙 صوتي: <b>{row.session_price_voice ?? '—'}</b></div>
-          <div>💬 نصي: <b>{row.session_price_chat ?? '—'}</b></div>
+          <div>📹 فيديو: <b>{row.session_price_video ?? '—'}</b> {row.session_price_video ? <i className="icon-saudi_riyal_new" /> : ''}</div>
+          <div>🎙 صوتي: <b>{row.session_price_voice ?? '—'}</b> {row.session_price_voice ? <i className="icon-saudi_riyal_new" /> : ''}</div>
+          <div>💬 نصي: <b>{row.session_price_chat ?? '—'}</b> {row.session_price_chat ? <i className="icon-saudi_riyal_new" /> : ''}</div>
         </div>
       )
     },
@@ -306,7 +306,7 @@ export default function Therapists() {
                     style={{ flex: 1, padding: '8px 12px', border: '1px solid #E0E0E0', borderRadius: 8, fontSize: 14, textAlign: 'right' }}
                     placeholder="0"
                   />
-                  <i className="icon-saudi_riyal_new" style={{ color: '#8A94A6', fontSize: 18 }} />
+                  <i className="icon-saudi_riyal_new" style={{ color: '#8A94A6', fontSize: 22 }} />
                 </div>
               </div>
             ))}
