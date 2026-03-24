@@ -16,7 +16,8 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/therapists/presentation/pages/therapists_list_page.dart';
 import '../../features/therapists/presentation/pages/therapist_detail_page.dart';
 import '../../features/booking/presentation/pages/booking_page.dart';
-import '../../features/booking/presentation/pages/instant_booking_page.dart';
+// TODO: جلسة فورية — معطلة مؤقتاً، أعد الاستيراد عند تفعيل الميزة
+// import '../../features/booking/presentation/pages/instant_booking_page.dart';
 import '../../features/session/presentation/pages/chat_session_page.dart';
 import '../../features/session/presentation/pages/video_call_page.dart';
 import '../../features/session/presentation/pages/rating_page.dart';
@@ -153,7 +154,8 @@ class AppRouter {
           );
         },
       ),
-      GoRoute(path: '/instant-booking', builder: (_, __) => const InstantBookingPage()),
+      // TODO: جلسة فورية — معطلة مؤقتاً، أعد تفعيل هذا المسار عند الحاجة
+      // GoRoute(path: '/instant-booking', builder: (_, __) => const InstantBookingPage()),
       GoRoute(path: '/my-bookings', builder: (_, __) => const MyBookingsPage()),
       GoRoute(path: '/my-payments', builder: (_, __) => const MyPaymentsPage()),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyPage()),

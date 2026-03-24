@@ -14,7 +14,8 @@ class CoachDashboardPage extends StatefulWidget {
 }
 
 class _CoachDashboardPageState extends State<CoachDashboardPage> {
-  bool _isInstantAvailable = false;
+  // TODO: جلسة فورية — معطلة مؤقتاً
+  // bool _isInstantAvailable = false;
   String _userName = '';
 
   @override
@@ -35,8 +36,8 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
       final name = (user['name'] as String?) ?? '';
       if (name.isNotEmpty) {
         if (mounted) setState(() => _userName = name);
-        // Still load instant availability from API
-        _loadInstantStatus();
+        // TODO: جلسة فورية — معطلة مؤقتاً
+        // _loadInstantStatus();
         return;
       }
     }
@@ -47,32 +48,32 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
       await getIt<StorageService>().saveUser(jsonEncode(user));
       if (mounted) setState(() => _userName = name);
     } catch (_) {}
-    _loadInstantStatus();
+    // TODO: جلسة فورية — معطلة مؤقتاً، أعد تفعيل السطر أدناه عند الحاجة
+    // _loadInstantStatus();
   }
 
-  Future<void> _loadInstantStatus() async {
-    try {
-      final res = await getIt<ApiClient>().getProfile();
-      final user = res['data'] as Map<String, dynamic>? ?? {};
-      // isAvailableInstant stored in therapist profile
-      final isAvail = user['is_available_instant'] as bool? ?? false;
-      if (mounted) setState(() => _isInstantAvailable = isAvail);
-    } catch (_) {}
-  }
-
-  Future<void> _toggleInstant(bool value) async {
-    setState(() => _isInstantAvailable = value);
-    try {
-      await getIt<ApiClient>().toggleInstantAvailability(value);
-    } catch (e) {
-      // revert on error
-      if (mounted) {
-        setState(() => _isInstantAvailable = !value);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
-      }
-    }
-  }
+  // TODO: جلسة فورية — معطلة مؤقتاً، أعد تفعيل الدوال أدناه عند الحاجة
+  // Future<void> _loadInstantStatus() async {
+  //   try {
+  //     final res = await getIt<ApiClient>().getProfile();
+  //     final user = res['data'] as Map<String, dynamic>? ?? {};
+  //     final isAvail = user['is_available_instant'] as bool? ?? false;
+  //     if (mounted) setState(() => _isInstantAvailable = isAvail);
+  //   } catch (_) {}
+  // }
+  //
+  // Future<void> _toggleInstant(bool value) async {
+  //   setState(() => _isInstantAvailable = value);
+  //   try {
+  //     await getIt<ApiClient>().toggleInstantAvailability(value);
+  //   } catch (e) {
+  //     if (mounted) {
+  //       setState(() => _isInstantAvailable = !value);
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
+  //     }
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -88,25 +89,27 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('مرحباً، ${_userName.isNotEmpty ? _userName : 'كوتش'}', style: const TextStyle(fontSize: 17)),
-                Text(
-                  _isInstantAvailable ? 'متاح للجلسات الفورية' : 'غير متاح حالياً',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _isInstantAvailable ? AppTheme.successColor : AppTheme.textSecondary,
-                  ),
-                ),
+                // TODO: جلسة فورية — معطلة مؤقتاً
+                // Text(
+                //   _isInstantAvailable ? 'متاح للجلسات الفورية' : 'غير متاح حالياً',
+                //   style: TextStyle(
+                //     fontSize: 12,
+                //     color: _isInstantAvailable ? AppTheme.successColor : AppTheme.textSecondary,
+                //   ),
+                // ),
               ],
             ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(left: 16),
-                child: Switch(
-                  value: _isInstantAvailable,
-                  onChanged: _toggleInstant,
-                  activeColor: AppTheme.successColor,
-                ),
-              ),
-            ],
+            // TODO: جلسة فورية — معطلة مؤقتاً، أعد تفعيل الـ Switch أدناه عند الحاجة
+            // actions: [
+            //   Padding(
+            //     padding: const EdgeInsets.only(left: 16),
+            //     child: Switch(
+            //       value: _isInstantAvailable,
+            //       onChanged: _toggleInstant,
+            //       activeColor: AppTheme.successColor,
+            //     ),
+            //   ),
+            // ],
           ),
           SliverPadding(
             padding: const EdgeInsets.all(16),

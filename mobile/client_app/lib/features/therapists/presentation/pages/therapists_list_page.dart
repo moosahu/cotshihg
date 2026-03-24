@@ -15,7 +15,8 @@ class TherapistsListPage extends StatefulWidget {
 
 class _TherapistsListPageState extends State<TherapistsListPage> {
   String _selectedSpecialization = 'الكل';
-  bool _instantOnly = false;
+  // TODO: جلسة فورية — معطلة مؤقتاً
+  // bool _instantOnly = false;
   final _searchController = TextEditingController();
 
   @override
@@ -34,7 +35,8 @@ class _TherapistsListPageState extends State<TherapistsListPage> {
     final query = _searchController.text.trim().toLowerCase();
     return all.where((t) {
       final map = t as Map<String, dynamic>;
-      if (_instantOnly && map['is_available_instant'] != true) return false;
+      // TODO: جلسة فورية — معطلة مؤقتاً
+      // if (_instantOnly && map['is_available_instant'] != true) return false;
       if (_selectedSpecialization != 'الكل') {
         final specs = (map['specializations'] as List?) ?? [];
         if (!specs.any((s) => s.toString() == _selectedSpecialization)) return false;
@@ -94,21 +96,22 @@ class _TherapistsListPageState extends State<TherapistsListPage> {
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _specializations.length + 1,
+                // TODO: جلسة فورية — أعد رقم itemCount إلى _specializations.length + 1 عند التفعيل
+                itemCount: _specializations.length,
                 itemBuilder: (_, i) {
-                  if (i == _specializations.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: FilterChip(
-                        label: const Text('فوري فقط'),
-                        selected: _instantOnly,
-                        onSelected: (v) => setState(() => _instantOnly = v),
-                        selectedColor:
-                            AppTheme.accentColor.withOpacity(0.2),
-                        checkmarkColor: AppTheme.accentColor,
-                      ),
-                    );
-                  }
+                  // TODO: جلسة فورية — معطلة مؤقتاً، أعد تفعيل الكود أدناه عند الحاجة
+                  // if (i == _specializations.length) {
+                  //   return Padding(
+                  //     padding: const EdgeInsets.only(left: 8),
+                  //     child: FilterChip(
+                  //       label: const Text('فوري فقط'),
+                  //       selected: _instantOnly,
+                  //       onSelected: (v) => setState(() => _instantOnly = v),
+                  //       selectedColor: AppTheme.accentColor.withOpacity(0.2),
+                  //       checkmarkColor: AppTheme.accentColor,
+                  //     ),
+                  //   );
+                  // }
                   final spec = _specializations[i];
                   return Padding(
                     padding: const EdgeInsets.only(left: 8),
@@ -229,25 +232,19 @@ class _TherapistCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (therapist['is_available_instant'] == true)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  AppTheme.successColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'متاح الآن',
-                              style: TextStyle(
-                                color: AppTheme.successColor,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
+                        // TODO: جلسة فورية — معطلة مؤقتاً، أعد تفعيل شارة "متاح الآن" أدناه
+                        // if (therapist['is_available_instant'] == true)
+                        //   Container(
+                        //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        //     decoration: BoxDecoration(
+                        //       color: AppTheme.successColor.withOpacity(0.15),
+                        //       borderRadius: BorderRadius.circular(8),
+                        //     ),
+                        //     child: const Text(
+                        //       'متاح الآن',
+                        //       style: TextStyle(color: AppTheme.successColor, fontSize: 11),
+                        //     ),
+                        //   ),
                       ],
                     ),
                     const SizedBox(height: 4),

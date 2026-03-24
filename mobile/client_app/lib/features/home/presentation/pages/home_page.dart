@@ -175,7 +175,8 @@ class _QuickAccessSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       {'icon': Icons.people, 'label': 'الكوتشيز', 'route': '/therapists', 'color': const Color(0xFF5C6BC0)},
-      {'icon': Icons.flash_on, 'label': 'جلسة فورية', 'route': '/instant-booking', 'color': const Color(0xFFFF7043)},
+      // TODO: جلسة فورية — معطلة مؤقتاً، يمكن تفعيلها لاحقاً
+      // {'icon': Icons.flash_on, 'label': 'جلسة فورية', 'route': '/instant-booking', 'color': const Color(0xFFFF7043)},
       {'icon': Icons.library_books, 'label': 'المحتوى', 'route': '/content', 'color': const Color(0xFF26A69A)},
       {'icon': Icons.mood, 'label': 'تتبع المزاج', 'route': '/mood', 'color': const Color(0xFFAB47BC)},
     ];
@@ -187,11 +188,12 @@ class _QuickAccessSection extends StatelessWidget {
       children: items.map((item) => GestureDetector(
         onTap: () {
           final route = item['route'] as String;
-          if (route.startsWith('/instant')) {
-            context.push(route);
-          } else {
-            context.go(route);
-          }
+          // TODO: جلسة فورية — استثناء مؤقت، أعد تفعيله عند إعادة الميزة
+          // if (route.startsWith('/instant')) {
+          //   context.push(route);
+          // } else {
+          context.go(route);
+          // }
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
