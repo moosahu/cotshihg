@@ -1,13 +1,13 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: inherit; }
 
 body {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Cairo', 'saudi_riyal', sans-serif;
   direction: rtl;
   background-color: #F7F9FC;
   color: #1A2332;
 }
 
-/* Saudi Riyal symbol — uses SaudiRiyal font for U+E900 */
+/* Saudi Riyal symbol (U+E900) — fallback to saudi_riyal font when Cairo lacks the glyph */
 .icon-saudi_riyal_new,
 .icon-saudi_riyal {
   font-style: normal;
