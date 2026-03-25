@@ -138,6 +138,7 @@ class _ClientQuestionnairePageState extends State<ClientQuestionnairePage> {
             const SizedBox(height: 10),
             ..._assignments.map((a) {
               final isDone = a['status'] == 'completed';
+              final qaPairs = (a['qa_pairs'] as List?)?.cast<Map<String, dynamic>>();
               final answers = a['answers'] as Map<String, dynamic>? ?? {};
               return ExpansionTile(
                 leading: Icon(
@@ -150,12 +151,37 @@ class _ClientQuestionnairePageState extends State<ClientQuestionnairePage> {
                     style: TextStyle(
                         fontSize: 12,
                         color: isDone ? const Color(0xFF2ECC71) : AppTheme.textSecondary)),
-                children: isDone && answers.isNotEmpty
-                    ? answers.entries.map((e) => ListTile(
-                          dense: true,
-                          title: Text(e.value.toString(),
-                              style: const TextStyle(fontSize: 13)),
-                        )).toList()
+                children: isDone
+                    ? (qaPairs != null && qaPairs.isNotEmpty
+                        ? qaPairs.map((qa) => Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(qa['question'] as String? ?? '',
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textSecondary)),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.backgroundColor,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(qa['answer'] as String? ?? '—',
+                                        style: const TextStyle(fontSize: 13)),
+                                  ),
+                                ],
+                              ),
+                            )).toList()
+                        : answers.entries.map((e) => ListTile(
+                              dense: true,
+                              title: Text(e.value.toString(),
+                                  style: const TextStyle(fontSize: 13)),
+                            )).toList())
                     : [const ListTile(
                         dense: true,
                         title: Text('لم يتم الإجابة بعد',

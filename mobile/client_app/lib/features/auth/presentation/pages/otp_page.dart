@@ -287,10 +287,21 @@ class _OtpPageState extends State<OtpPage> with WidgetsBindingObserver {
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(
-                'أرسلنا رمزاً مكوناً من 6 أرقام إلى\n${widget.phone}',
+              const Text(
+                'أرسلنا رمزاً مكوناً من 6 أرقام إلى',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.textSecondary, height: 1.5, fontSize: 13),
+                style: TextStyle(color: AppTheme.textSecondary, height: 1.5, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.phone,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.ltr,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 40),
               // OTP boxes — LTR so digits flow left to right
@@ -306,12 +317,14 @@ class _OtpPageState extends State<OtpPage> with WidgetsBindingObserver {
                       focusNode: _focusNodes[i],
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
+                      textAlignVertical: TextAlignVertical.center,
                       textDirection: TextDirection.ltr,
                       enabled: !_isVerifying,
                       // No maxLength — allows paste detection in onChanged
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
                         counterText: '',
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -326,8 +339,8 @@ class _OtpPageState extends State<OtpPage> with WidgetsBindingObserver {
                         fillColor: AppTheme.primaryColor.withOpacity(0.06),
                       ),
                       style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary,
                       ),
                       onChanged: (v) => _onChanged(v, i),

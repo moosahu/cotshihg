@@ -363,13 +363,29 @@ exports.getClientResponse = async (req, res) => {
     // Also fetch set_assignment answers this coach sent to this client
     const assignments = await pool.query(
       `SELECT sa.id, sa.status, sa.answers, sa.assigned_at, sa.completed_at,
-              qs.name as set_name, qs.timing
+              sa.set_id, qs.name as set_name, qs.timing
        FROM set_assignments sa
        JOIN questionnaire_sets qs ON qs.id = sa.set_id
        WHERE sa.client_id=$1 AND sa.coach_id=$2
        ORDER BY sa.assigned_at DESC`,
       [req.params.clientId, req.user.id]
     );
+
+    // For completed assignments, enrich answers with question text
+    for (const assignment of assignments.rows) {
+      if (assignment.status === 'completed' && assignment.answers && Object.keys(assignment.answers).length > 0) {
+        const questions = await pool.query(
+          `SELECT id, question_text, question_type FROM questionnaire_questions
+           WHERE set_id=$1 AND is_active=true ORDER BY order_index ASC`,
+          [assignment.set_id]
+        );
+        assignment.qa_pairs = questions.rows.map(q => ({
+          question: q.question_text,
+          type: q.question_type,
+          answer: assignment.answers[q.id] || '—',
+        }));
+      }
+    }
 
     successResponse(res, {
       client: client.rows[0],
