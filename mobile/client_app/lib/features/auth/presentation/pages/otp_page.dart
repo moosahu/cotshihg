@@ -290,7 +290,7 @@ class _OtpPageState extends State<OtpPage> with WidgetsBindingObserver {
               Text(
                 'أرسلنا رمزاً مكوناً من 6 أرقام إلى\n${widget.phone}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.textSecondary, height: 1.5),
+                style: const TextStyle(color: AppTheme.textSecondary, height: 1.5, fontSize: 13),
               ),
               const SizedBox(height: 40),
               // OTP boxes — LTR so digits flow left to right

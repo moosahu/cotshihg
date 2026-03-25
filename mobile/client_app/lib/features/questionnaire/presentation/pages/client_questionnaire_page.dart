@@ -20,6 +20,7 @@ class ClientQuestionnairePage extends StatefulWidget {
 
 class _ClientQuestionnairePageState extends State<ClientQuestionnairePage> {
   List<Map<String, dynamic>> _responses = [];
+  List<Map<String, dynamic>> _assignments = [];
   bool _loading = true;
 
   static const Map<String, String> _timingLabels = {
@@ -47,11 +48,13 @@ class _ClientQuestionnairePageState extends State<ClientQuestionnairePage> {
       final res =
           await getIt<ApiClient>().getClientQuestionnaire(widget.clientId);
       final responses = (res['data']?['responses'] as List?)
-              ?.cast<Map<String, dynamic>>() ??
-          [];
+              ?.cast<Map<String, dynamic>>() ?? [];
+      final assignments = (res['data']?['assignments'] as List?)
+              ?.cast<Map<String, dynamic>>() ?? [];
       if (mounted) {
         setState(() {
           _responses = responses;
+          _assignments = assignments;
           _loading = false;
         });
       }
@@ -75,7 +78,7 @@ class _ClientQuestionnairePageState extends State<ClientQuestionnairePage> {
       );
     }
 
-    if (_responses.isEmpty) {
+    if (_responses.isEmpty && _assignments.isEmpty) {
       return Scaffold(
         appBar: AppBar(
           title: Text('استبيانات ${widget.clientName}'),
@@ -127,7 +130,44 @@ class _ClientQuestionnairePageState extends State<ClientQuestionnairePage> {
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: sortedGroups.expand((setName) {
+        children: [
+          // ── استبيانات أرسلها الكوتش ──
+          if (_assignments.isNotEmpty) ...[
+            const Text('استبيانات أرسلتها للعميل',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const SizedBox(height: 10),
+            ..._assignments.map((a) {
+              final isDone = a['status'] == 'completed';
+              final answers = a['answers'] as Map<String, dynamic>? ?? {};
+              return ExpansionTile(
+                leading: Icon(
+                  isDone ? Icons.check_circle : Icons.schedule,
+                  color: isDone ? const Color(0xFF2ECC71) : AppTheme.textSecondary,
+                ),
+                title: Text(a['set_name'] as String? ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: Text(isDone ? 'تم الإجابة ✓' : 'في انتظار الإجابة',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: isDone ? const Color(0xFF2ECC71) : AppTheme.textSecondary)),
+                children: isDone && answers.isNotEmpty
+                    ? answers.entries.map((e) => ListTile(
+                          dense: true,
+                          title: Text(e.value.toString(),
+                              style: const TextStyle(fontSize: 13)),
+                        )).toList()
+                    : [const ListTile(
+                        dense: true,
+                        title: Text('لم يتم الإجابة بعد',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)))],
+              );
+            }),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+          ],
+        ] +
+        sortedGroups.expand((setName) {
           final items = grouped[setName]!;
           final timing = setTimings[setName] ?? 'general';
           final timingLabel = _timingLabels[timing] ?? timing;
@@ -166,6 +206,9 @@ class _ClientQuestionnairePageState extends State<ClientQuestionnairePage> {
     );
   }
 }
+
+// ignore: unused_element
+// (kept for future use)
 
 class _ResponseCard extends StatelessWidget {
   final Map<String, dynamic> response;

@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/di/injection.dart';
 import '../../../../../core/network/api_client.dart';
 
 class QuestionnaireListPage extends StatefulWidget {
   const QuestionnaireListPage({super.key});
-
   @override
   State<QuestionnaireListPage> createState() => _QuestionnaireListPageState();
 }
 
 class _QuestionnaireListPageState extends State<QuestionnaireListPage> {
-  List<dynamic> _templates = [];
+  List<Map<String, dynamic>> _sets = [];
   bool _loading = true;
-  String? _error;
+
+  static const Map<String, String> _timingLabels = {
+    'before': 'قبل الجلسة',
+    'during': 'أثناء الجلسة',
+    'after': 'بعد الجلسة',
+    'general': 'عام',
+  };
+  static const Map<String, Color> _timingColors = {
+    'before': AppTheme.primaryColor,
+    'during': Color(0xFFF5A623),
+    'after': Color(0xFF2ECC71),
+    'general': AppTheme.textSecondary,
+  };
 
   @override
   void initState() {
@@ -23,298 +33,131 @@ class _QuestionnaireListPageState extends State<QuestionnaireListPage> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
     try {
-      final res = await getIt<ApiClient>().getMyQuestionnaires();
-      setState(() {
-        _templates = (res['data'] as List?) ?? [];
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      final res = await getIt<ApiClient>().getQuestionnaireSets();
+      if (mounted) {
+        setState(() {
+          _sets = (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _delete(String id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('حذف الاستبيان'),
-        content: const Text('هل أنت متأكد من حذف هذا الاستبيان؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
+  Future<void> _sendToClient(BuildContext context, Map<String, dynamic> set) async {
+    // Show dialog to enter booking ID or navigate to bookings
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('اذهب لصفحة الحجوزات واختر "استبيان" من الحجز المراد')),
     );
-    if (confirmed != true) return;
-    try {
-      await getIt<ApiClient>().deleteQuestionnaire(id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حذف الاستبيان')),
-        );
-      }
-      _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _setDefault(String id) async {
-    try {
-      await getIt<ApiClient>().setDefaultQuestionnaire(id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم تعيين الاستبيان كافتراضي')),
-        );
-      }
-      _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Text('استبياناتي'),
-        ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          onPressed: () async {
-            await context.push('/coach/questionnaires/new');
-            _load();
-          },
-          child: const Icon(Icons.add),
-        ),
-        body: _buildBody(),
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('قاعة الاستبيانات'),
       ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: AppTheme.errorColor.withOpacity(0.6)),
-            const SizedBox(height: 16),
-            Text('حدث خطأ', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15)),
-            const SizedBox(height: 8),
-            ElevatedButton(onPressed: _load, child: const Text('إعادة المحاولة')),
-          ],
-        ),
-      );
-    }
-
-    if (_templates.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.assignment_outlined, size: 80, color: AppTheme.textSecondary.withOpacity(0.35)),
-            const SizedBox(height: 16),
-            const Text(
-              'لا توجد استبيانات بعد\nاضغط + لإنشاء استبيان',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 15, height: 1.6),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _templates.length,
-        itemBuilder: (_, i) {
-          final t = _templates[i] as Map<String, dynamic>;
-          final id = t['id']?.toString() ?? '';
-          final title = t['title'] as String? ?? 'بدون عنوان';
-          final questionsCount = (t['questions'] as List?)?.length ?? t['questions_count'] ?? 0;
-          final isDefault = t['is_default'] == true;
-
-          return Dismissible(
-            key: Key(id),
-            direction: DismissDirection.startToEnd,
-            background: Container(
-              decoration: BoxDecoration(
-                color: AppTheme.errorColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
-            ),
-            confirmDismiss: (_) async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('حذف الاستبيان'),
-                  content: const Text('هل أنت متأكد من حذف هذا الاستبيان؟'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('إلغاء'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-                      child: const Text('حذف'),
-                    ),
-                  ],
-                ),
-              );
-              return confirmed ?? false;
-            },
-            onDismissed: (_) {
-                // Remove item locally immediately to avoid black screen
-                setState(() => _templates.removeAt(i));
-                // Call API in background
-                getIt<ApiClient>().deleteQuestionnaire(id).then((_) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم حذف الاستبيان')),
-                    );
-                  }
-                }).catchError((e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor),
-                    );
-                    // Reload to restore list if deletion failed
-                    _load();
-                  }
-                });
-              },
-            child: GestureDetector(
-              onLongPress: () => _delete(id),
-              child: Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () async {
-                    await context.push(
-                      '/coach/questionnaires/new',
-                      extra: {'templateId': id, 'existing': t},
-                    );
-                    _load();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: _sets.isEmpty
+                  ? const Center(
+                      child: Text('لا توجد استبيانات بعد',
+                          style: TextStyle(color: AppTheme.textSecondary)),
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
                       children: [
                         Container(
-                          width: 48,
-                          height: 48,
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            color: AppTheme.primaryColor.withOpacity(0.07),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.assignment_outlined, color: AppTheme.primaryColor),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: const Row(
                             children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      title,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: AppTheme.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                  if (isDefault)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.secondaryColor.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: AppTheme.secondaryColor.withOpacity(0.4)),
-                                      ),
-                                      child: const Text(
-                                        'افتراضي',
-                                        style: TextStyle(
-                                          color: AppTheme.secondaryColor,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$questionsCount سؤال',
-                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                              Icon(Icons.info_outline, color: AppTheme.primaryColor, size: 18),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'لإرسال استبيان لعميل، اذهب لصفحة الحجوزات واضغط زر "استبيان" على الحجز',
+                                  style: TextStyle(fontSize: 12, color: AppTheme.primaryColor),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: Icon(
-                            isDefault ? Icons.star : Icons.star_border,
-                            color: isDefault ? AppTheme.secondaryColor : AppTheme.textSecondary,
-                          ),
-                          tooltip: isDefault ? 'افتراضي بالفعل' : 'تعيين كافتراضي',
-                          onPressed: isDefault ? null : () => _setDefault(id),
-                        ),
+                        ...['before', 'during', 'after', 'general'].expand((timing) {
+                          final group = _sets
+                              .where((s) => (s['timing'] ?? 'general') == timing)
+                              .toList();
+                          if (group.isEmpty) return <Widget>[];
+                          final color = _timingColors[timing]!;
+                          return [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8, top: 4),
+                              child: Row(
+                                children: [
+                                  Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                                  const SizedBox(width: 8),
+                                  Text(_timingLabels[timing]!,
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color)),
+                                ],
+                              ),
+                            ),
+                            ...group.map((set) => Card(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 44, height: 44,
+                                          decoration: BoxDecoration(
+                                              color: color.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(10)),
+                                          child: Icon(Icons.assignment_outlined, color: color),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(set['name'] as String? ?? '',
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                              if ((set['description'] as String?)?.isNotEmpty == true)
+                                                Text(set['description'] as String,
+                                                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                                                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                                              Text('${set['question_count'] ?? 0} سؤال',
+                                                  style: TextStyle(fontSize: 12, color: color)),
+                                            ],
+                                          ),
+                                        ),
+                                        if (set['specialization'] != null)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                                color: color.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(10)),
+                                            child: Text(set['specialization'] as String,
+                                                style: TextStyle(fontSize: 11, color: color)),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                )),
+                            const SizedBox(height: 8),
+                          ];
+                        }),
                       ],
                     ),
-                  ),
-                ),
-              ),
             ),
-          );
-        },
-      ),
     );
   }
 }

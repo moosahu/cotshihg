@@ -360,7 +360,22 @@ exports.getClientResponse = async (req, res) => {
       `SELECT id, name, phone FROM users WHERE id=$1`, [req.params.clientId]
     );
 
-    successResponse(res, { client: client.rows[0], responses: result.rows });
+    // Also fetch set_assignment answers this coach sent to this client
+    const assignments = await pool.query(
+      `SELECT sa.id, sa.status, sa.answers, sa.assigned_at, sa.completed_at,
+              qs.name as set_name, qs.timing
+       FROM set_assignments sa
+       JOIN questionnaire_sets qs ON qs.id = sa.set_id
+       WHERE sa.client_id=$1 AND sa.coach_id=$2
+       ORDER BY sa.assigned_at DESC`,
+      [req.params.clientId, req.user.id]
+    );
+
+    successResponse(res, {
+      client: client.rows[0],
+      responses: result.rows,
+      assignments: assignments.rows,
+    });
   } catch (err) {
     errorResponse(res, err.message, 500);
   }

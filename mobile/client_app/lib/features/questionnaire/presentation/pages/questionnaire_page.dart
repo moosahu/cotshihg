@@ -91,14 +91,27 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                        // ── استبيانات مرسلة من الكوتش ──
-                        if (_assignments.isNotEmpty) ...[
-                          const Text('أرسل إليك كوتشك',
+                        if (_assignments.isEmpty) ...[
+                          const SizedBox(height: 48),
+                          Icon(Icons.assignment_outlined,
+                              size: 72,
+                              color: AppTheme.textSecondary.withOpacity(0.3)),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'لا توجد استبيانات بعد\nسيرسل لك الكوتش استبياناً قبل الجلسة',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 14,
+                                height: 1.6),
+                          ),
+                        ] else ...[
+                          const Text('استبيانات من كوتشك',
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor)),
-                          const SizedBox(height: 8),
+                                  color: AppTheme.textPrimary)),
+                          const SizedBox(height: 12),
                           ..._assignments.map((a) => _AssignmentCard(
                                 assignment: a,
                                 onTap: () => Navigator.of(context)
@@ -108,36 +121,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                                     ))
                                     .then((_) => _load()),
                               )),
-                          const SizedBox(height: 20),
-                          const Divider(),
-                          const SizedBox(height: 8),
                         ],
-                        const Text(
-                          'قاعة الاستبيانات',
-                          style: TextStyle(
-                              fontSize: 13, color: AppTheme.textSecondary),
-                        ),
-                        const SizedBox(height: 16),
-                        ...['before', 'during', 'after', 'general'].expand((timing) {
-                          final group = _sets
-                              .where((s) => (s['timing'] as String? ?? 'general') == timing)
-                              .toList();
-                          if (group.isEmpty) return <Widget>[];
-                          return [
-                            _TimingHeader(
-                              label: _timingLabels[timing]!,
-                              color: _timingColors[timing]!,
-                              icon: _timingIcons[timing]!,
-                            ),
-                            const SizedBox(height: 8),
-                            ...group.map((set) => _SetCard(
-                                  set: set,
-                                  timingColor: _timingColors[timing]!,
-                                  onTap: () => _openSet(set),
-                                )),
-                            const SizedBox(height: 20),
-                          ];
-                        }),
                       ],
                     ),
             ),
