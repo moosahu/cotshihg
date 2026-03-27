@@ -535,6 +535,11 @@ async function runPatches() {
       console.log(`🌱 Default questionnaire sets seeded (${sets.length} sets)`);
     }
 
+    // Patch: add specific_date to therapist_availability for one-time slots
+    await pool.query(`
+      ALTER TABLE therapist_availability ADD COLUMN IF NOT EXISTS specific_date DATE
+    `);
+
     console.log('✅ DB patches applied');
   } catch (err) {
     console.error('⚠️  Patch error (non-fatal):', err.message);

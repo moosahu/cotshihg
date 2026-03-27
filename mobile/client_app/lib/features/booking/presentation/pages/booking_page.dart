@@ -76,33 +76,57 @@ class _BookingPageState extends State<BookingPage> {
         }
       } catch (_) {}
 
-      // Build slots for next 30 days
-      final slots = <String, List<String>>{};
+      // Build slots map
+      final slotsSet = <String, Set<String>>{};
       final now = DateTime.now();
-      for (int i = 1; i <= 30; i++) {
-        final date = now.add(Duration(days: i));
-        final dow = date.weekday % 7; // Flutter: Mon=1..Sun=7, convert to 0=Sun..6=Sat
-        final matching = avail.where((a) => (a['day_of_week'] as int) == dow).toList();
-        if (matching.isNotEmpty) {
-          final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-          final times = <String>{};
-          for (final a in matching) {
-            final startRaw = (a['start_time'] as String).substring(0, 5); // "09:00"
-            final endRaw = (a['end_time'] as String).substring(0, 5);     // "11:00"
-            final sp = startRaw.split(':');
-            final ep = endRaw.split(':');
-            int sh = int.parse(sp[0]), sm = int.parse(sp[1]);
-            final eh = int.parse(ep[0]), em = int.parse(ep[1]);
-            // Generate 60-minute slots within range
-            while (sh * 60 + sm + 60 <= eh * 60 + em) {
-              times.add('${sh.toString().padLeft(2, '0')}:${sm.toString().padLeft(2, '0')}');
-              sm += 60;
-              if (sm >= 60) { sh += sm ~/ 60; sm = sm % 60; }
-            }
-          }
-          if (times.isNotEmpty) slots[dateKey] = times.toList()..sort();
+
+      // Helper to expand a time range into 60-min slots
+      void addTimeRange(String dateKey, String startRaw, String endRaw) {
+        final sp = startRaw.split(':');
+        final ep = endRaw.split(':');
+        int sh = int.parse(sp[0]), sm = int.parse(sp[1]);
+        final eh = int.parse(ep[0]), em = int.parse(ep[1]);
+        while (sh * 60 + sm + 60 <= eh * 60 + em) {
+          slotsSet.putIfAbsent(dateKey, () => <String>{})
+              .add('${sh.toString().padLeft(2, '0')}:${sm.toString().padLeft(2, '0')}');
+          sm += 60;
+          if (sm >= 60) { sh += sm ~/ 60; sm = sm % 60; }
         }
       }
+
+      // 1. Specific-date slots (one-time)
+      for (final a in avail) {
+        if (a['specific_date'] != null) {
+          final dateKey = a['specific_date'].toString().substring(0, 10);
+          final dateObj = DateTime.tryParse(dateKey);
+          if (dateObj != null && dateObj.isAfter(now)) {
+            addTimeRange(
+              dateKey,
+              (a['start_time'] as String).substring(0, 5),
+              (a['end_time'] as String).substring(0, 5),
+            );
+          }
+        }
+      }
+
+      // 2. Recurring day-of-week slots (only if no specific-date slot covers that date)
+      for (int i = 1; i <= 30; i++) {
+        final date = now.add(Duration(days: i));
+        final dow = date.weekday % 7;
+        final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        if (slotsSet.containsKey(dateKey)) continue; // specific-date takes priority
+        final matching = avail.where((a) => a['specific_date'] == null && (a['day_of_week'] as int) == dow).toList();
+        for (final a in matching) {
+          addTimeRange(
+            dateKey,
+            (a['start_time'] as String).substring(0, 5),
+            (a['end_time'] as String).substring(0, 5),
+          );
+        }
+      }
+
+      final slots = <String, List<String>>{};
+      slotsSet.forEach((k, v) { slots[k] = v.toList()..sort(); });
 
       if (mounted) {
         setState(() {

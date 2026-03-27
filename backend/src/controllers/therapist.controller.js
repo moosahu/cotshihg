@@ -162,8 +162,8 @@ exports.updateAvailability = async (req, res) => {
 
     for (const slot of availability) {
       await pool.query(
-        'INSERT INTO therapist_availability (therapist_id, day_of_week, start_time, end_time) VALUES ($1,$2,$3,$4)',
-        [therapistId, slot.day_of_week, slot.start_time, slot.end_time]
+        'INSERT INTO therapist_availability (therapist_id, day_of_week, start_time, end_time, specific_date) VALUES ($1,$2,$3,$4,$5)',
+        [therapistId, slot.day_of_week, slot.start_time, slot.end_time, slot.specific_date || null]
       );
     }
 
