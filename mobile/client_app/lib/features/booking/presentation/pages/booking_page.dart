@@ -94,12 +94,19 @@ class _BookingPageState extends State<BookingPage> {
         }
       }
 
+      final today = DateTime(now.year, now.month, now.day);
+
       // 1. Specific-date slots (one-time)
       for (final a in avail) {
         if (a['specific_date'] != null) {
-          final dateKey = a['specific_date'].toString().substring(0, 10);
-          final dateObj = DateTime.tryParse(dateKey);
-          if (dateObj != null && dateObj.isAfter(now)) {
+          // Parse safely — handles both "2026-03-28" and "2026-03-28T00:00:00.000Z"
+          final raw = a['specific_date'].toString();
+          final parsed = DateTime.tryParse(raw)?.toLocal();
+          if (parsed == null) continue;
+          final dateObj = DateTime(parsed.year, parsed.month, parsed.day);
+          final dateKey = '${dateObj.year}-${dateObj.month.toString().padLeft(2, '0')}-${dateObj.day.toString().padLeft(2, '0')}';
+          // Include today and future dates
+          if (!dateObj.isBefore(today)) {
             addTimeRange(
               dateKey,
               (a['start_time'] as String).substring(0, 5),
