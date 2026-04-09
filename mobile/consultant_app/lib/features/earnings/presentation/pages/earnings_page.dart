@@ -27,8 +27,8 @@ class _EarningsPageState extends State<EarningsPage> {
       double total = 0;
       for (final t in list) {
         final amount = (t as Map<String, dynamic>)['amount'];
-        if (t['status'] == 'completed' && amount != null) {
-          total += (amount as num).toDouble();
+        if (t['status'] == 'paid' && amount != null) {
+          total += double.tryParse(amount.toString()) ?? 0;
         }
       }
       if (mounted) setState(() {
@@ -83,25 +83,54 @@ class _EarningsPageState extends State<EarningsPage> {
                     final tx = t as Map<String, dynamic>;
                     final name = tx['client_name'] as String? ?? 'عميل';
                     final amount = tx['amount'] ?? 0;
+                    final status = tx['status'] as String? ?? '';
                     final date = tx['created_at'] as String?;
                     final dateStr = date != null
                         ? DateTime.tryParse(date)?.toLocal().toString().substring(0, 10) ?? date
                         : '';
+
+                    final isRefunded = status == 'refunded';
+                    final isPending = status == 'pending';
+                    final isFailed = status == 'failed';
+                    final statusLabel = isRefunded ? 'مسترد' : isPending ? 'معلق' : isFailed ? 'فاشل' : 'مدفوع';
+                    final statusColor = isRefunded ? Colors.purple : isPending ? Colors.orange : isFailed ? Colors.red : AppTheme.successColor;
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: AppTheme.successColor.withOpacity(0.1),
-                          child: const Icon(Icons.arrow_downward, color: AppTheme.successColor),
+                          backgroundColor: statusColor.withOpacity(0.1),
+                          child: Icon(
+                            isRefunded ? Icons.reply : isFailed ? Icons.error_outline : Icons.arrow_downward,
+                            color: statusColor,
+                          ),
                         ),
                         title: Text(name),
-                        subtitle: Text(dateStr,
-                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                        trailing: Text('+$amount ر.س',
-                            style: const TextStyle(
-                                color: AppTheme.successColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(dateStr, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                            const SizedBox(height: 2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(statusLabel,
+                                  style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                        trailing: Text(
+                          isRefunded ? '-$amount ر.س' : '+$amount ر.س',
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            decoration: isRefunded ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
                       ),
                     );
                   }),
