@@ -28,8 +28,10 @@ class _MyPaymentsPageState extends State<MyPaymentsPage> {
       final list = (res['data'] as List?) ?? [];
       double total = 0;
       for (final p in list) {
-        final amount = (p as Map<String, dynamic>)['amount'];
-        if (amount != null) total += double.tryParse(amount.toString()) ?? 0;
+        final pay = p as Map<String, dynamic>;
+        if (pay['status'] == 'paid') {
+          total += double.tryParse(pay['amount']?.toString() ?? '0') ?? 0;
+        }
       }
       if (mounted) setState(() {
         _payments = list;
@@ -81,6 +83,7 @@ class _MyPaymentsPageState extends State<MyPaymentsPage> {
                       final pay = p as Map<String, dynamic>;
                       final name = pay['therapist_name'] as String? ?? 'الكوتش';
                       final amount = pay['amount'] ?? 0;
+                      final status = pay['status'] as String? ?? '';
                       final date = pay['created_at'] as String?;
                       final dateStr = date != null
                           ? DateTime.tryParse(date)
@@ -89,22 +92,46 @@ class _MyPaymentsPageState extends State<MyPaymentsPage> {
                                   .substring(0, 10) ??
                               date
                           : '';
+
+                      final isRefunded = status == 'refunded';
+                      final isPending = status == 'pending';
+                      final isFailed = status == 'failed';
+
+                      final statusLabel = isRefunded ? 'مسترد' : isPending ? 'معلق' : isFailed ? 'فاشل' : 'مدفوع';
+                      final statusColor = isRefunded ? Colors.purple : isPending ? Colors.orange : isFailed ? AppTheme.errorColor : AppTheme.successColor;
+
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                            child: const Icon(Icons.receipt_outlined,
-                                color: AppTheme.primaryColor),
+                            backgroundColor: statusColor.withOpacity(0.1),
+                            child: Icon(
+                              isRefunded ? Icons.reply : isFailed ? Icons.error_outline : Icons.receipt_outlined,
+                              color: statusColor,
+                            ),
                           ),
                           title: Text(name),
-                          subtitle: Text(dateStr,
-                              style: const TextStyle(
-                                  color: AppTheme.textSecondary, fontSize: 12)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(dateStr, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                              const SizedBox(height: 2),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(statusLabel,
+                                    style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
                           trailing: RiyalText('$amount',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor)),
+                                  color: isRefunded ? Colors.purple : AppTheme.primaryColor,
+                                  decoration: isRefunded ? TextDecoration.lineThrough : null)),
                         ),
                       );
                     }),
