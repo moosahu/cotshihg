@@ -26,7 +26,7 @@ class _PaymobPaymentPageState extends State<PaymobPaymentPage> {
   @override
   void initState() {
     super.initState();
-    final url = Uri.https('accept.paymob.com', '/unifiedcheckout/', {
+    final url = Uri.https('ksa.paymob.com', '/unifiedcheckout/', {
       'publicKey': widget.publicKey,
       'clientSecret': widget.clientSecret,
     });
