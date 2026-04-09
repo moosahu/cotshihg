@@ -4,11 +4,13 @@ const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 
 // ── Paymob Intention API helper ────────────────────────────────────────────────
+const PAYMOB_HOST = process.env.PAYMOB_HOST || 'ksa.paymob.com';
+
 function paymobRequest(method, path, body) {
   return new Promise((resolve, reject) => {
     const raw = body ? JSON.stringify(body) : '';
     const options = {
-      hostname: 'accept.paymob.com',
+      hostname: PAYMOB_HOST,
       path,
       method,
       headers: {
@@ -89,8 +91,8 @@ exports.initiatePayment = async (req, res) => {
     });
 
     if (!intention.client_secret) {
-      console.error('Paymob intention error:', intention);
-      throw new Error('Paymob intention creation failed');
+      console.error('Paymob intention error:', JSON.stringify(intention));
+      throw new Error(intention.message || intention.detail || 'Paymob intention creation failed');
     }
 
     // Save/update payment record
