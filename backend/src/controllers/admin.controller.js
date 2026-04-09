@@ -309,9 +309,12 @@ exports.refundPayment = async (req, res) => {
           const r = https.request(options, (res2) => {
             let d = '';
             res2.on('data', (c) => (d += c));
-            res2.on('end', () => { try { resolve(JSON.parse(d)); } catch { reject(new Error(d)); } });
+            res2.on('end', () => {
+              try { resolve(JSON.parse(d)); }
+              catch { resolve({ results: [], _raw: d.slice(0, 200) }); }
+            });
           });
-          r.on('error', reject);
+          r.on('error', (e) => resolve({ results: [], _error: e.message }));
           r.end();
         });
       }
@@ -358,7 +361,7 @@ exports.refundPayment = async (req, res) => {
 
         // 1. Try querying all transactions and find by merchant_order_id
         const txnsRes = await paymobGet(`/api/acceptance/transactions?merchant_order_id=${encodeURIComponent(merchantOrderId)}&page_size=50`);
-        console.log('🔍 Paymob txns by merchantOrderId:', JSON.stringify(txnsRes).slice(0, 500));
+        console.log('🔍 Paymob txns by merchantOrderId:', JSON.stringify(txnsRes || {}).slice(0, 500));
         let txn = txnsRes.results?.find(t => t.success === true && !t.is_refunded && !t.is_voided);
 
         // 2. If not found, search all recent transactions for this amount
