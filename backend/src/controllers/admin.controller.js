@@ -338,37 +338,46 @@ exports.refundPayment = async (req, res) => {
         });
       }
 
-      // Get transaction ID — if provider_payment_id is an order ID, fetch transactions
-      let transactionId = parseInt(p.provider_payment_id);
-      if (isNaN(transactionId) || transactionId === 0) {
-        throw new Error('لا يوجد transaction ID صالح للاسترداد');
+      // Find the Paymob transaction ID using merchant_order_id stored at booking creation
+      // provider_payment_id may be intention ID (e.g. "_fee_...") or numeric transaction ID
+      const storedId = p.provider_payment_id;
+      let transactionId = null;
+
+      // If it looks like a numeric transaction ID, use directly
+      const numericId = parseInt(storedId);
+      if (!isNaN(numericId) && numericId > 0) {
+        transactionId = numericId;
+      } else {
+        // It's an intention/order string ID — query Paymob for the transaction
+        // Try by order ID (intention id as order reference)
+        const txnsByOrder = await paymobGet(`/api/acceptance/transactions?order_id=${encodeURIComponent(storedId)}&page_size=10`);
+        const successTxn = txnsByOrder.results?.find(t => t.success === true && !t.is_refunded && !t.is_voided);
+        if (successTxn?.id) {
+          transactionId = successTxn.id;
+        } else {
+          // Try by merchant_order_id pattern: booking_{id}_{timestamp}
+          const booking = await pool.query('SELECT id FROM bookings WHERE id=(SELECT booking_id FROM payments WHERE id=$1)', [p.id]);
+          if (booking.rows[0]) {
+            const txnsByMerchant = await paymobGet(`/api/acceptance/transactions?merchant_order_id=booking_${booking.rows[0].id}&page_size=10`);
+            const t = txnsByMerchant.results?.find(tx => tx.success === true && !tx.is_refunded);
+            if (t?.id) transactionId = t.id;
+          }
+        }
       }
 
-      // Try to find the actual transaction via order transactions list
-      // provider_payment_id might be order ID or transaction ID
-      // Try refund directly first; if fails, look up transaction by order
-      let refundResult = await paymobPost('/api/acceptance/void_refund/refund', {
+      if (!transactionId) {
+        throw new Error('لم يتم العثور على معاملة الدفع في باي موب — يرجى الاسترداد يدوياً من لوحة باي موب');
+      }
+
+      const refundResult = await paymobPost('/api/acceptance/void_refund/refund', {
         transaction_id: transactionId,
         amount_cents: amountHalala,
       });
 
       console.log('Paymob refund response:', JSON.stringify(refundResult));
 
-      // If refund failed, try fetching the actual transaction ID from order
-      if (!refundResult.id || refundResult.success === false) {
-        const orderTxns = await paymobGet(`/api/acceptance/transactions?order_id=${transactionId}&page_size=1`);
-        const txn = orderTxns.results?.[0];
-        if (!txn?.id) {
-          throw new Error(refundResult.detail || refundResult.message || 'فشل الاسترداد عبر Paymob — تحقق من لوحة باي موب');
-        }
-        refundResult = await paymobPost('/api/acceptance/void_refund/refund', {
-          transaction_id: txn.id,
-          amount_cents: amountHalala,
-        });
-        console.log('Paymob refund retry response:', JSON.stringify(refundResult));
-        if (!refundResult.id) {
-          throw new Error(refundResult.detail || refundResult.message || 'فشل الاسترداد عبر Paymob');
-        }
+      if (refundResult.success === false || (!refundResult.id && refundResult.detail)) {
+        throw new Error(refundResult.detail || refundResult.message || 'فشل الاسترداد عبر Paymob');
       }
     }
 
