@@ -294,15 +294,53 @@ exports.refundPayment = async (req, res) => {
     if (p.status === 'refunded') return errorResponse(res, 'Already refunded', 400);
     if (p.status !== 'paid') return errorResponse(res, 'Payment not paid', 400);
 
-    // Paymob refund: mark as refunded in DB.
-    // Full refund via Paymob dashboard or Paymob refund API can be added here if needed.
+    // Call Paymob refund API if transaction ID is available
+    if (p.provider_payment_id && p.provider === 'paymob') {
+      const https = require('https');
+      const amountHalala = Math.round(parseFloat(p.amount) * 100);
+
+      await new Promise((resolve, reject) => {
+        const body = JSON.stringify({
+          transaction_id: parseInt(p.provider_payment_id),
+          amount_cents: amountHalala,
+        });
+        const options = {
+          hostname: process.env.PAYMOB_HOST || 'ksa.paymob.com',
+          path: '/api/acceptance/void_refund/refund',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Token ${process.env.PAYMOB_SECRET_KEY}`,
+            'Content-Length': Buffer.byteLength(body),
+          },
+        };
+        const req2 = https.request(options, (res2) => {
+          let data = '';
+          res2.on('data', (c) => (data += c));
+          res2.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.success === false || parsed.detail) {
+                reject(new Error(parsed.detail || 'Paymob refund failed'));
+              } else {
+                resolve(parsed);
+              }
+            } catch { resolve(data); }
+          });
+        });
+        req2.on('error', reject);
+        req2.write(body);
+        req2.end();
+      });
+    }
+
     await pool.query('UPDATE payments SET status=$1 WHERE id=$2', ['refunded', p.id]);
     await pool.query(
       'UPDATE bookings SET payment_status=$1 WHERE id=(SELECT booking_id FROM payments WHERE id=$2)',
       ['refunded', p.id]
     );
 
-    successResponse(res, null, 'تم استرداد المبلغ بنجاح');
+    successResponse(res, null, 'تم استرداد المبلغ بنجاح عبر Paymob');
   } catch (err) {
     errorResponse(res, err.message, 500);
   }

@@ -153,23 +153,30 @@ exports.callback = async (req, res) => {
     const obj = data.obj || {};
     const success = obj.success === true || obj.success === 'true';
     const orderId = String(obj.order?.id || '');
+    const transactionId = String(obj.id || '');
 
     if (orderId) {
-      await pool.query(
-        'UPDATE payments SET status=$1 WHERE provider_payment_id=$2',
-        [success ? 'paid' : 'failed', orderId]
-      );
-      if (success) {
+      if (success && transactionId) {
+        // Store transaction ID (needed for refunds) and update status
+        await pool.query(
+          'UPDATE payments SET status=$1, provider_payment_id=$2 WHERE provider_payment_id=$3',
+          ['paid', transactionId, orderId]
+        );
         const payment = await pool.query(
           'SELECT booking_id FROM payments WHERE provider_payment_id=$1 LIMIT 1',
-          [orderId]
+          [transactionId]
         );
         if (payment.rows[0]) {
           await pool.query(
             'UPDATE bookings SET payment_status=$1, payment_id=$2 WHERE id=$3',
-            ['paid', orderId, payment.rows[0].booking_id]
+            ['paid', transactionId, payment.rows[0].booking_id]
           );
         }
+      } else if (!success) {
+        await pool.query(
+          'UPDATE payments SET status=$1 WHERE provider_payment_id=$2',
+          ['failed', orderId]
+        );
       }
     }
 
