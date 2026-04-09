@@ -136,7 +136,7 @@ async function runPatches() {
         user_id UUID REFERENCES users(id),
         amount DECIMAL(10,2) NOT NULL,
         currency VARCHAR(10) DEFAULT 'SAR',
-        provider VARCHAR(50) DEFAULT 'stripe',
+        provider VARCHAR(50) DEFAULT 'paymob',
         provider_payment_id TEXT,
         status VARCHAR(20) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT NOW(),
