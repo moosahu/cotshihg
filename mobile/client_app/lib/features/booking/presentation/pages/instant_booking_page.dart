@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
+import 'package:coaching_client/core/widgets/paymob_payment_page.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
@@ -153,22 +153,22 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
       if (price > 0) {
         final paymentRes = await getIt<ApiClient>().initiatePayment(bookingId);
         final clientSecret = paymentRes['data']?['client_secret'] as String?;
-        final publishableKey = paymentRes['data']?['publishable_key'] as String?;
-        if (clientSecret == null) throw Exception('فشل إنشاء الدفع');
+        final publicKey = paymentRes['data']?['public_key'] as String?;
+        if (clientSecret == null || publicKey == null) throw Exception('فشل إنشاء الدفع');
 
-        if (publishableKey != null && publishableKey.isNotEmpty) {
-          Stripe.publishableKey = publishableKey;
-          await Stripe.instance.applySettings();
-        }
-
-        await Stripe.instance.initPaymentSheet(
-          paymentSheetParameters: SetupPaymentSheetParameters(
-            paymentIntentClientSecret: clientSecret,
-            merchantDisplayName: 'كوتشينج',
-            style: ThemeMode.light,
+        if (!mounted) return;
+        final result = await Navigator.of(context).push<PaymobResult>(
+          MaterialPageRoute(
+            builder: (_) => PaymobPaymentPage(
+              clientSecret: clientSecret,
+              publicKey: publicKey,
+            ),
           ),
         );
-        await Stripe.instance.presentPaymentSheet();
+
+        if (result == PaymobResult.cancelled) return;
+        if (result != PaymobResult.success) throw Exception('فشل الدفع، يرجى المحاولة مرة أخرى');
+
         await getIt<ApiClient>().confirmBookingAfterPayment(bookingId);
       }
 

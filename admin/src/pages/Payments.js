@@ -19,7 +19,7 @@ export default function Payments() {
   useEffect(() => { load(); }, []);
 
   const handleRefund = async (id) => {
-    if (!window.confirm('هل تريد استرداد هذا المبلغ عبر Stripe؟')) return;
+    if (!window.confirm('هل تريد استرداد هذا المبلغ عبر Paymob؟')) return;
     setRefunding(id);
     try {
       await api.refundPayment(id);
@@ -79,7 +79,7 @@ export default function Payments() {
       key: 'provider', label: 'طريقة الدفع',
       render: v => (
         <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
-          {v === 'stripe' ? '💳 Stripe' : v || '—'}
+          {v === 'paymob' ? '💳 Paymob' : v === 'stripe' ? '💳 Stripe' : v || '—'}
         </span>
       )
     },
@@ -127,7 +127,7 @@ export default function Payments() {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>المدفوعات</h1>
-        <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>سجل جميع المعاملات المالية عبر Stripe</p>
+        <p style={{ color: '#8A94A6', fontSize: 14, marginTop: 4 }}>سجل جميع المعاملات المالية عبر Paymob</p>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <StatCard title="إجمالي الإيرادات" value={<span>{totalRevenue.toLocaleString()} <i className="icon-saudi_riyal_new" /></span>} change={null} icon="💰" color="#1A6B72" />

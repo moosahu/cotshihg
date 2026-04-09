@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/di/injection.dart';
@@ -16,11 +15,7 @@ void main() async {
   try {
     await Firebase.initializeApp();
   } catch (e) { debugPrint('❌ Firebase init error: $e'); }
-  try {
-    Stripe.publishableKey = 'pk_test_51TDxKQCwcETFsfV6rh7HzIFqhWmZjAlshkrhsnyZ3uAyPm3NCDfDFTS5GSIKEYzmgc9Y050UPWFjDZIPqq9pB9sj00xiotbLV7';
-    await Stripe.instance.applySettings();
-  } catch (e) { debugPrint('❌ Stripe init error: $e'); }
-  await setupDependencies();
+await setupDependencies();
   try {
     NotificationService.setNavigatorKey(AppRouter.navigatorKey);
     await NotificationService.init();

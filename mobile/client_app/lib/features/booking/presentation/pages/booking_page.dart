@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
+import 'package:coaching_client/core/widgets/paymob_payment_page.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
@@ -204,7 +204,7 @@ class _BookingPageState extends State<BookingPage> {
       final bookingId = bookingRes['data']?['id']?.toString();
       _pendingBookingId = bookingId;
 
-      // 2. If price > 0, initiate Stripe payment
+      // 2. If price > 0, initiate Paymob payment
       if (_price > 0 && bookingId != null) {
         await _processPayment(bookingId);
       } else {
@@ -215,17 +215,6 @@ class _BookingPageState extends State<BookingPage> {
                   backgroundColor: AppTheme.successColor));
           context.go('/home');
         }
-      }
-    } on StripeException catch (e) {
-      if (e.error.code == FailureCode.Canceled) {
-        // User cancelled — delete the pending booking so the slot is free again
-        if (_pendingBookingId != null) {
-          try { await getIt<ApiClient>().cancelBooking(_pendingBookingId!); } catch (_) {}
-          _pendingBookingId = null;
-        }
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.error.localizedMessage ?? e.toString()), backgroundColor: AppTheme.errorColor));
       }
     } catch (e) {
       if (mounted) {
@@ -238,33 +227,34 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   Future<void> _processPayment(String bookingId) async {
-    // Get PaymentIntent client_secret from backend
     final paymentRes = await getIt<ApiClient>().initiatePayment(bookingId);
     final clientSecret = paymentRes['data']?['client_secret'] as String?;
-    final publishableKey = paymentRes['data']?['publishable_key'] as String?;
-    if (clientSecret == null) throw Exception('فشل إنشاء الدفع');
+    final publicKey = paymentRes['data']?['public_key'] as String?;
+    if (clientSecret == null || publicKey == null) throw Exception('فشل إنشاء الدفع');
 
-    if (publishableKey != null && publishableKey.isNotEmpty) {
-      Stripe.publishableKey = publishableKey;
-      await Stripe.instance.applySettings();
-    }
-
-    // Initialize Payment Sheet
-    await Stripe.instance.initPaymentSheet(
-      paymentSheetParameters: SetupPaymentSheetParameters(
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: 'كوتشينج',
-        style: ThemeMode.light,
-        billingDetailsCollectionConfiguration: const BillingDetailsCollectionConfiguration(
-          name: CollectionMode.always,
+    if (!mounted) return;
+    final result = await Navigator.of(context).push<PaymobResult>(
+      MaterialPageRoute(
+        builder: (_) => PaymobPaymentPage(
+          clientSecret: clientSecret,
+          publicKey: publicKey,
         ),
       ),
     );
 
-    // Present Payment Sheet
-    await Stripe.instance.presentPaymentSheet();
+    if (result == PaymobResult.cancelled) {
+      // User closed WebView — cancel the pending booking
+      if (_pendingBookingId != null) {
+        try { await getIt<ApiClient>().cancelBooking(_pendingBookingId!); } catch (_) {}
+        _pendingBookingId = null;
+      }
+      return;
+    }
 
-    // Auto-confirm booking after successful payment
+    if (result != PaymobResult.success) {
+      throw Exception('فشل الدفع، يرجى المحاولة مرة أخرى');
+    }
+
     await getIt<ApiClient>().confirmBookingAfterPayment(bookingId);
 
     if (mounted) {
