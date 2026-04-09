@@ -349,21 +349,26 @@ exports.refundPayment = async (req, res) => {
         const merchantOrderId = storedId.startsWith('booking_') ? storedId : `booking_${bookingId}`;
 
         // 1. Try querying all transactions and find by merchant_order_id
-        const txnsRes = await paymobGet(`/api/acceptance/transactions?merchant_order_id=${encodeURIComponent(merchantOrderId)}&page_size=50`);
-        console.log('🔍 Paymob txns by merchantOrderId:', JSON.stringify(txnsRes || {}).slice(0, 500));
-        let txn = txnsRes.results?.find(t => t.success === true && !t.is_refunded && !t.is_voided);
+        // Search transactions by order ID from Paymob
+        const allTxns = await paymobGet(`/api/acceptance/transactions?page_size=100`);
+        console.log('🔍 Total txns:', allTxns.results?.length, '| amountHalala:', amountHalala);
 
-        // 2. If not found, search all recent transactions for this amount
+        // Match: success + correct amount + not refunded + not voided + no parent (primary txn)
+        let txn = allTxns.results?.find(t =>
+          t.success === true &&
+          !t.is_refunded &&
+          !t.is_voided &&
+          !t.has_parent_transaction &&
+          t.amount_cents === amountHalala
+        );
+
+        // Fallback: allow has_parent_transaction if still not found
         if (!txn) {
-          const allTxns = await paymobGet(`/api/acceptance/transactions?page_size=50`);
-          console.log('🔍 All txns sample:', JSON.stringify(allTxns.results?.slice(0,2)).slice(0, 800));
           txn = allTxns.results?.find(t =>
-            t.success === true && !t.is_refunded && !t.is_voided &&
-            t.amount_cents === amountHalala &&
-            t.order?.merchant_order_id?.startsWith(`booking_${bookingId}`)
+            t.success === true && !t.is_refunded && !t.is_voided && t.amount_cents === amountHalala
           );
-          console.log('🔍 bookingId:', bookingId, '| amountHalala:', amountHalala, '| txn found:', !!txn);
         }
+        console.log('🔍 txn found:', txn?.id, '| order:', txn?.order?.id);
 
         if (!txn?.id) {
           throw new Error('لم يتم العثور على معاملة الدفع — يرجى الاسترداد يدوياً من لوحة باي موب KSA');
