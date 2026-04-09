@@ -300,46 +300,35 @@ exports.refundPayment = async (req, res) => {
       const host = process.env.PAYMOB_HOST || 'ksa.paymob.com';
       const amountHalala = Math.round(parseFloat(p.amount) * 100);
 
-      function paymobGet(path) {
-        return new Promise((resolve, reject) => {
-          const options = {
-            hostname: host, path, method: 'GET',
-            headers: { Authorization: `Token ${process.env.PAYMOB_SECRET_KEY}` },
-          };
+      function paymobHttp(method, path, body, authToken) {
+        return new Promise((resolve) => {
+          const raw = body ? JSON.stringify(body) : null;
+          const headers = { 'Content-Type': 'application/json' };
+          if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+          else headers['Authorization'] = `Token ${process.env.PAYMOB_SECRET_KEY}`;
+          if (raw) headers['Content-Length'] = Buffer.byteLength(raw);
+          const options = { hostname: host, path, method, headers };
           const r = https.request(options, (res2) => {
             let d = '';
             res2.on('data', (c) => (d += c));
             res2.on('end', () => {
               try { resolve(JSON.parse(d)); }
-              catch { resolve({ results: [], _raw: d.slice(0, 200) }); }
+              catch { resolve({ results: [], _raw: d.slice(0, 300) }); }
             });
           });
           r.on('error', (e) => resolve({ results: [], _error: e.message }));
+          if (raw) r.write(raw);
           r.end();
         });
       }
 
-      function paymobPost(path, body) {
-        return new Promise((resolve, reject) => {
-          const raw = JSON.stringify(body);
-          const options = {
-            hostname: host, path, method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Token ${process.env.PAYMOB_SECRET_KEY}`,
-              'Content-Length': Buffer.byteLength(raw),
-            },
-          };
-          const r = https.request(options, (res2) => {
-            let d = '';
-            res2.on('data', (c) => (d += c));
-            res2.on('end', () => { try { resolve(JSON.parse(d)); } catch { reject(new Error(d)); } });
-          });
-          r.on('error', reject);
-          r.write(raw);
-          r.end();
-        });
-      }
+      // Get old-style auth token (needed for /api/acceptance/ endpoints)
+      const authRes = await paymobHttp('POST', '/api/auth/tokens', { api_key: process.env.PAYMOB_API_KEY });
+      const authToken = authRes.token;
+      console.log('🔑 Paymob auth token:', authToken ? 'OK' : `FAILED: ${JSON.stringify(authRes).slice(0, 200)}`);
+
+      const paymobGet  = (path) => paymobHttp('GET', path, null, authToken);
+      const paymobPost = (path, body) => paymobHttp('POST', path, body, authToken);
 
       // provider_payment_id: after callback = numeric transaction ID
       //                       before callback (old payments) = merchant_order_id string
