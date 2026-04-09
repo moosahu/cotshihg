@@ -86,7 +86,7 @@ exports.initiatePayment = async (req, res) => {
         last_name: (booking.rows[0].client_name || 'Client').split(' ').slice(1).join(' ') || 'User',
         email: booking.rows[0].client_email || 'client@app.com',
       },
-      merchant_order_id: `booking_${booking_id}_${Date.now()}`,
+      merchant_order_id: `booking_${booking_id}`,
       redirection_url: process.env.PAYMOB_REDIRECT_URL || 'https://your-backend.com/payment-result',
     });
 
@@ -95,8 +95,8 @@ exports.initiatePayment = async (req, res) => {
       throw new Error(intention.message || intention.detail || 'Paymob intention creation failed');
     }
 
-    // Save/update payment record
-    const orderId = String(intention.id || '');
+    // Save/update payment record — store merchant_order_id for reliable lookup
+    const merchantOrderId = `booking_${booking_id}`;
     const existing = await pool.query(
       `SELECT id FROM payments WHERE booking_id=$1 AND status='pending' LIMIT 1`,
       [booking_id]
@@ -104,13 +104,13 @@ exports.initiatePayment = async (req, res) => {
     if (existing.rows[0]) {
       await pool.query(
         'UPDATE payments SET provider_payment_id=$1 WHERE id=$2',
-        [orderId, existing.rows[0].id]
+        [merchantOrderId, existing.rows[0].id]
       );
     } else {
       await pool.query(
         `INSERT INTO payments (booking_id, user_id, amount, currency, provider, provider_payment_id, status)
          VALUES ($1,$2,$3,'SAR','paymob',$4,'pending')`,
-        [booking_id, req.user.id, price, orderId]
+        [booking_id, req.user.id, price, merchantOrderId]
       );
     }
 
@@ -152,15 +152,16 @@ exports.callback = async (req, res) => {
 
     const obj = data.obj || {};
     const success = obj.success === true || obj.success === 'true';
-    const orderId = String(obj.order?.id || '');
     const transactionId = String(obj.id || '');
+    // merchant_order_id format: "booking_{booking_id}"
+    const merchantOrderId = obj.order?.merchant_order_id || String(obj.order?.id || '');
 
-    if (orderId) {
+    if (merchantOrderId) {
       if (success && transactionId) {
-        // Store transaction ID (needed for refunds) and update status
+        // Store real transaction ID for refunds later
         await pool.query(
           'UPDATE payments SET status=$1, provider_payment_id=$2 WHERE provider_payment_id=$3',
-          ['paid', transactionId, orderId]
+          ['paid', transactionId, merchantOrderId]
         );
         const payment = await pool.query(
           'SELECT booking_id FROM payments WHERE provider_payment_id=$1 LIMIT 1',
@@ -175,7 +176,7 @@ exports.callback = async (req, res) => {
       } else if (!success) {
         await pool.query(
           'UPDATE payments SET status=$1 WHERE provider_payment_id=$2',
-          ['failed', orderId]
+          ['failed', merchantOrderId]
         );
       }
     }

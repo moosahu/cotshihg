@@ -338,30 +338,27 @@ exports.refundPayment = async (req, res) => {
         });
       }
 
-      // Find the Paymob transaction ID using merchant_order_id stored at booking creation
-      // provider_payment_id may be intention ID (e.g. "_fee_...") or numeric transaction ID
+      // provider_payment_id: after callback = numeric transaction ID
+      //                       before callback (old payments) = merchant_order_id string
       const storedId = p.provider_payment_id;
       let transactionId = null;
 
-      // If it looks like a numeric transaction ID, use directly
       const numericId = parseInt(storedId);
       if (!isNaN(numericId) && numericId > 0) {
+        // Already a transaction ID — use directly
         transactionId = numericId;
       } else {
-        // It's an intention/order string ID — query Paymob for the transaction
-        // Try by order ID (intention id as order reference)
-        const txnsByOrder = await paymobGet(`/api/acceptance/transactions?order_id=${encodeURIComponent(storedId)}&page_size=10`);
-        const successTxn = txnsByOrder.results?.find(t => t.success === true && !t.is_refunded && !t.is_voided);
-        if (successTxn?.id) {
-          transactionId = successTxn.id;
-        } else {
-          // Try by merchant_order_id pattern: booking_{id}_{timestamp}
-          const booking = await pool.query('SELECT id FROM bookings WHERE id=(SELECT booking_id FROM payments WHERE id=$1)', [p.id]);
-          if (booking.rows[0]) {
-            const txnsByMerchant = await paymobGet(`/api/acceptance/transactions?merchant_order_id=booking_${booking.rows[0].id}&page_size=10`);
-            const t = txnsByMerchant.results?.find(tx => tx.success === true && !tx.is_refunded);
-            if (t?.id) transactionId = t.id;
-          }
+        // Old format — look up by merchant_order_id (booking_{booking_id})
+        const bookingRes = await pool.query('SELECT booking_id FROM payments WHERE id=$1', [p.id]);
+        const bookingId = bookingRes.rows[0]?.booking_id;
+        const merchantOrderId = storedId.startsWith('booking_') ? storedId : `booking_${bookingId}`;
+
+        const txnsRes = await paymobGet(`/api/acceptance/transactions?merchant_order_id=${encodeURIComponent(merchantOrderId)}&page_size=10`);
+        const txn = txnsRes.results?.find(t => t.success === true && !t.is_refunded && !t.is_voided);
+        if (txn?.id) {
+          transactionId = txn.id;
+          // Update DB with real transaction ID for future use
+          await pool.query('UPDATE payments SET provider_payment_id=$1 WHERE id=$2', [String(txn.id), p.id]);
         }
       }
 
