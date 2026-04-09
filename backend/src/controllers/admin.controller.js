@@ -294,44 +294,82 @@ exports.refundPayment = async (req, res) => {
     if (p.status === 'refunded') return errorResponse(res, 'Already refunded', 400);
     if (p.status !== 'paid') return errorResponse(res, 'Payment not paid', 400);
 
-    // Call Paymob refund API if transaction ID is available
-    if (p.provider_payment_id && p.provider === 'paymob') {
+    // Call Paymob refund API
+    if (p.provider === 'paymob') {
       const https = require('https');
+      const host = process.env.PAYMOB_HOST || 'ksa.paymob.com';
       const amountHalala = Math.round(parseFloat(p.amount) * 100);
 
-      await new Promise((resolve, reject) => {
-        const body = JSON.stringify({
-          transaction_id: parseInt(p.provider_payment_id),
+      function paymobGet(path) {
+        return new Promise((resolve, reject) => {
+          const options = {
+            hostname: host, path, method: 'GET',
+            headers: { Authorization: `Token ${process.env.PAYMOB_SECRET_KEY}` },
+          };
+          const r = https.request(options, (res2) => {
+            let d = '';
+            res2.on('data', (c) => (d += c));
+            res2.on('end', () => { try { resolve(JSON.parse(d)); } catch { reject(new Error(d)); } });
+          });
+          r.on('error', reject);
+          r.end();
+        });
+      }
+
+      function paymobPost(path, body) {
+        return new Promise((resolve, reject) => {
+          const raw = JSON.stringify(body);
+          const options = {
+            hostname: host, path, method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Token ${process.env.PAYMOB_SECRET_KEY}`,
+              'Content-Length': Buffer.byteLength(raw),
+            },
+          };
+          const r = https.request(options, (res2) => {
+            let d = '';
+            res2.on('data', (c) => (d += c));
+            res2.on('end', () => { try { resolve(JSON.parse(d)); } catch { reject(new Error(d)); } });
+          });
+          r.on('error', reject);
+          r.write(raw);
+          r.end();
+        });
+      }
+
+      // Get transaction ID — if provider_payment_id is an order ID, fetch transactions
+      let transactionId = parseInt(p.provider_payment_id);
+      if (isNaN(transactionId) || transactionId === 0) {
+        throw new Error('لا يوجد transaction ID صالح للاسترداد');
+      }
+
+      // Try to find the actual transaction via order transactions list
+      // provider_payment_id might be order ID or transaction ID
+      // Try refund directly first; if fails, look up transaction by order
+      let refundResult = await paymobPost('/api/acceptance/void_refund/refund', {
+        transaction_id: transactionId,
+        amount_cents: amountHalala,
+      });
+
+      console.log('Paymob refund response:', JSON.stringify(refundResult));
+
+      // If refund failed, try fetching the actual transaction ID from order
+      if (!refundResult.id || refundResult.success === false) {
+        const orderTxns = await paymobGet(`/api/acceptance/transactions?order_id=${transactionId}&page_size=1`);
+        const txn = orderTxns.results?.[0];
+        if (!txn?.id) {
+          throw new Error(refundResult.detail || refundResult.message || 'فشل الاسترداد عبر Paymob — تحقق من لوحة باي موب');
+        }
+        refundResult = await paymobPost('/api/acceptance/void_refund/refund', {
+          transaction_id: txn.id,
           amount_cents: amountHalala,
         });
-        const options = {
-          hostname: process.env.PAYMOB_HOST || 'ksa.paymob.com',
-          path: '/api/acceptance/void_refund/refund',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Token ${process.env.PAYMOB_SECRET_KEY}`,
-            'Content-Length': Buffer.byteLength(body),
-          },
-        };
-        const req2 = https.request(options, (res2) => {
-          let data = '';
-          res2.on('data', (c) => (data += c));
-          res2.on('end', () => {
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.success === false || parsed.detail) {
-                reject(new Error(parsed.detail || 'Paymob refund failed'));
-              } else {
-                resolve(parsed);
-              }
-            } catch { resolve(data); }
-          });
-        });
-        req2.on('error', reject);
-        req2.write(body);
-        req2.end();
-      });
+        console.log('Paymob refund retry response:', JSON.stringify(refundResult));
+        if (!refundResult.id) {
+          throw new Error(refundResult.detail || refundResult.message || 'فشل الاسترداد عبر Paymob');
+        }
+      }
     }
 
     await pool.query('UPDATE payments SET status=$1 WHERE id=$2', ['refunded', p.id]);
