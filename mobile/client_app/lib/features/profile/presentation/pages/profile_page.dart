@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -68,71 +68,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   }
 
   Future<void> _handleNotifications() async {
-    final status = await Permission.notification.status;
-    if (status.isGranted) {
-      // Already granted — open system notification settings
-      await openAppSettings();
-    } else if (status.isPermanentlyDenied) {
-      // Permanently denied — must open settings
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('تفعيل الإشعارات'),
-            content: const Text(
-                'الإشعارات محجوبة. يرجى تفعيلها من إعدادات التطبيق.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  openAppSettings();
-                },
-                child: const Text('فتح الإعدادات'),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      // Not yet asked — request permission
-      await NotificationService.requestPermission();
-      if (mounted) {
-        final newStatus = await Permission.notification.status;
-        if (newStatus.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('تم تفعيل الإشعارات ✓'),
-            backgroundColor: AppTheme.successColor,
-          ));
-        } else {
-          // User denied — show dialog to open settings
-          showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('تفعيل الإشعارات'),
-              content: const Text(
-                  'لم يتم تفعيل الإشعارات.\nلتفعيلها: اذهب إلى إعدادات الجهاز ← التطبيقات ← كوتشينج ← الإشعارات.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('لاحقاً'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    openAppSettings();
-                  },
-                  child: const Text('فتح الإعدادات'),
-                ),
-              ],
-            ),
-          );
-        }
-      }
-    }
+    await openAppSettings();
   }
 
   Future<void> _openWhatsApp() async {

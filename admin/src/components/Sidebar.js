@@ -11,6 +11,7 @@ const navItems = [
   { path: '/payments', icon: '💳', label: 'المدفوعات' },
   { path: '/questionnaire', icon: '📋', label: 'الاستبيان' },
   { path: '/payouts', icon: '💰', label: 'مستحقات الكوتشيز' },
+  { path: '/announcements', icon: '📢', label: 'الإعلانات' },
 ];
 
 export default function Sidebar({ open }) {

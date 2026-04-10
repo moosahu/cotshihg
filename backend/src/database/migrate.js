@@ -583,6 +583,20 @@ async function runPatches() {
         ADD COLUMN IF NOT EXISTS payout_date TIMESTAMP
     `);
 
+    // Patch: announcements table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS announcements (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(200) NOT NULL,
+        body TEXT,
+        image_url TEXT,
+        button_text VARCHAR(100),
+        button_url TEXT,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
     console.log('✅ DB patches applied');
   } catch (err) {
     console.error('⚠️  Patch error (non-fatal):', err.message);

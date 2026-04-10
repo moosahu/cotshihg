@@ -90,4 +90,18 @@ class FlutterAuthUIDelegate: NSObject, AuthUIDelegate {
     }
     return super.application(application, open: url, options: options)
   }
+
+  // Fix: black screen when returning from iOS Settings (Flutter surface doesn't repaint)
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    DispatchQueue.main.async {
+      UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .flatMap { $0.windows }
+        .forEach { window in
+          window.rootViewController?.view.setNeedsLayout()
+          window.rootViewController?.view.layoutIfNeeded()
+        }
+    }
+  }
 }

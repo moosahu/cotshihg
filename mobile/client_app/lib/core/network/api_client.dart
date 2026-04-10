@@ -304,6 +304,14 @@ class ApiClient {
     return res.data;
   }
 
+  // Announcements
+  Future<Map<String, dynamic>?> getActiveAnnouncement() async {
+    final res = await _dio.get('/announcements/active');
+    final data = res.data['data'];
+    if (data == null) return null;
+    return data as Map<String, dynamic>;
+  }
+
   // Legacy
   Future<Map<String, dynamic>> getQuestionnaireQuestions({String? specialization}) async {
     final res = await _dio.get('/questionnaires/questions',

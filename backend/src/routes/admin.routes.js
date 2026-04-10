@@ -58,4 +58,11 @@ router.post('/payouts/:therapistId/mark-paid', adminAuth, adminController.markPa
 router.get('/payout-requests', adminAuth, adminController.getPayoutRequests);
 router.post('/payout-requests/:id/mark-paid', adminAuth, adminController.markPayoutRequestPaid);
 
+// Announcements
+const announcementController = require('../controllers/announcement.controller');
+router.get('/announcements', adminAuth, announcementController.getAll);
+router.post('/announcements', adminAuth, announcementController.create);
+router.put('/announcements/:id', adminAuth, announcementController.update);
+router.delete('/announcements/:id', adminAuth, announcementController.remove);
+
 module.exports = router;

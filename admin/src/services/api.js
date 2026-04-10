@@ -50,6 +50,12 @@ const api = {
   getPayoutRequests: () => request('/admin/payout-requests'),
   markPayoutRequestPaid: (id, note) => request(`/admin/payout-requests/${id}/mark-paid`, { method: 'POST', body: JSON.stringify({ admin_note: note }) }),
 
+  // Announcements
+  getAnnouncements: () => request('/admin/announcements'),
+  createAnnouncement: (data) => request('/admin/announcements', { method: 'POST', body: JSON.stringify(data) }),
+  updateAnnouncement: (id, data) => request(`/admin/announcements/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAnnouncement: (id) => request(`/admin/announcements/${id}`, { method: 'DELETE' }),
+
   // Questionnaire sets
   getQuestionnaireSets: () => request('/admin/questionnaire/sets'),
   createQuestionnaireSet: (data) => request('/admin/questionnaire/sets', { method: 'POST', body: JSON.stringify(data) }),

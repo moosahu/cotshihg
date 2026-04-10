@@ -75,6 +75,10 @@ app.use('/api/v1/mood', moodRoutes);
 app.use('/api/v1/files', filesRoutes);
 app.use('/api/v1/questionnaires', questionnaireRoutes);
 
+// Public: active announcement (no auth)
+const announcementController = require('./controllers/announcement.controller');
+app.get('/api/v1/announcements/active', announcementController.getActive);
+
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });

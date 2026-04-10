@@ -11,6 +11,7 @@ import Content from './pages/Content';
 import Payments from './pages/Payments';
 import Questionnaire from './pages/Questionnaire';
 import Payouts from './pages/Payouts';
+import Announcements from './pages/Announcements';
 import Login from './pages/Login';
 import './App.css';
 
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/payments" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Payments /></Layout> : <Navigate to="/login" replace />} />
         <Route path="/questionnaire" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Questionnaire /></Layout> : <Navigate to="/login" replace />} />
         <Route path="/payouts" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Payouts /></Layout> : <Navigate to="/login" replace />} />
+        <Route path="/announcements" element={isLoggedIn ? <Layout onLogout={() => setIsLoggedIn(false)}><Announcements /></Layout> : <Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to={isLoggedIn ? "/" : "/login"} replace />} />
       </Routes>
     </BrowserRouter>

@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../core/di/injection.dart';
 import '../../core/services/socket_service.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/widgets/announcement_overlay.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/onboarding_page.dart';
@@ -182,17 +183,31 @@ class ClientShell extends StatefulWidget {
   State<ClientShell> createState() => _ClientShellState();
 }
 
-class _ClientShellState extends State<ClientShell> {
+class _ClientShellState extends State<ClientShell> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final List<String> _routes = ['/home', '/therapists', '/mood', '/content', '/profile'];
 
   @override
   void initState() {
     super.initState();
-    // Request notification permission once user is logged in
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.requestPermission();
+      showAnnouncementIfActive(context);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -225,7 +240,7 @@ class CoachShell extends StatefulWidget {
   State<CoachShell> createState() => _CoachShellState();
 }
 
-class _CoachShellState extends State<CoachShell> {
+class _CoachShellState extends State<CoachShell> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final List<String> _routes = [
     '/coach/dashboard',
@@ -242,12 +257,20 @@ class _CoachShellState extends State<CoachShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initRingtone();
     _initSocket();
-    // Request notification permission once coach is logged in
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.requestPermission();
+      showAnnouncementIfActive(context);
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _initRingtone() async {
@@ -325,6 +348,7 @@ class _CoachShellState extends State<CoachShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _stopRinging();
     _ringtonePlayer.dispose();
     getIt<SocketService>().disconnect();
