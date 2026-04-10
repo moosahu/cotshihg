@@ -139,9 +139,14 @@ function CreateBookingModal({ onClose, onCreated }) {
 
   // Pre-fill price when coach and type both set
   useEffect(() => {
-    if (coachData && sessionType) handleSessionTypeChange(sessionType);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coachData]);
+    if (!coachData) return;
+    const priceMap = {
+      video: coachData.session_price_video,
+      voice: coachData.session_price_voice,
+      chat: coachData.session_price_chat,
+    };
+    setPrice(priceMap[sessionType] || coachData.session_price || '');
+  }, [coachData, sessionType]);
 
   const handleSubmit = async () => {
     if (!clientId || !coachId || !selectedDate || !selectedTime || !sessionType || !price || !paymentMethod) {
