@@ -262,10 +262,6 @@ class _ProfilePageState extends State<ProfilePage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _ProfileStat(value: '$_sessionCount', label: 'جلسة مكتملة'),
-                const _StatDivider(),
-                const _ProfileStat(value: '0', label: 'يوم متابعة'),
-                const _StatDivider(),
-                const _ProfileStat(value: '0', label: 'هدف مكتمل'),
               ],
             ),
           ),

@@ -15,6 +15,6 @@ class BookingRepository {
   }
 
   Future<void> cancelBooking(String bookingId) async {
-    // TODO: implement cancel booking API call
+    await _api.cancelBooking(bookingId);
   }
 }
