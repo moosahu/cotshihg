@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
 import 'package:coaching_client/core/widgets/riyal_text.dart';
+import 'package:coaching_client/core/widgets/paymob_payment_page.dart';
 
 String _apiError(dynamic e) {
   if (e is DioException) {
@@ -95,6 +96,41 @@ class _BookingsListState extends State<_BookingsList>
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _pay(String bookingId) async {
+    try {
+      final paymentRes = await getIt<ApiClient>().initiatePayment(bookingId);
+      final clientSecret = paymentRes['data']?['client_secret'] as String?;
+      final publicKey = paymentRes['data']?['public_key'] as String?;
+      if (clientSecret == null || publicKey == null) throw Exception('فشل إنشاء الدفع');
+
+      if (!mounted) return;
+      final result = await Navigator.of(context).push<PaymobResult>(
+        MaterialPageRoute(
+          builder: (_) => PaymobPaymentPage(clientSecret: clientSecret, publicKey: publicKey),
+        ),
+      );
+
+      if (result == PaymobResult.success) {
+        await getIt<ApiClient>().confirmBookingAfterPayment(bookingId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('تم الدفع والحجز بنجاح ✓'),
+            backgroundColor: AppTheme.successColor,
+          ));
+          _load();
+        }
+      } else if (result == PaymobResult.failure) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('فشل الدفع، يرجى المحاولة مرة أخرى'),
+          backgroundColor: AppTheme.errorColor,
+        ));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_apiError(e)), backgroundColor: AppTheme.errorColor));
     }
   }
 
@@ -302,6 +338,21 @@ class _BookingsListState extends State<_BookingsList>
                       ),
                   ] else if (widget.status == 'pending') ...[
                     const SizedBox(height: 12),
+                    if ((b['payment_status'] as String? ?? '') == 'pending' && isPaid) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _pay(id),
+                          icon: const Icon(Icons.payment, size: 18),
+                          label: const Text('ادفع الآن'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
