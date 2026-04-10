@@ -5,6 +5,10 @@ const { authenticate, authorize } = require('../middleware/auth.middleware');
 
 router.get('/', authenticate, therapistController.getTherapists);
 router.get('/me/availability', authenticate, authorize('coach', 'therapist'), therapistController.getMyAvailability);
+router.get('/bank-details', authenticate, authorize('coach', 'therapist'), therapistController.getBankDetails);
+router.put('/bank-details', authenticate, authorize('coach', 'therapist'), therapistController.updateBankDetails);
+router.post('/request-payout', authenticate, authorize('coach', 'therapist'), therapistController.requestPayout);
+router.get('/payout-requests', authenticate, authorize('coach', 'therapist'), therapistController.getMyPayoutRequests);
 router.get('/:id', authenticate, therapistController.getTherapistById);
 router.get('/:id/availability', authenticate, therapistController.getAvailability);
 router.get('/:id/booked-slots', authenticate, therapistController.getBookedSlots);

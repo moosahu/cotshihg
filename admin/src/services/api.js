@@ -31,6 +31,7 @@ const api = {
   updateTherapistPricing: (id, data) => request(`/admin/therapists/${id}/pricing`, { method: 'PUT', body: JSON.stringify(data) }),
   updateTherapistDiscount: (id, data) => request(`/admin/therapists/${id}/discount`, { method: 'PUT', body: JSON.stringify(data) }),
   updateTherapistSpecializations: (id, data) => request(`/admin/therapists/${id}/specializations`, { method: 'PUT', body: JSON.stringify(data) }),
+  updateCoachRate: (id, data) => request(`/admin/therapists/${id}/commission-rate`, { method: 'PUT', body: JSON.stringify(data) }),
   getBookings: () => request('/admin/bookings'),
   createBooking: (data) => request('/admin/bookings', { method: 'POST', body: JSON.stringify(data) }),
   cancelBooking: (id, refund = false) => request(`/admin/bookings/${id}/cancel`, { method: 'PUT', body: JSON.stringify({ refund }) }),
@@ -42,6 +43,12 @@ const api = {
   createContent: (data) => request('/admin/content', { method: 'POST', body: JSON.stringify(data) }),
   togglePublishContent: (id) => request(`/admin/content/${id}/publish`, { method: 'PUT' }),
   deleteContent: (id) => request(`/admin/content/${id}`, { method: 'DELETE' }),
+
+  // Payouts
+  getCoachPayouts: () => request('/admin/payouts'),
+  markPayoutPaid: (therapistId, note) => request(`/admin/payouts/${therapistId}/mark-paid`, { method: 'POST', body: JSON.stringify({ note }) }),
+  getPayoutRequests: () => request('/admin/payout-requests'),
+  markPayoutRequestPaid: (id, note) => request(`/admin/payout-requests/${id}/mark-paid`, { method: 'POST', body: JSON.stringify({ admin_note: note }) }),
 
   // Questionnaire sets
   getQuestionnaireSets: () => request('/admin/questionnaire/sets'),

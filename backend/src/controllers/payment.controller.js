@@ -158,19 +158,63 @@ exports.callback = async (req, res) => {
 
     if (merchantOrderId) {
       if (success && transactionId) {
-        // Store real transaction ID for refunds later
+        // Detect payment method from source_data
+        const subType = (obj.source_data?.sub_type || '').toLowerCase();
+        let paymentMethod = 'card';
+        if (subType.includes('mada')) paymentMethod = 'mada';
+        else if (subType.includes('apple')) paymentMethod = 'apple_pay';
+
+        // Calculate commission breakdown
+        const amountSAR = (obj.amount_cents || 0) / 100;
+        const paymobFee = paymentMethod === 'mada'
+          ? +(amountSAR * 0.01 + 1).toFixed(2)
+          : paymentMethod === 'apple_pay'
+            ? +(amountSAR * 0.025 + 1).toFixed(2)
+            : +(amountSAR * 0.025 + 1).toFixed(2); // default to apple_pay rate for other cards
+
+        // Get coach_rate for this booking's therapist
+        let coachRate = 70; // default
+        try {
+          // We'll look up after we have the booking_id
+        } catch (_) {}
+
+        // Store real transaction ID for refunds later; compute commission after we find booking
         await pool.query(
-          'UPDATE payments SET status=$1, provider_payment_id=$2 WHERE provider_payment_id=$3',
-          ['paid', transactionId, merchantOrderId]
+          `UPDATE payments SET status=$1, provider_payment_id=$2, payment_method=$3, paymob_fee=$4
+           WHERE provider_payment_id=$5`,
+          ['paid', transactionId, paymentMethod, paymobFee, merchantOrderId]
         );
+
         const payment = await pool.query(
-          'SELECT booking_id FROM payments WHERE provider_payment_id=$1 LIMIT 1',
+          'SELECT id, booking_id, amount FROM payments WHERE provider_payment_id=$1 LIMIT 1',
           [transactionId]
         );
         if (payment.rows[0]) {
+          const bookingId = payment.rows[0].booking_id;
+          const totalAmount = parseFloat(payment.rows[0].amount) || amountSAR;
+
+          // Look up coach_rate
+          try {
+            const rateRes = await pool.query(
+              `SELECT t.coach_rate FROM therapists t
+               JOIN bookings b ON b.therapist_id = t.id
+               WHERE b.id=$1`,
+              [bookingId]
+            );
+            if (rateRes.rows[0]) coachRate = parseInt(rateRes.rows[0].coach_rate) || 70;
+          } catch (_) {}
+
+          const coachAmount = +(totalAmount * coachRate / 100).toFixed(2);
+          const platformAmount = +(totalAmount - coachAmount).toFixed(2);
+
+          await pool.query(
+            `UPDATE payments SET coach_amount=$1, platform_amount=$2 WHERE provider_payment_id=$3`,
+            [coachAmount, platformAmount, transactionId]
+          );
+
           await pool.query(
             'UPDATE bookings SET payment_status=$1, payment_id=$2 WHERE id=$3',
-            ['paid', transactionId, payment.rows[0].booking_id]
+            ['paid', transactionId, bookingId]
           );
         }
       } else if (!success) {
@@ -198,6 +242,44 @@ exports.getPaymentHistory = async (req, res) => {
       [req.user.id]
     );
     successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// ── GET /api/v1/payments/coach-earnings ──────────────────────────────────────
+exports.getCoachEarnings = async (req, res) => {
+  try {
+    const therapistRes = await pool.query(
+      'SELECT id, coach_rate FROM therapists WHERE user_id=$1', [req.user.id]
+    );
+    if (!therapistRes.rows[0]) return errorResponse(res, 'Coach not found', 404);
+    const therapistId = therapistRes.rows[0].id;
+    const coachRate = parseInt(therapistRes.rows[0].coach_rate) || 70;
+
+    const result = await pool.query(
+      `SELECT p.id, p.amount, p.coach_amount, p.platform_amount, p.paymob_fee,
+              p.payment_method, p.status, p.payout_status, p.created_at,
+              b.session_type, b.scheduled_at,
+              u.name as client_name
+       FROM payments p
+       JOIN bookings b ON b.id = p.booking_id
+       JOIN users u ON u.id = b.client_id
+       WHERE b.therapist_id=$1 AND p.status='paid'
+       ORDER BY p.created_at DESC`,
+      [therapistId]
+    );
+
+    // For payments without coach_amount stored yet (pre-commission), calculate on the fly
+    const rows = result.rows.map(r => ({
+      ...r,
+      coach_amount: r.coach_amount > 0 ? r.coach_amount : +(parseFloat(r.amount) * coachRate / 100).toFixed(2),
+    }));
+
+    const totalNet = rows.reduce((sum, r) => sum + parseFloat(r.coach_amount || 0), 0);
+    const pendingPayout = rows.filter(r => r.payout_status === 'pending').reduce((sum, r) => sum + parseFloat(r.coach_amount || 0), 0);
+
+    successResponse(res, { coach_rate: coachRate, total_net: +totalNet.toFixed(2), pending_payout: +pendingPayout.toFixed(2), transactions: rows });
   } catch (err) {
     errorResponse(res, err.message, 500);
   }

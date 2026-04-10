@@ -545,6 +545,44 @@ async function runPatches() {
       ALTER TABLE therapist_availability ADD COLUMN IF NOT EXISTS specific_date DATE
     `);
 
+    // Patch: commission system — coach_rate + bank details on therapists
+    await pool.query(`
+      ALTER TABLE therapists ADD COLUMN IF NOT EXISTS coach_rate INTEGER DEFAULT 70 CHECK (coach_rate >= 0 AND coach_rate <= 100)
+    `);
+    await pool.query(`
+      ALTER TABLE therapists
+        ADD COLUMN IF NOT EXISTS iban VARCHAR(34),
+        ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS account_holder VARCHAR(150)
+    `);
+
+    // Patch: payout_requests table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS payout_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        therapist_id UUID REFERENCES therapists(id) ON DELETE CASCADE,
+        amount DECIMAL(10,2) NOT NULL,
+        iban VARCHAR(34),
+        bank_name VARCHAR(100),
+        account_holder VARCHAR(150),
+        status VARCHAR(20) DEFAULT 'pending',
+        admin_note TEXT,
+        requested_at TIMESTAMP DEFAULT NOW(),
+        paid_at TIMESTAMP
+      )
+    `);
+
+    // Patch: commission breakdown columns on payments
+    await pool.query(`
+      ALTER TABLE payments
+        ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30),
+        ADD COLUMN IF NOT EXISTS paymob_fee DECIMAL(10,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS coach_amount DECIMAL(10,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS platform_amount DECIMAL(10,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS payout_status VARCHAR(20) DEFAULT 'pending',
+        ADD COLUMN IF NOT EXISTS payout_date TIMESTAMP
+    `);
+
     console.log('✅ DB patches applied');
   } catch (err) {
     console.error('⚠️  Patch error (non-fatal):', err.message);

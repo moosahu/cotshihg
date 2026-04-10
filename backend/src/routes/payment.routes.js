@@ -8,5 +8,6 @@ router.post('/callback', paymentController.callback);
 
 router.post('/initiate', authenticate, paymentController.initiatePayment);
 router.get('/history', authenticate, paymentController.getPaymentHistory);
+router.get('/coach-earnings', authenticate, paymentController.getCoachEarnings);
 
 module.exports = router;

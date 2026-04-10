@@ -29,6 +29,7 @@ router.put('/therapists/:id/approve', adminAuth, adminController.toggleApproveTh
 router.put('/therapists/:id/pricing', adminAuth, adminController.updateTherapistPricing);
 router.put('/therapists/:id/discount', adminAuth, adminController.updateTherapistDiscount);
 router.put('/therapists/:id/specializations', adminAuth, adminController.updateTherapistSpecializations);
+router.put('/therapists/:id/commission-rate', adminAuth, adminController.updateCoachRate);
 router.get('/bookings', adminAuth, adminController.getBookings);
 router.post('/bookings', adminAuth, adminController.createBooking);
 router.put('/bookings/:id/cancel', adminAuth, adminController.cancelBooking);
@@ -51,5 +52,10 @@ router.post('/questionnaire/sets/:setId/questions', adminAuth, adminController.c
 router.put('/questionnaire/questions/:id', adminAuth, adminController.updateSetQuestion);
 router.delete('/questionnaire/questions/:id', adminAuth, adminController.deleteSetQuestion);
 router.get('/questionnaire/responses', adminAuth, adminController.getQuestionnaireResponses);
+
+router.get('/payouts', adminAuth, adminController.getCoachPayouts);
+router.post('/payouts/:therapistId/mark-paid', adminAuth, adminController.markPayoutPaid);
+router.get('/payout-requests', adminAuth, adminController.getPayoutRequests);
+router.post('/payout-requests/:id/mark-paid', adminAuth, adminController.markPayoutRequestPaid);
 
 module.exports = router;

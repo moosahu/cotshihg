@@ -710,3 +710,125 @@ exports.getQuestionnaireResponses = async (req, res) => {
     errorResponse(res, err.message, 500);
   }
 };
+
+// GET /admin/payout-requests
+exports.getPayoutRequests = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT pr.*, u.name as coach_name, u.phone as coach_phone
+       FROM payout_requests pr
+       JOIN therapists t ON t.id = pr.therapist_id
+       JOIN users u ON u.id = t.user_id
+       ORDER BY pr.requested_at DESC`
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// POST /admin/payout-requests/:id/mark-paid
+exports.markPayoutRequestPaid = async (req, res) => {
+  try {
+    const { admin_note } = req.body;
+    const result = await pool.query(
+      `UPDATE payout_requests SET status='paid', paid_at=NOW(), admin_note=$2
+       WHERE id=$1 AND status='pending' RETURNING *`,
+      [req.params.id, admin_note || null]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'الطلب غير موجود أو تم معالجته', 404);
+
+    // Mark related payments as payout_status='paid'
+    const pr = result.rows[0];
+    await pool.query(
+      `UPDATE payments SET payout_status='paid', payout_date=NOW()
+       WHERE booking_id IN (SELECT id FROM bookings WHERE therapist_id=$1)
+       AND status='paid' AND payout_status='pending'`,
+      [pr.therapist_id]
+    );
+
+    // Notify coach
+    try {
+      const coachRes = await pool.query(
+        'SELECT u.fcm_token FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1',
+        [pr.therapist_id]
+      );
+      if (coachRes.rows[0]?.fcm_token) {
+        const { sendPushNotification } = require('../utils/notifications.utils');
+        await sendPushNotification(
+          coachRes.rows[0].fcm_token,
+          'تم تحويل مستحقاتك',
+          `تم تحويل ${pr.amount} ر.س إلى حسابك البنكي`,
+          { type: 'payout_paid' }
+        );
+      }
+    } catch (_) {}
+
+    successResponse(res, result.rows[0], 'تم تأكيد التحويل وإشعار الكوتش');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// PUT /admin/therapists/:id/commission-rate
+exports.updateCoachRate = async (req, res) => {
+  try {
+    const { coach_rate } = req.body;
+    const rate = parseInt(coach_rate);
+    if (isNaN(rate) || rate < 0 || rate > 100) return errorResponse(res, 'نسبة غير صالحة (0-100)', 400);
+    const result = await pool.query(
+      'UPDATE therapists SET coach_rate=$1 WHERE id=$2 RETURNING id, coach_rate',
+      [rate, req.params.id]
+    );
+    if (!result.rows[0]) return errorResponse(res, 'الكوتش غير موجود', 404);
+    successResponse(res, result.rows[0], 'تم تحديث نسبة الكوتش');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /admin/payouts — aggregate unpaid earnings per coach
+exports.getCoachPayouts = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         t.id as therapist_id,
+         u.name as coach_name,
+         u.phone as coach_phone,
+         t.coach_rate,
+         COALESCE(SUM(CASE WHEN p.payout_status='pending' THEN p.coach_amount ELSE 0 END), 0) as pending_amount,
+         COALESCE(SUM(CASE WHEN p.payout_status='paid' THEN p.coach_amount ELSE 0 END), 0) as paid_amount,
+         COUNT(CASE WHEN p.payout_status='pending' THEN 1 END) as pending_sessions,
+         MAX(p.payout_date) as last_payout_date
+       FROM therapists t
+       JOIN users u ON u.id = t.user_id
+       LEFT JOIN bookings b ON b.therapist_id = t.id
+       LEFT JOIN payments p ON p.booking_id = b.id AND p.status='paid'
+       GROUP BY t.id, u.name, u.phone, t.coach_rate
+       ORDER BY pending_amount DESC`
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// POST /admin/payouts/:therapistId/mark-paid — mark all pending payments as paid out
+exports.markPayoutPaid = async (req, res) => {
+  try {
+    const { therapistId } = req.params;
+    const { note } = req.body;
+
+    const result = await pool.query(
+      `UPDATE payments SET payout_status='paid', payout_date=NOW()
+       WHERE booking_id IN (SELECT id FROM bookings WHERE therapist_id=$1)
+       AND status='paid' AND payout_status='pending'
+       RETURNING id`,
+      [therapistId]
+    );
+
+    successResponse(res, { updated: result.rowCount, note }, `تم تأكيد تحويل ${result.rowCount} دفعة`);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};

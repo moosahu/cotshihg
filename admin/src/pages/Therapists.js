@@ -21,6 +21,8 @@ export default function Therapists() {
   const [discountModal, setDiscountModal] = useState(null);
   const [savingDiscount, setSavingDiscount] = useState(false);
   const [specModal, setSpecModal] = useState(null); // { therapistId, name, selected }
+  const [commissionModal, setCommissionModal] = useState(null); // { therapistId, name, rate }
+  const [savingCommission, setSavingCommission] = useState(false);
   const [savingSpec, setSavingSpec] = useState(false);
 
   useEffect(() => {
@@ -95,6 +97,30 @@ export default function Therapists() {
     }
   };
 
+  const openCommission = (row) => {
+    setCommissionModal({
+      therapistId: row.therapist_id,
+      name: row.name,
+      rate: row.coach_rate ?? 70,
+    });
+  };
+
+  const saveCommission = async () => {
+    setSavingCommission(true);
+    try {
+      await api.updateCoachRate(commissionModal.therapistId, { coach_rate: parseInt(commissionModal.rate) || 70 });
+      setTherapists(prev => prev.map(t =>
+        t.therapist_id === commissionModal.therapistId ? { ...t, coach_rate: commissionModal.rate } : t
+      ));
+      toast.success('تم تحديث نسبة الكوتش');
+      setCommissionModal(null);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingCommission(false);
+    }
+  };
+
   const openPricing = (row) => {
     setPricingModal({
       therapistId: row.therapist_id,
@@ -137,6 +163,18 @@ export default function Therapists() {
     { key: 'years_experience', label: 'الخبرة', render: v => v > 0 ? `${v} سنة` : '—' },
     { key: 'total_sessions', label: 'الجلسات', render: v => v ?? 0 },
     { key: 'rating', label: 'التقييم', render: v => v ? `⭐ ${parseFloat(v).toFixed(1)}` : '—' },
+    {
+      key: 'coach_rate', label: 'نسبة الكوتش',
+      render: v => {
+        const rate = v ?? 70;
+        return (
+          <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+            <div>كوتش: <b style={{ color: '#1A6B72' }}>{rate}%</b></div>
+            <div>إدارة: <b style={{ color: '#e65100' }}>{100 - rate}%</b></div>
+          </div>
+        );
+      }
+    },
     {
       key: 'discount_percent', label: 'الخصم',
       render: v => v > 0
@@ -188,6 +226,12 @@ export default function Therapists() {
             style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #5C6BC0', background: 'none', color: '#5C6BC0', fontSize: 12, cursor: 'pointer' }}
           >
             🎯 تخصص
+          </button>
+          <button
+            onClick={() => openCommission(row)}
+            style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid #2ECC71', background: 'none', color: '#2ECC71', fontSize: 12, cursor: 'pointer' }}
+          >
+            📊 عمولة
           </button>
         </div>
       ) : <span style={{ color: '#8A94A6', fontSize: 12 }}>لم يكمل الملف</span>
@@ -322,6 +366,52 @@ export default function Therapists() {
               </button>
               <button
                 onClick={() => setPricingModal(null)}
+                style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#333', border: 'none', borderRadius: 10, fontSize: 14, cursor: 'pointer' }}
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Commission Rate Modal */}
+      {commissionModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 360, direction: 'rtl' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>نسبة العمولة</h2>
+            <p style={{ color: '#8A94A6', fontSize: 13, marginBottom: 24 }}>{commissionModal.name}</p>
+            <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 8 }}>نسبة الكوتش %</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={commissionModal.rate}
+                onChange={e => setCommissionModal(prev => ({ ...prev, rate: e.target.value }))}
+                style={{ flex: 1, padding: '10px 14px', border: '1px solid #E0E0E0', borderRadius: 8, fontSize: 18, fontWeight: 700, textAlign: 'center' }}
+              />
+              <span style={{ fontSize: 22, color: '#1A6B72', fontWeight: 700 }}>%</span>
+            </div>
+            <div style={{ padding: '12px 14px', background: '#f9f9f9', borderRadius: 10, marginBottom: 24, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span>يحصل الكوتش على:</span>
+                <b style={{ color: '#1A6B72' }}>{commissionModal.rate || 0}%</b>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>نصيب المنصة:</span>
+                <b style={{ color: '#e65100' }}>{100 - (parseInt(commissionModal.rate) || 0)}%</b>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={saveCommission}
+                disabled={savingCommission}
+                style={{ flex: 1, padding: '10px 0', background: '#1A6B72', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {savingCommission ? 'جاري الحفظ...' : 'حفظ النسبة'}
+              </button>
+              <button
+                onClick={() => setCommissionModal(null)}
                 style={{ flex: 1, padding: '10px 0', background: '#f5f5f5', color: '#333', border: 'none', borderRadius: 10, fontSize: 14, cursor: 'pointer' }}
               >
                 إلغاء

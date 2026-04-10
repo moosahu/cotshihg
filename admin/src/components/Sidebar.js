@@ -10,6 +10,7 @@ const navItems = [
   { path: '/content', icon: '📚', label: 'المحتوى' },
   { path: '/payments', icon: '💳', label: 'المدفوعات' },
   { path: '/questionnaire', icon: '📋', label: 'الاستبيان' },
+  { path: '/payouts', icon: '💰', label: 'مستحقات الكوتشيز' },
 ];
 
 export default function Sidebar({ open }) {

@@ -49,6 +49,31 @@ class ApiClient {
     return res.data;
   }
 
+  Future<Map<String, dynamic>> getCoachEarnings() async {
+    final res = await _dio.get('/payments/coach-earnings');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getBankDetails() async {
+    final res = await _dio.get('/therapists/bank-details');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> updateBankDetails(Map<String, dynamic> data) async {
+    final res = await _dio.put('/therapists/bank-details', data: data);
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> requestPayout() async {
+    final res = await _dio.post('/therapists/request-payout');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> getPayoutRequests() async {
+    final res = await _dio.get('/therapists/payout-requests');
+    return res.data;
+  }
+
   Future<Map<String, dynamic>> getMyOwnAvailability() async {
     final res = await _dio.get('/therapists/me/availability');
     return res.data;

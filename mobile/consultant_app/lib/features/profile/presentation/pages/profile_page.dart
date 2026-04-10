@@ -37,6 +37,96 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (_) {}
   }
 
+  void _editBankDetails() async {
+    Map<String, dynamic> current = {};
+    try {
+      final res = await getIt<ApiClient>().getBankDetails();
+      current = res['data'] as Map<String, dynamic>? ?? {};
+    } catch (_) {}
+
+    if (!mounted) return;
+    final ibanCtrl = TextEditingController(text: current['iban'] as String? ?? '');
+    final bankCtrl = TextEditingController(text: current['bank_name'] as String? ?? '');
+    final holderCtrl = TextEditingController(text: current['account_holder'] as String? ?? '');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            left: 24, right: 24, top: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('بيانات البنك',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text('للاستلام عند طلب سحب الأرباح',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: ibanCtrl,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(
+                  labelText: 'رقم IBAN',
+                  hintText: 'SA...',
+                  prefixIcon: Icon(Icons.account_balance_outlined)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bankCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'اسم البنك',
+                  prefixIcon: Icon(Icons.business_outlined)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: holderCtrl,
+              decoration: const InputDecoration(
+                  labelText: 'اسم صاحب الحساب',
+                  prefixIcon: Icon(Icons.person_outline)),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await getIt<ApiClient>().updateBankDetails({
+                      'iban': ibanCtrl.text.trim(),
+                      'bank_name': bankCtrl.text.trim(),
+                      'account_holder': holderCtrl.text.trim(),
+                    });
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('تم حفظ بيانات البنك'),
+                              backgroundColor: AppTheme.successColor));
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text('$e'),
+                              backgroundColor: AppTheme.errorColor));
+                    }
+                  }
+                },
+                child: const Text('حفظ'),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _editProfile() {
     final nameCtrl = TextEditingController(text: _user['name'] as String? ?? '');
     final bioCtrl = TextEditingController(text: _user['bio'] as String? ?? '');
@@ -177,6 +267,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _section('الإعدادات', [
             _tile(Icons.edit_outlined, 'تعديل الملف الشخصي', _editProfile),
             _tile(Icons.schedule_outlined, 'جدول التوفر', () => context.go('/availability')),
+            _tile(Icons.account_balance_outlined, 'بيانات البنك (IBAN)', _editBankDetails),
             _tile(Icons.notifications_outlined, 'الإشعارات', () {}),
           ]),
           _section('الدعم', [

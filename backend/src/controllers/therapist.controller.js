@@ -185,3 +185,101 @@ exports.toggleInstantAvailability = async (req, res) => {
     errorResponse(res, err.message, 500);
   }
 };
+
+// PUT /therapists/bank-details
+exports.updateBankDetails = async (req, res) => {
+  try {
+    const { iban, bank_name, account_holder } = req.body;
+    if (!iban) return errorResponse(res, 'IBAN مطلوب', 400);
+    const cleaned = iban.replace(/\s/g, '').toUpperCase();
+    if (!/^SA\d{22}$/.test(cleaned)) return errorResponse(res, 'IBAN غير صالح — يجب أن يبدأ بـ SA ويتكون من 24 رقماً', 400);
+
+    await pool.query(
+      'UPDATE therapists SET iban=$1, bank_name=$2, account_holder=$3 WHERE user_id=$4',
+      [cleaned, bank_name || null, account_holder || null, req.user.id]
+    );
+    successResponse(res, { iban: cleaned, bank_name, account_holder }, 'تم حفظ بيانات البنك');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /therapists/bank-details
+exports.getBankDetails = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT iban, bank_name, account_holder FROM therapists WHERE user_id=$1',
+      [req.user.id]
+    );
+    successResponse(res, result.rows[0] || {});
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// POST /therapists/request-payout  (min 100 SAR)
+exports.requestPayout = async (req, res) => {
+  const MIN_PAYOUT = 100;
+  try {
+    const therapistRes = await pool.query(
+      'SELECT id, iban, bank_name, account_holder, coach_rate FROM therapists WHERE user_id=$1',
+      [req.user.id]
+    );
+    if (!therapistRes.rows[0]) return errorResponse(res, 'الملف الشخصي غير مكتمل', 404);
+    const t = therapistRes.rows[0];
+
+    if (!t.iban) return errorResponse(res, 'يرجى إضافة بيانات البنك (IBAN) أولاً', 400);
+
+    // Check for existing pending request
+    const existing = await pool.query(
+      "SELECT id FROM payout_requests WHERE therapist_id=$1 AND status='pending'",
+      [t.id]
+    );
+    if (existing.rows[0]) return errorResponse(res, 'يوجد طلب سحب معلق بالفعل', 400);
+
+    // Calculate pending amount
+    const coachRate = parseInt(t.coach_rate) || 70;
+    const earningsRes = await pool.query(
+      `SELECT COALESCE(SUM(
+         CASE WHEN p.coach_amount > 0 THEN p.coach_amount
+              ELSE p.amount * $2 / 100.0
+         END
+       ), 0) as pending
+       FROM payments p
+       JOIN bookings b ON b.id = p.booking_id
+       WHERE b.therapist_id=$1 AND p.status='paid' AND p.payout_status='pending'`,
+      [t.id, coachRate]
+    );
+    const pending = parseFloat(earningsRes.rows[0].pending);
+
+    if (pending < MIN_PAYOUT) {
+      return errorResponse(res, `الحد الأدنى للسحب ${MIN_PAYOUT} ر.س — رصيدك الحالي ${pending.toFixed(2)} ر.س`, 400);
+    }
+
+    const req2 = await pool.query(
+      `INSERT INTO payout_requests (therapist_id, amount, iban, bank_name, account_holder)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [t.id, pending.toFixed(2), t.iban, t.bank_name, t.account_holder]
+    );
+
+    successResponse(res, req2.rows[0], 'تم إرسال طلب السحب — سيتم التحويل خلال 1-3 أيام عمل');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
+// GET /therapists/payout-requests
+exports.getMyPayoutRequests = async (req, res) => {
+  try {
+    const therapistRes = await pool.query('SELECT id FROM therapists WHERE user_id=$1', [req.user.id]);
+    if (!therapistRes.rows[0]) return successResponse(res, []);
+
+    const result = await pool.query(
+      'SELECT * FROM payout_requests WHERE therapist_id=$1 ORDER BY requested_at DESC',
+      [therapistRes.rows[0].id]
+    );
+    successResponse(res, result.rows);
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
