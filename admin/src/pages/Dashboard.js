@@ -4,10 +4,9 @@ import StatCard from '../components/StatCard';
 import api from '../services/api';
 import './Dashboard.css';
 
-const sessionTypes = [
-  { name: 'فيديو', value: 55, color: '#1A6B72' },
-  { name: 'صوتي', value: 25, color: '#F5A623' },
-  { name: 'دردشة', value: 20, color: '#FF6B35' },
+const DEFAULT_SESSION_TYPES = [
+  { name: 'فيديو', value: 0, color: '#1A6B72' },
+  { name: 'صوتي', value: 0, color: '#F5A623' },
 ];
 
 const statusColors = { completed: '#2ECC71', confirmed: '#1A6B72', pending: '#F5A623', cancelled: '#E53935', in_progress: '#FF6B35' };
@@ -16,6 +15,7 @@ const typeLabels = { video: 'فيديو', voice: 'صوتي', chat: 'دردشة' 
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [sessionTypes, setSessionTypes] = useState(DEFAULT_SESSION_TYPES);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,6 +23,9 @@ export default function Dashboard() {
     Promise.all([api.getStats(), api.getBookings()])
       .then(([statsRes, bookingsRes]) => {
         setStats(statsRes.data);
+        if (statsRes.data?.sessionTypes?.length > 0) {
+          setSessionTypes(statsRes.data.sessionTypes);
+        }
         setBookings((bookingsRes.data || []).slice(0, 5));
       })
       .catch(console.error)
@@ -56,11 +59,14 @@ export default function Dashboard() {
               <Tooltip formatter={(v) => `${v}%`} contentStyle={{ fontFamily: 'Cairo', borderRadius: 8 }} />
             </PieChart>
           </ResponsiveContainer>
+          {sessionTypes.every(t => t.value === 0) && !loading && (
+            <p style={{ textAlign: 'center', color: '#8A94A6', fontSize: 13, marginTop: 8 }}>لا توجد جلسات بعد</p>
+          )}
           <div className="pie-legend">
             {sessionTypes.map(t => (
               <div key={t.name} className="legend-item">
                 <span className="legend-dot" style={{ background: t.color }} />
-                <span>{t.name} {t.value}%</span>
+                <span>{t.name} {t.value > 0 ? `${t.value}%` : ''}</span>
               </div>
             ))}
           </div>

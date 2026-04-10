@@ -92,6 +92,58 @@ class _ContentCard extends StatelessWidget {
   final Map<String, dynamic> item;
   const _ContentCard({required this.item});
 
+  void _open(BuildContext context) {
+    final title = item['title_ar'] as String? ?? item['title'] as String? ?? '';
+    final body = item['body_ar'] as String? ?? item['body'] as String?;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        builder: (_, ctrl) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: ListView(
+            controller: ctrl,
+            children: [
+              Center(
+                child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2))),
+              ),
+              const SizedBox(height: 16),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              if (body != null && body.isNotEmpty)
+                Text(body,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.8,
+                        color: Color(0xFF444444)))
+              else
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Text('لا يوجد محتوى تفصيلي بعد',
+                        style: TextStyle(color: AppTheme.textSecondary)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = item['title'] as String? ?? item['title_ar'] as String? ?? '';
@@ -101,7 +153,7 @@ class _ContentCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: () {},
+        onTap: () => _open(context),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(14),

@@ -178,12 +178,18 @@ exports.callback = async (req, res) => {
           // We'll look up after we have the booking_id
         } catch (_) {}
 
-        // Store real transaction ID for refunds later; compute commission after we find booking
-        await pool.query(
+        // Store real transaction ID — only update if still pending (prevents double-processing)
+        const updateRes = await pool.query(
           `UPDATE payments SET status=$1, provider_payment_id=$2, payment_method=$3, paymob_fee=$4
-           WHERE provider_payment_id=$5`,
+           WHERE provider_payment_id=$5 AND status='pending'`,
           ['paid', transactionId, paymentMethod, paymobFee, merchantOrderId]
         );
+
+        // If 0 rows updated → already processed this transaction, skip
+        if (updateRes.rowCount === 0) {
+          console.log(`⚠️  Paymob callback duplicate — transactionId=${transactionId} already processed`);
+          return res.json({ received: true });
+        }
 
         const payment = await pool.query(
           'SELECT id, booking_id, amount FROM payments WHERE provider_payment_id=$1 LIMIT 1',

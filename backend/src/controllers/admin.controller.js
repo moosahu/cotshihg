@@ -28,18 +28,35 @@ exports.login = async (req, res) => {
 // GET /admin/stats
 exports.getStats = async (req, res) => {
   try {
-    const [usersRes, therapistsRes, bookingsRes, paymentsRes] = await Promise.all([
+    const [usersRes, therapistsRes, bookingsRes, paymentsRes, sessionTypesRes] = await Promise.all([
       pool.query("SELECT COUNT(*) FROM users WHERE role != 'admin'"),
-      pool.query("SELECT COUNT(*) FROM users WHERE role = 'therapist'"),
+      pool.query("SELECT COUNT(*) FROM users WHERE role IN ('therapist','coach')"),
       pool.query("SELECT COUNT(*) FROM bookings WHERE DATE(created_at) = CURRENT_DATE"),
-      pool.query("SELECT COALESCE(SUM(amount),0) as total FROM payments WHERE status = 'completed'"),
+      pool.query("SELECT COALESCE(SUM(amount),0) as total FROM payments WHERE status = 'paid'"),
+      pool.query(`
+        SELECT session_type, COUNT(*) as count
+        FROM bookings
+        WHERE status IN ('completed','confirmed','in_progress')
+        GROUP BY session_type
+      `),
     ]);
+
+    const total = sessionTypesRes.rows.reduce((s, r) => s + parseInt(r.count), 0) || 1;
+    const sessionTypes = sessionTypesRes.rows.map(r => ({
+      name: r.session_type === 'video' ? 'فيديو' : r.session_type === 'voice' ? 'صوتي' : 'دردشة',
+      value: Math.round(parseInt(r.count) / total * 100),
+      color: r.session_type === 'video' ? '#1A6B72' : r.session_type === 'voice' ? '#F5A623' : '#FF6B35',
+    }));
 
     successResponse(res, {
       totalUsers: parseInt(usersRes.rows[0].count),
       totalTherapists: parseInt(therapistsRes.rows[0].count),
       todaySessions: parseInt(bookingsRes.rows[0].count),
       totalRevenue: parseFloat(paymentsRes.rows[0].total),
+      sessionTypes: sessionTypes.length > 0 ? sessionTypes : [
+        { name: 'فيديو', value: 0, color: '#1A6B72' },
+        { name: 'صوتي', value: 0, color: '#F5A623' },
+      ],
     });
   } catch (err) {
     errorResponse(res, err.message, 500);

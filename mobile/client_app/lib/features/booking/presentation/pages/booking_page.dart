@@ -26,6 +26,7 @@ class _BookingPageState extends State<BookingPage> {
   String _sessionType = 'video';
   bool _loading = false;
   bool _loadingData = true;
+  bool _loadError = false;
   bool _policyAccepted = false;
   String? _pendingBookingId; // track booking created before payment
   Map<String, dynamic>? _therapist;
@@ -146,7 +147,7 @@ class _BookingPageState extends State<BookingPage> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _loadingData = false);
+      if (mounted) setState(() { _loadingData = false; _loadError = true; });
     }
   }
 
@@ -280,7 +281,28 @@ class _BookingPageState extends State<BookingPage> {
       ),
       body: _loadingData
           ? const Center(child: CircularProgressIndicator())
-          : _buildBody(coachName),
+          : _loadError
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.wifi_off_outlined, size: 48, color: AppTheme.textSecondary),
+                      const SizedBox(height: 12),
+                      const Text('تعذّر تحميل المواعيد',
+                          style: TextStyle(color: AppTheme.textSecondary)),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() { _loadingData = true; _loadError = false; });
+                          _loadData();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('إعادة المحاولة'),
+                      ),
+                    ],
+                  ),
+                )
+              : _buildBody(coachName),
     );
   }
 

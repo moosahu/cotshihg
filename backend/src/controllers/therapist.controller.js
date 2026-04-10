@@ -151,15 +151,48 @@ exports.getMyAvailability = async (req, res) => {
 
 exports.updateAvailability = async (req, res) => {
   try {
-    const { availability } = req.body; // array of { day_of_week, start_time, end_time }
+    const { availability } = req.body;
     const therapistResult = await pool.query('SELECT id FROM therapists WHERE user_id=$1', [req.user.id]);
     if (!therapistResult.rows[0]) return errorResponse(res, 'Therapist profile not found', 404);
 
+    // Validate each slot: start must be before end, minimum 60 minutes
+    for (const slot of availability) {
+      const [sh, sm] = slot.start_time.substring(0, 5).split(':').map(Number);
+      const [eh, em] = slot.end_time.substring(0, 5).split(':').map(Number);
+      const startMins = sh * 60 + sm;
+      const endMins = eh * 60 + em;
+      if (startMins >= endMins) {
+        return errorResponse(res, `وقت البداية يجب أن يكون قبل وقت النهاية (${slot.start_time} - ${slot.end_time})`, 400);
+      }
+      if (endMins - startMins < 60) {
+        return errorResponse(res, `الفترة الزمنية يجب أن لا تقل عن 60 دقيقة (${slot.start_time} - ${slot.end_time})`, 400);
+      }
+    }
+
+    // Check for overlapping slots on the same day/date
+    for (let i = 0; i < availability.length; i++) {
+      for (let j = i + 1; j < availability.length; j++) {
+        const a = availability[i];
+        const b = availability[j];
+        // Same day (or both specific-date with same date)
+        const sameDay = a.specific_date && b.specific_date
+          ? a.specific_date === b.specific_date
+          : !a.specific_date && !b.specific_date && a.day_of_week === b.day_of_week;
+        if (!sameDay) continue;
+        const [ash, asm] = a.start_time.substring(0, 5).split(':').map(Number);
+        const [aeh, aem] = a.end_time.substring(0, 5).split(':').map(Number);
+        const [bsh, bsm] = b.start_time.substring(0, 5).split(':').map(Number);
+        const [beh, bem] = b.end_time.substring(0, 5).split(':').map(Number);
+        const aStart = ash * 60 + asm, aEnd = aeh * 60 + aem;
+        const bStart = bsh * 60 + bsm, bEnd = beh * 60 + bem;
+        if (aStart < bEnd && bStart < aEnd) {
+          return errorResponse(res, `يوجد تداخل في الأوقات: ${a.start_time}-${a.end_time} و ${b.start_time}-${b.end_time}`, 400);
+        }
+      }
+    }
+
     const therapistId = therapistResult.rows[0].id;
-
-    // Delete existing and re-insert
     await pool.query('DELETE FROM therapist_availability WHERE therapist_id=$1', [therapistId]);
-
     for (const slot of availability) {
       await pool.query(
         'INSERT INTO therapist_availability (therapist_id, day_of_week, start_time, end_time, specific_date) VALUES ($1,$2,$3,$4,$5)',
