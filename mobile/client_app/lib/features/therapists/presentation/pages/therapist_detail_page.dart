@@ -108,7 +108,7 @@ class TherapistDetailPage extends StatelessWidget {
                       ),
                       const Divider(height: 32),
                       // Bio
-                      if (t['bio'] != null) ...[
+                      if ((t['bio'] as String?)?.isNotEmpty == true) ...[
                         const Text(
                           'نبذة',
                           style: TextStyle(
@@ -129,18 +129,9 @@ class TherapistDetailPage extends StatelessWidget {
                       // Session types & prices
                       const Text(
                         'أسعار الجلسات',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const SizedBox(height: 12),
-                      _SessionTypeCard(
-                        type: 'chat',
-                        label: 'نصي',
-                        icon: Icons.chat_bubble_outline,
-                        price: '${t['session_price_chat'] ?? 0}',
-                      ),
                       _SessionTypeCard(
                         type: 'voice',
                         label: 'صوتي',
@@ -208,6 +199,7 @@ class _StatItem extends StatelessWidget {
   }
 }
 
+
 class _SessionTypeCard extends StatelessWidget {
   final String type;
   final String label;
@@ -236,7 +228,7 @@ class _SessionTypeCard extends StatelessWidget {
           const SizedBox(width: 12),
           Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           const Spacer(),
-          RiyalText('$price', style: const TextStyle(
+          RiyalText(price, style: const TextStyle(
               color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
             )),

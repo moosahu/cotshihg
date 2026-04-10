@@ -1,20 +1,34 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../di/injection.dart';
 import '../network/api_client.dart';
 
-Future<void> showAnnouncementIfActive(BuildContext context) async {
-  try {
-    final data = await getIt<ApiClient>().getActiveAnnouncement();
-    if (data == null) return;
-    if (!context.mounted) return;
+const _cacheKey = 'cached_announcement';
 
-    await showDialog(
+Future<void> showAnnouncementIfActive(BuildContext context) async {
+  // 1. Show cached version immediately (instant)
+  final prefs = await SharedPreferences.getInstance();
+  final cached = prefs.getString(_cacheKey);
+  if (cached != null && context.mounted) {
+    final data = jsonDecode(cached) as Map<String, dynamic>;
+    showDialog(
       context: context,
       barrierDismissible: true,
       builder: (_) => _AnnouncementDialog(data: data),
     );
+  }
+
+  // 2. Fetch latest in background and update cache
+  try {
+    final data = await getIt<ApiClient>().getActiveAnnouncement();
+    if (data == null) {
+      await prefs.remove(_cacheKey); // الأدمن حذف الإعلان
+    } else {
+      await prefs.setString(_cacheKey, jsonEncode(data));
+    }
   } catch (_) {}
 }
 
@@ -36,7 +50,6 @@ class _AnnouncementDialog extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Image
           if (imageUrl != null && imageUrl.isNotEmpty)
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -53,7 +66,6 @@ class _AnnouncementDialog extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Close button row
                 Row(
                   children: [
                     Expanded(
@@ -72,10 +84,7 @@ class _AnnouncementDialog extends StatelessWidget {
                 ),
                 if (body != null && body.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    body,
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14, height: 1.5),
-                  ),
+                  Text(body, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14, height: 1.5)),
                 ],
                 if (buttonText != null && buttonText.isNotEmpty) ...[
                   const SizedBox(height: 16),
