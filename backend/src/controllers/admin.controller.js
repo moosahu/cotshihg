@@ -448,6 +448,8 @@ exports.resetData = async (req, res) => {
     await pool.query('DELETE FROM payout_requests');
     await pool.query('DELETE FROM reviews');
     await pool.query('DELETE FROM payments');
+    await pool.query('DELETE FROM messages');
+    await pool.query('DELETE FROM session_files');
     await pool.query('DELETE FROM sessions');
     await pool.query('DELETE FROM bookings');
 
