@@ -154,7 +154,6 @@ exports.callback = async (req, res) => {
       return res.status(400).json({ error: 'Invalid HMAC' });
     }
 
-    const obj = data.obj || {};
     const success = obj.success === true || obj.success === 'true';
     const transactionId = String(obj.id || '');
     // merchant_order_id format: "booking_{booking_id}"
@@ -246,8 +245,12 @@ exports.callback = async (req, res) => {
 exports.getPaymentHistory = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT p.*, b.session_type, b.scheduled_at
-       FROM payments p JOIN bookings b ON b.id = p.booking_id
+      `SELECT p.*, b.session_type, b.scheduled_at,
+              u.name as therapist_name
+       FROM payments p
+       JOIN bookings b ON b.id = p.booking_id
+       JOIN therapists t ON t.id = b.therapist_id
+       JOIN users u ON u.id = t.user_id
        WHERE p.user_id=$1 ORDER BY p.created_at DESC`,
       [req.user.id]
     );
