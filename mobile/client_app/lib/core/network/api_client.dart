@@ -272,6 +272,12 @@ class ApiClient {
     return res.data;
   }
 
+  // Coach dashboard
+  Future<Map<String, dynamic>> getCoachDashboardStats() async {
+    final res = await _dio.get('/bookings/coach-stats');
+    return res.data;
+  }
+
   // Coach bank & payout
   Future<Map<String, dynamic>> getCoachEarnings() async {
     final res = await _dio.get('/payments/coach-earnings');
