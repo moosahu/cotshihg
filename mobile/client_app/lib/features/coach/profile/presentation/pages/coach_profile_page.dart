@@ -16,13 +16,27 @@ class CoachProfilePage extends StatefulWidget {
   State<CoachProfilePage> createState() => _CoachProfilePageState();
 }
 
-class _CoachProfilePageState extends State<CoachProfilePage> {
+class _CoachProfilePageState extends State<CoachProfilePage> with WidgetsBindingObserver {
   Map<String, dynamic> _user = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUser();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadUser() async {
