@@ -20,6 +20,7 @@ const adminAuth = (req, res, next) => {
 };
 
 router.post('/login', adminController.login);
+router.post('/reset-data', adminAuth, adminController.resetData);
 router.get('/stats', adminAuth, adminController.getStats);
 router.get('/users', adminAuth, adminController.getUsers);
 router.put('/users/:id/role', adminAuth, adminController.updateUserRole);
