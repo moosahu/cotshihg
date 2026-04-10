@@ -10,14 +10,14 @@ class SocketService {
   bool get isConnected => _socket?.connected ?? false;
 
   /// Connects only once — ignores call if already connected/connecting
-  void connect() {
+  void connect() async {
     if (_socket != null) {
       // Reconnect if disconnected, otherwise keep existing socket
       if (!_socket!.connected) _socket!.connect();
       return;
     }
 
-    final token = _storage.getToken();
+    final token = await _storage.getToken();
     if (token == null) return;
 
     _socket = IO.io(

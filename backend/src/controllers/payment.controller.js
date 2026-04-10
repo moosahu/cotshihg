@@ -131,23 +131,27 @@ exports.callback = async (req, res) => {
     const data = req.body;
     const hmacSecret = process.env.PAYMOB_HMAC_SECRET;
 
-    // Verify HMAC if configured
-    if (hmacSecret) {
-      const obj = data.obj || {};
-      const concatenated = [
-        obj.amount_cents, obj.created_at, obj.currency, obj.error_occured,
-        obj.has_parent_transaction, obj.id, obj.integration_id, obj.is_3d_secure,
-        obj.is_auth, obj.is_capture, obj.is_refunded, obj.is_standalone_payment,
-        obj.is_voided, obj.order?.id, obj.owner, obj.pending,
-        obj.source_data?.pan, obj.source_data?.sub_type, obj.source_data?.type,
-        obj.success,
-      ].join('');
-      const expected = crypto.createHmac('sha512', hmacSecret).update(concatenated).digest('hex');
-      const received = req.query.hmac || data.hmac;
-      if (received && received !== expected) {
-        console.warn('⚠️  Paymob HMAC mismatch');
-        return res.status(400).json({ error: 'Invalid HMAC' });
-      }
+    // HMAC verification is mandatory — reject if not configured
+    if (!hmacSecret) {
+      console.error('❌ PAYMOB_HMAC_SECRET not set — refusing callback');
+      return res.status(500).json({ error: 'Payment security not configured' });
+    }
+
+    const obj = data.obj || {};
+    const concatenated = [
+      obj.amount_cents, obj.created_at, obj.currency, obj.error_occured,
+      obj.has_parent_transaction, obj.id, obj.integration_id, obj.is_3d_secure,
+      obj.is_auth, obj.is_capture, obj.is_refunded, obj.is_standalone_payment,
+      obj.is_voided, obj.order?.id, obj.owner, obj.pending,
+      obj.source_data?.pan, obj.source_data?.sub_type, obj.source_data?.type,
+      obj.success,
+    ].join('');
+    const expected = crypto.createHmac('sha512', hmacSecret).update(concatenated).digest('hex');
+    const received = req.query.hmac || data.hmac;
+
+    if (!received || received !== expected) {
+      console.warn('⚠️  Paymob HMAC invalid — rejecting callback');
+      return res.status(400).json({ error: 'Invalid HMAC' });
     }
 
     const obj = data.obj || {};

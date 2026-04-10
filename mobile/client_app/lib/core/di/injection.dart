@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/api_client.dart';
 import '../services/storage_service.dart';
 import '../services/socket_service.dart';
@@ -19,9 +20,15 @@ final getIt = GetIt.instance;
 Future<void> setupDependencies() async {
   final prefs = await SharedPreferences.getInstance();
 
+  // FlutterSecureStorage — encrypted on both iOS (Keychain) and Android (Keystore)
+  const secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
   // Core
   getIt.registerSingleton<SharedPreferences>(prefs);
-  getIt.registerSingleton<StorageService>(StorageService(prefs));
+  getIt.registerSingleton<StorageService>(StorageService(prefs, secure));
   getIt.registerSingleton<Dio>(_createDio());
   getIt.registerSingleton<ApiClient>(ApiClient(getIt<Dio>()));
   getIt.registerSingleton<SocketService>(SocketService(getIt<StorageService>()));
@@ -50,8 +57,7 @@ Dio _createDio() {
 
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {
-      final prefs = getIt<SharedPreferences>();
-      final token = prefs.getString('auth_token');
+      final token = await getIt<StorageService>().getToken();
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }

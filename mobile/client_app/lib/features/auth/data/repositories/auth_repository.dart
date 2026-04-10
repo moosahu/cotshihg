@@ -10,7 +10,7 @@ class AuthRepository {
   AuthRepository(this._api, this._storage);
 
   Future<Map<String, dynamic>?> getCurrentUser() async {
-    final token = _storage.getToken();
+    final token = await _storage.getToken();
     if (token == null) return null;
     try {
       final result = await _api.getProfile();
