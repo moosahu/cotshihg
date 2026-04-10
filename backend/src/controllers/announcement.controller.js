@@ -35,9 +35,9 @@ exports.uploadImage = async (req, res) => {
 exports.getActive = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT * FROM announcements WHERE is_active = true ORDER BY created_at DESC LIMIT 1`
+      `SELECT * FROM announcements WHERE is_active = true ORDER BY created_at ASC`
     );
-    successResponse(res, result.rows[0] || null);
+    successResponse(res, result.rows); // returns array
   } catch (err) {
     errorResponse(res, err.message, 500);
   }

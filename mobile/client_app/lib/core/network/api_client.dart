@@ -305,11 +305,11 @@ class ApiClient {
   }
 
   // Announcements
-  Future<Map<String, dynamic>?> getActiveAnnouncement() async {
+  Future<List<Map<String, dynamic>>> getActiveAnnouncements() async {
     final res = await _dio.get('/announcements/active');
     final data = res.data['data'];
-    if (data == null) return null;
-    return data as Map<String, dynamic>;
+    if (data == null) return [];
+    return (data as List).cast<Map<String, dynamic>>();
   }
 
   // Legacy

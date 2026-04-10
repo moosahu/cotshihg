@@ -6,53 +6,50 @@ import '../theme/app_theme.dart';
 import '../di/injection.dart';
 import '../network/api_client.dart';
 
-const _cacheKey = 'cached_announcement';
+const _cacheKey = 'cached_announcements';
 
 Future<void> showAnnouncementIfActive(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
   final cached = prefs.getString(_cacheKey);
-  Map<String, dynamic>? cachedData;
+  List<Map<String, dynamic>> cachedList = [];
 
-  // 1. عرض الكاش فوراً
-  if (cached != null && context.mounted) {
-    cachedData = jsonDecode(cached) as Map<String, dynamic>;
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => _AnnouncementDialog(data: cachedData!),
-    );
+  // 1. عرض الكاش فوراً بالتسلسل
+  if (cached != null) {
+    cachedList = (jsonDecode(cached) as List).cast<Map<String, dynamic>>();
+    if (cachedList.isNotEmpty && context.mounted) {
+      await _showSequential(context, cachedList);
+    }
   }
 
   // 2. جلب الجديد في الخلفية
   try {
-    final fresh = await getIt<ApiClient>().getActiveAnnouncement();
-
-    if (fresh == null) {
-      // الأدمن حذف الإعلان
-      await prefs.remove(_cacheKey);
-      if (cachedData != null && context.mounted) {
-        Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst || r is! DialogRoute);
-      }
-      return;
-    }
-
+    final fresh = await getIt<ApiClient>().getActiveAnnouncements();
     await prefs.setString(_cacheKey, jsonEncode(fresh));
 
-    // 3. إذا تغيّر الإعلان (ID مختلف) → أغلق القديم وعرض الجديد
-    final oldId = cachedData?['id'];
-    final newId = fresh['id'];
-    if (oldId != newId && context.mounted) {
-      Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst || r is! DialogRoute);
-      await Future.delayed(const Duration(milliseconds: 200));
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (_) => _AnnouncementDialog(data: fresh),
-        );
-      }
+    // 3. إذا تغيّرت القائمة → عرض الإعلانات الجديدة فقط
+    final cachedIds = cachedList.map((e) => e['id']).toSet();
+    final newItems = fresh.where((e) => !cachedIds.contains(e['id'])).toList();
+
+    if (newItems.isNotEmpty && context.mounted) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (context.mounted) await _showSequential(context, newItems);
     }
   } catch (_) {}
+}
+
+Future<void> _showSequential(BuildContext context, List<Map<String, dynamic>> list) async {
+  for (final item in list) {
+    if (!context.mounted) return;
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => _AnnouncementDialog(data: item),
+    );
+    // انتظر 200ms بين كل إعلان وآخر
+    if (list.indexOf(item) < list.length - 1) {
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+  }
 }
 
 class _AnnouncementDialog extends StatelessWidget {
