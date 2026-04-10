@@ -38,8 +38,10 @@ class _CoachEarningsPageState extends State<CoachEarningsPage> {
   }
 
   void _requestPayout() {
-    final availableStr = _earnings['available_balance']?.toString() ?? '0';
-    final available = double.tryParse(availableStr) ?? 0;
+    final total = double.tryParse(_earnings['total_net']?.toString() ?? '0') ?? 0;
+    final pendingAmt = double.tryParse(_earnings['pending_payout']?.toString() ?? '0') ?? 0;
+    final available = total - pendingAmt;
+    final availableStr = available.toStringAsFixed(0);
 
     if (available < 100) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,9 +132,9 @@ class _CoachEarningsPageState extends State<CoachEarningsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final total = double.tryParse(_earnings['total_earned']?.toString() ?? '0') ?? 0;
-    final available = double.tryParse(_earnings['available_balance']?.toString() ?? '0') ?? 0;
+    final total = double.tryParse(_earnings['total_net']?.toString() ?? '0') ?? 0;
     final pending = double.tryParse(_earnings['pending_payout']?.toString() ?? '0') ?? 0;
+    final available = total - pending;
     final transactions = (_earnings['transactions'] as List?) ?? [];
 
     return Scaffold(
@@ -301,7 +303,7 @@ class _CoachEarningsPageState extends State<CoachEarningsPage> {
                             backgroundColor: AppTheme.successColor.withOpacity(0.1),
                             child: const Icon(Icons.arrow_downward, color: AppTheme.successColor),
                           ),
-                          title: Text(t['user_name'] as String? ?? '—'),
+                          title: Text(t['client_name'] as String? ?? '—'),
                           subtitle: Text(dateStr, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                           trailing: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
