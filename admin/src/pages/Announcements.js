@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
+const BASE_URL = process.env.REACT_APP_API_URL || 'https://coaching-backend-ft67.onrender.com/api/v1';
 const empty = { title: '', body: '', image_url: '', button_text: '', button_url: '' };
 
 export default function Announcements() {
@@ -10,6 +11,7 @@ export default function Announcements() {
   const [form, setForm] = useState(empty);
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -65,6 +67,31 @@ export default function Announcements() {
     }
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const token = localStorage.getItem('admin_token');
+      const res = await fetch(`${BASE_URL}/admin/announcements/upload-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
+      setForm(f => ({ ...f, image_url: data.data.url }));
+      toast.success('تم رفع الصورة');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const handleToggle = async (item) => {
     try {
       await api.updateAnnouncement(item.id, { is_active: !item.is_active });
@@ -97,12 +124,22 @@ export default function Announcements() {
               onChange={e => setForm(f => ({ ...f, body: e.target.value }))} />
           </div>
           <div>
-            <label style={labelStyle}>رابط الصورة</label>
-            <input style={inputStyle} placeholder="https://... (اختياري)" value={form.image_url}
-              onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} />
+            <label style={labelStyle}>الصورة</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ background: '#f0f0f0', border: '1px solid #ddd', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                {uploading ? 'جاري الرفع...' : '📎 ارفع صورة'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} disabled={uploading} />
+              </label>
+              <input style={{ ...inputStyle, flex: 1 }} placeholder="أو الصق رابط مباشر..." value={form.image_url}
+                onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} />
+            </div>
             {form.image_url && (
-              <img src={form.image_url} alt="preview" style={{ marginTop: 8, maxHeight: 120, borderRadius: 8, objectFit: 'cover' }}
-                onError={e => { e.target.style.display = 'none'; }} />
+              <div style={{ marginTop: 8, position: 'relative', display: 'inline-block' }}>
+                <img src={form.image_url} alt="preview" style={{ maxHeight: 140, maxWidth: '100%', borderRadius: 8, objectFit: 'cover', display: 'block' }}
+                  onError={e => { e.target.style.display = 'none'; }} />
+                <button onClick={() => setForm(f => ({ ...f, image_url: '' }))}
+                  style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', fontSize: 12, lineHeight: '22px', padding: 0 }}>✕</button>
+              </div>
             )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

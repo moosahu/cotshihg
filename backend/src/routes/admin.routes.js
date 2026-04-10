@@ -64,5 +64,6 @@ router.get('/announcements', adminAuth, announcementController.getAll);
 router.post('/announcements', adminAuth, announcementController.create);
 router.put('/announcements/:id', adminAuth, announcementController.update);
 router.delete('/announcements/:id', adminAuth, announcementController.remove);
+router.post('/announcements/upload-image', adminAuth, announcementController.uploadImageMiddleware, announcementController.uploadImage);
 
 module.exports = router;
