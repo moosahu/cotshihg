@@ -2,7 +2,9 @@ import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
 import '../network/api_client.dart';
+import '../router/app_router.dart';
 import '../services/storage_service.dart';
 import '../services/socket_service.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
@@ -63,9 +65,11 @@ Dio _createDio() {
       }
       handler.next(options);
     },
-    onError: (error, handler) {
+    onError: (error, handler) async {
       if (error.response?.statusCode == 401) {
-        // Handle token expiry - navigate to login
+        // Token expired — clear storage and redirect to login
+        await getIt<StorageService>().clearSession();
+        AppRouter.navigatorKey.currentContext?.go('/login');
       }
       handler.next(error);
     },
