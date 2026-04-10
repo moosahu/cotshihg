@@ -100,7 +100,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openWhatsApp() async {
-    final uri = Uri.parse('https://wa.me/966500000000?text=مرحباً، أحتاج مساعدة في تطبيق كوتشينج');
+    final uri = Uri.parse('https://wa.me/966536011433?text=مرحباً، أحتاج مساعدة في تطبيق كوتشينج');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

@@ -70,7 +70,7 @@ exports.initiatePayment = async (req, res) => {
         first_name: (booking.rows[0].client_name || 'Client').split(' ')[0],
         last_name: (booking.rows[0].client_name || 'Client').split(' ').slice(1).join(' ') || 'User',
         email: booking.rows[0].client_email || 'client@app.com',
-        phone_number: booking.rows[0].client_phone || '+966500000000',
+        phone_number: booking.rows[0].client_phone || '+966536011433',
         apartment: 'N/A',
         floor: 'N/A',
         street: 'N/A',
