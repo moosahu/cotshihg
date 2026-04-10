@@ -1,35 +1,5 @@
 const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('cloudinary').v2;
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'coaching/announcements',
-    resource_type: 'image',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-  },
-});
-
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
-exports.uploadImageMiddleware = upload.single('image');
-
-exports.uploadImage = async (req, res) => {
-  try {
-    if (!req.file) return errorResponse(res, 'No image uploaded', 400);
-    successResponse(res, { url: req.file.path }, 'Image uploaded');
-  } catch (err) {
-    errorResponse(res, err.message, 500);
-  }
-};
 
 // GET /api/v1/announcements/active  (public — called by the app on startup)
 exports.getActive = async (req, res) => {

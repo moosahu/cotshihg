@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
@@ -22,6 +23,30 @@ class _AnnouncementDialog extends StatelessWidget {
   final Map<String, dynamic> data;
   const _AnnouncementDialog({required this.data});
 
+  Widget _buildImage(String url) {
+    if (url.startsWith('data:image')) {
+      try {
+        final base64Str = url.split(',').last;
+        return Image.memory(
+          base64Decode(base64Str),
+          width: double.infinity,
+          height: 200,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+        );
+      } catch (_) {
+        return const SizedBox.shrink();
+      }
+    }
+    return Image.network(
+      url,
+      width: double.infinity,
+      height: 200,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = data['title'] as String? ?? '';
@@ -40,13 +65,7 @@ class _AnnouncementDialog extends StatelessWidget {
           if (imageUrl != null && imageUrl.isNotEmpty)
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: Image.network(
-                imageUrl,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
+              child: _buildImage(imageUrl),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
