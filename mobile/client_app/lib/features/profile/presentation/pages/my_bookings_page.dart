@@ -140,7 +140,7 @@ class _BookingsListState extends State<_BookingsList>
       builder: (dialogContext) => AlertDialog(
         title: const Text('إلغاء الحجز'),
         content: Text(isPaid
-            ? 'هل أنت متأكد من إلغاء هذا الحجز؟\nبما أن الجلسة مدفوعة، سيتم مراجعة استرداد المبلغ من قبل الإدارة.'
+            ? 'هل أنت متأكد من إلغاء هذا الحجز؟\nبما أن الإلغاء قبل 24 ساعة من الجلسة، سيتم استرداد المبلغ كاملاً خلال 3-5 أيام عمل.'
             : 'هل أنت متأكد من إلغاء هذا الحجز؟'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('لا')),
@@ -157,7 +157,7 @@ class _BookingsListState extends State<_BookingsList>
       _load();
       if (mounted && isPaid) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تم إلغاء الحجز — سيتم التواصل معك بخصوص استرداد المبلغ'),
+          content: Text('تم إلغاء الحجز — سيتم استرداد المبلغ كاملاً خلال 3-5 أيام عمل'),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 5),
         ));
@@ -387,7 +387,7 @@ class _CancelledInfo extends StatelessWidget {
     final byAdmin = cancelledBy == 'admin';
     final cancelLabel = byAdmin ? 'تم إلغاء هذه الجلسة من قِبَل الإدارة' : 'قمت بإلغاء هذه الجلسة';
 
-    final hasPaid = (price is num ? (price as num).toDouble() : double.tryParse(price?.toString() ?? '0') ?? 0.0) > 0;
+    final wasActuallyPaid = paymentStatus == 'paid' || paymentStatus == 'refunded';
     final isRefunded = paymentStatus == 'refunded';
 
     return Column(
@@ -411,7 +411,7 @@ class _CancelledInfo extends StatelessWidget {
             ],
           ),
         ),
-        if (hasPaid) ...[
+        if (wasActuallyPaid) ...[
           const SizedBox(height: 6),
           Container(
             width: double.infinity,
@@ -432,7 +432,7 @@ class _CancelledInfo extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    isRefunded ? 'تم استرداد المبلغ' : 'في انتظار استرداد المبلغ',
+                    isRefunded ? 'تم استرداد المبلغ كاملاً' : 'جارٍ معالجة استرداد المبلغ (3-5 أيام عمل)',
                     style: TextStyle(
                         fontSize: 12,
                         color: isRefunded ? Colors.purple : Colors.orange,
