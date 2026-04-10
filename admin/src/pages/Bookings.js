@@ -293,14 +293,28 @@ export default function Bookings() {
 
   useEffect(() => { load(); }, []);
 
-  const handleCancel = async (id) => {
-    if (!window.confirm('هل تريد إلغاء هذا الحجز؟')) return;
-    try {
-      await api.cancelBooking(id);
-      toast.success('تم إلغاء الحجز');
-      load();
-    } catch (err) {
-      toast.error(err.message);
+  const handleCancel = async (id, isPaid) => {
+    if (isPaid) {
+      const choice = window.confirm(
+        'هذا الحجز مدفوع — هل تريد استرداد المبلغ للعميل أيضاً؟\n\nاضغط "موافق" لإلغاء الحجز واسترداد المبلغ.\nاضغط "إلغاء" لإلغاء الحجز فقط بدون استرداد.'
+      );
+      // choice = true → cancel + refund, false → cancel only
+      try {
+        await api.cancelBooking(id, choice);
+        toast.success(choice ? 'تم إلغاء الحجز واسترداد المبلغ ✓' : 'تم إلغاء الحجز بدون استرداد');
+        load();
+      } catch (err) {
+        toast.error(err.message);
+      }
+    } else {
+      if (!window.confirm('هل تريد إلغاء هذا الحجز؟')) return;
+      try {
+        await api.cancelBooking(id, false);
+        toast.success('تم إلغاء الحجز');
+        load();
+      } catch (err) {
+        toast.error(err.message);
+      }
     }
   };
 
@@ -317,6 +331,20 @@ export default function Bookings() {
     },
     { key: 'price', label: <span>المبلغ <i className="icon-saudi_riyal_new" /></span>, render: v => v ? <span>{v} <i className="icon-saudi_riyal_new" /></span> : '—' },
     {
+      key: 'payment_status', label: 'الدفع',
+      render: (v, row) => {
+        if (!v || v === 'pending') return <span style={{ color: '#8A94A6', fontSize: 12 }}>غير مدفوع</span>;
+        const colors = { paid: '#2ECC71', refunded: '#9C27B0', failed: '#E53935' };
+        const labels = { paid: 'مدفوع', refunded: 'مسترد', failed: 'فاشل' };
+        return (
+          <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: `${colors[v] || '#8A94A6'}20`, color: colors[v] || '#8A94A6' }}>
+            {labels[v] || v}
+            {v === 'paid' && row.price ? ` · ${row.price}` : ''}
+          </span>
+        );
+      }
+    },
+    {
       key: 'status', label: 'الحالة',
       render: v => (
         <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: `${statusColors[v] || '#8A94A6'}20`, color: statusColors[v] || '#8A94A6' }}>
@@ -328,7 +356,7 @@ export default function Bookings() {
       key: 'id', label: 'إجراء',
       render: (id, row) => canCancel(row.status) ? (
         <button
-          onClick={() => handleCancel(id)}
+          onClick={() => handleCancel(id, row.payment_status === 'paid')}
           style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid #E53935', background: 'transparent', color: '#E53935', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
         >
           إلغاء

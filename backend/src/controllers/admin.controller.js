@@ -194,12 +194,15 @@ exports.getBookings = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT b.id, b.session_type, b.status, b.price, b.scheduled_at, b.created_at,
+              b.payment_status, b.cancelled_by,
               c.name as client_name, c.phone as client_phone,
-              u.name as therapist_name
+              u.name as therapist_name,
+              p.id as payment_id, p.provider as payment_provider
        FROM bookings b
        LEFT JOIN users c ON c.id = b.client_id
        LEFT JOIN therapists t ON t.id = b.therapist_id
        LEFT JOIN users u ON u.id = t.user_id
+       LEFT JOIN payments p ON p.booking_id = b.id AND p.status = 'paid'
        ORDER BY b.created_at DESC
        LIMIT 100`
     );
@@ -282,6 +285,8 @@ exports.createBooking = async (req, res) => {
 exports.cancelBooking = async (req, res) => {
   try {
     const { id } = req.params;
+    const { refund = false } = req.body; // optional: refund paid payment too
+
     // End any active session for this booking
     await pool.query(
       `UPDATE sessions SET status='ended', ended_at=NOW() WHERE booking_id=$1 AND status='active'`,
@@ -294,6 +299,67 @@ exports.cancelBooking = async (req, res) => {
       [id]
     );
     if (!result.rows[0]) return errorResponse(res, 'الحجز غير موجود أو لا يمكن إلغاؤه', 400);
+
+    // If refund requested, trigger refund on paid payment
+    if (refund) {
+      const payment = await pool.query(
+        `SELECT * FROM payments WHERE booking_id=$1 AND status='paid' LIMIT 1`, [id]
+      );
+      if (payment.rows[0]) {
+        // Re-use refundPayment logic inline
+        const p = payment.rows[0];
+        if (p.provider === 'manual') {
+          await pool.query('UPDATE payments SET status=$1 WHERE id=$2', ['refunded', p.id]);
+          await pool.query('UPDATE bookings SET payment_status=$1 WHERE id=$2', ['refunded', id]);
+        } else if (p.provider === 'paymob') {
+          // Fire and forget — refund via Paymob (same logic as refundPayment)
+          try {
+            const https = require('https');
+            const host = process.env.PAYMOB_HOST || 'ksa.paymob.com';
+            const amountHalala = Math.round(parseFloat(p.amount) * 100);
+            function paymobHttp(method, path, body, authToken) {
+              return new Promise((resolve) => {
+                const raw = body ? JSON.stringify(body) : null;
+                const headers = { 'Content-Type': 'application/json' };
+                if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+                else headers['Authorization'] = `Token ${process.env.PAYMOB_SECRET_KEY}`;
+                if (raw) headers['Content-Length'] = Buffer.byteLength(raw);
+                const options = { hostname: host, path, method, headers };
+                const r = https.request(options, (res2) => {
+                  let d = '';
+                  res2.on('data', (c) => (d += c));
+                  res2.on('end', () => { try { resolve(JSON.parse(d)); } catch { resolve({}); } });
+                });
+                r.on('error', () => resolve({}));
+                if (raw) r.write(raw);
+                r.end();
+              });
+            }
+            const authRes = await paymobHttp('POST', '/api/auth/tokens', { api_key: process.env.PAYMOB_API_KEY });
+            const authToken = authRes.token;
+            const storedId = p.provider_payment_id || '';
+            const numericId = parseInt(storedId);
+            let refundResult = null;
+            if (!isNaN(numericId) && numericId > 0) {
+              refundResult = await paymobHttp('POST', '/api/acceptance/void_refund/refund', { transaction_id: numericId, amount_cents: amountHalala }, authToken);
+            }
+            if (!refundResult || !refundResult.id) {
+              const txnsRes = await paymobHttp('GET', `/api/acceptance/transactions?page_size=100`, null, authToken);
+              const txn = (txnsRes.results || []).find(t => t.success === true && !t.is_refunded && !t.is_voided && t.amount_cents === amountHalala);
+              if (txn) refundResult = await paymobHttp('POST', '/api/acceptance/void_refund/refund', { transaction_id: txn.id, amount_cents: amountHalala }, authToken);
+            }
+            if (refundResult && refundResult.id) {
+              await pool.query('UPDATE payments SET status=$1 WHERE id=$2', ['refunded', p.id]);
+              await pool.query('UPDATE bookings SET payment_status=$1 WHERE id=$2', ['refunded', id]);
+            }
+          } catch (refundErr) {
+            console.error('⚠️ Auto-refund failed:', refundErr.message);
+            // Booking is still cancelled, refund can be done manually from payments page
+          }
+        }
+      }
+    }
+
     successResponse(res, result.rows[0], 'تم إلغاء الحجز');
   } catch (err) {
     errorResponse(res, err.message, 500);

@@ -33,7 +33,7 @@ const api = {
   updateTherapistSpecializations: (id, data) => request(`/admin/therapists/${id}/specializations`, { method: 'PUT', body: JSON.stringify(data) }),
   getBookings: () => request('/admin/bookings'),
   createBooking: (data) => request('/admin/bookings', { method: 'POST', body: JSON.stringify(data) }),
-  cancelBooking: (id) => request(`/admin/bookings/${id}/cancel`, { method: 'PUT' }),
+  cancelBooking: (id, refund = false) => request(`/admin/bookings/${id}/cancel`, { method: 'PUT', body: JSON.stringify({ refund }) }),
   getCoachAvailability: (id) => request(`/admin/therapists/${id}/availability`),
   getCoachBookedSlots: (id) => request(`/admin/therapists/${id}/booked-slots`),
   getPayments: () => request('/admin/payments'),
