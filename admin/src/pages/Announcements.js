@@ -66,23 +66,30 @@ export default function Announcements() {
     }
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 1.5 * 1024 * 1024) {
-      toast.error('الصورة يجب أن تكون أقل من 1.5 ميغا');
-      return;
-    }
     setUploading(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm(f => ({ ...f, image_url: reader.result }));
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const token = localStorage.getItem('admin_token');
+      const BASE_URL = process.env.REACT_APP_API_URL || 'https://coaching-backend-ft67.onrender.com/api/v1';
+      const res = await fetch(`${BASE_URL}/admin/announcements/upload-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
+      setForm(f => ({ ...f, image_url: data.data.url }));
+      toast.success('تم رفع الصورة');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
       setUploading(false);
-      toast.success('تم تحميل الصورة');
-    };
-    reader.onerror = () => { toast.error('فشل قراءة الصورة'); setUploading(false); };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+      e.target.value = '';
+    }
   };
 
   const handleToggle = async (item) => {
