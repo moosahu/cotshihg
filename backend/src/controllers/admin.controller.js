@@ -363,6 +363,16 @@ exports.refundPayment = async (req, res) => {
     if (p.status === 'refunded') return errorResponse(res, 'Already refunded', 400);
     if (p.status !== 'paid') return errorResponse(res, 'Payment not paid', 400);
 
+    // Manual payments — just mark as refunded, no Paymob call needed
+    if (p.provider === 'manual') {
+      await pool.query('UPDATE payments SET status=$1 WHERE id=$2', ['refunded', p.id]);
+      await pool.query(
+        'UPDATE bookings SET payment_status=$1 WHERE id=(SELECT booking_id FROM payments WHERE id=$2)',
+        ['refunded', p.id]
+      );
+      return successResponse(res, null, 'تم استرداد المبلغ اليدوي بنجاح');
+    }
+
     // Call Paymob refund API
     if (p.provider === 'paymob') {
       const https = require('https');

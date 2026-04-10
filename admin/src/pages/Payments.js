@@ -18,8 +18,11 @@ export default function Payments() {
 
   useEffect(() => { load(); }, []);
 
-  const handleRefund = async (id) => {
-    if (!window.confirm('هل تريد استرداد هذا المبلغ عبر Paymob؟')) return;
+  const handleRefund = async (id, provider) => {
+    const msg = provider === 'manual'
+      ? 'هل تريد تأكيد استرداد هذا المبلغ؟ (دفع يدوي — سيُحدَّث السجل فقط)'
+      : 'هل تريد استرداد هذا المبلغ عبر Paymob؟';
+    if (!window.confirm(msg)) return;
     setRefunding(id);
     try {
       await api.refundPayment(id);
@@ -107,7 +110,7 @@ export default function Payments() {
       key: 'id', label: 'إجراء',
       render: (id, row) => row.status === 'paid' ? (
         <button
-          onClick={() => handleRefund(id)}
+          onClick={() => handleRefund(id, row.provider)}
           disabled={refunding === id}
           style={{
             padding: '4px 12px', borderRadius: 6, border: '1px solid #9C27B0',
