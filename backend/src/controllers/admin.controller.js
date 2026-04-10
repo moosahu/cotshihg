@@ -437,31 +437,6 @@ exports.deleteContent = async (req, res) => {
   }
 };
 
-// POST /admin/reset-data — ONE-TIME: clears bookings/sessions/payments, keeps users
-exports.resetData = async (req, res) => {
-  try {
-    const { confirm } = req.body;
-    if (confirm !== 'RESET_CONFIRMED') return errorResponse(res, 'أرسل { confirm: "RESET_CONFIRMED" } للتأكيد', 400);
-
-    await pool.query('DELETE FROM set_assignments');
-    await pool.query('DELETE FROM questionnaire_assignments');
-    await pool.query('DELETE FROM payout_requests');
-    await pool.query('DELETE FROM reviews');
-    await pool.query('DELETE FROM payments');
-    await pool.query('DELETE FROM messages');
-    await pool.query('DELETE FROM session_files');
-    await pool.query('DELETE FROM sessions');
-    await pool.query('DELETE FROM bookings');
-
-    // Reset therapist stats derived from sessions
-    await pool.query('UPDATE therapists SET rating=NULL, total_reviews=0, total_sessions=0');
-
-    successResponse(res, null, 'تم تصفير البيانات — المستخدمون والكوتشيز محفوظون');
-  } catch (err) {
-    errorResponse(res, err.message, 500);
-  }
-};
-
 // POST /admin/payments/:id/refund
 exports.refundPayment = async (req, res) => {
   try {
