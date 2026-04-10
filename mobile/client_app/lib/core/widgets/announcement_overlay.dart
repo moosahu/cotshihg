@@ -9,25 +9,48 @@ import '../network/api_client.dart';
 const _cacheKey = 'cached_announcement';
 
 Future<void> showAnnouncementIfActive(BuildContext context) async {
-  // 1. Show cached version immediately (instant)
   final prefs = await SharedPreferences.getInstance();
   final cached = prefs.getString(_cacheKey);
+  Map<String, dynamic>? cachedData;
+
+  // 1. عرض الكاش فوراً
   if (cached != null && context.mounted) {
-    final data = jsonDecode(cached) as Map<String, dynamic>;
+    cachedData = jsonDecode(cached) as Map<String, dynamic>;
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) => _AnnouncementDialog(data: data),
+      builder: (_) => _AnnouncementDialog(data: cachedData!),
     );
   }
 
-  // 2. Fetch latest in background and update cache
+  // 2. جلب الجديد في الخلفية
   try {
-    final data = await getIt<ApiClient>().getActiveAnnouncement();
-    if (data == null) {
-      await prefs.remove(_cacheKey); // الأدمن حذف الإعلان
-    } else {
-      await prefs.setString(_cacheKey, jsonEncode(data));
+    final fresh = await getIt<ApiClient>().getActiveAnnouncement();
+
+    if (fresh == null) {
+      // الأدمن حذف الإعلان
+      await prefs.remove(_cacheKey);
+      if (cachedData != null && context.mounted) {
+        Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst || r is! DialogRoute);
+      }
+      return;
+    }
+
+    await prefs.setString(_cacheKey, jsonEncode(fresh));
+
+    // 3. إذا تغيّر الإعلان (ID مختلف) → أغلق القديم وعرض الجديد
+    final oldId = cachedData?['id'];
+    final newId = fresh['id'];
+    if (oldId != newId && context.mounted) {
+      Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst || r is! DialogRoute);
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) => _AnnouncementDialog(data: fresh),
+        );
+      }
     }
   } catch (_) {}
 }
@@ -69,10 +92,8 @@ class _AnnouncementDialog extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                      ),
+                      child: Text(title,
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
@@ -84,7 +105,9 @@ class _AnnouncementDialog extends StatelessWidget {
                 ),
                 if (body != null && body.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(body, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14, height: 1.5)),
+                  Text(body,
+                      style: const TextStyle(
+                          color: AppTheme.textSecondary, fontSize: 14, height: 1.5)),
                 ],
                 if (buttonText != null && buttonText.isNotEmpty) ...[
                   const SizedBox(height: 16),
