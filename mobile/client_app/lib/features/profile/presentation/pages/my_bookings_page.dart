@@ -228,22 +228,10 @@ class _BookingsListState extends State<_BookingsList>
                   ),
                   if (widget.status == 'cancelled') ...[
                     const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.errorColor.withOpacity(0.07),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.errorColor.withOpacity(0.25)),
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.cancel_outlined, size: 16, color: AppTheme.errorColor),
-                          SizedBox(width: 6),
-                          Text('تم إلغاء هذه الجلسة',
-                              style: TextStyle(fontSize: 12, color: AppTheme.errorColor, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                    _CancelledInfo(
+                      cancelledBy: b['cancelled_by'] as String?,
+                      paymentStatus: b['payment_status'] as String?,
+                      price: price,
                     ),
                   ] else if (widget.status == 'completed') ...[
                     const SizedBox(height: 10),
@@ -331,6 +319,79 @@ class _BookingsListState extends State<_BookingsList>
           );
         },
       ),
+    );
+  }
+}
+
+class _CancelledInfo extends StatelessWidget {
+  final String? cancelledBy;
+  final String? paymentStatus;
+  final dynamic price;
+
+  const _CancelledInfo({this.cancelledBy, this.paymentStatus, this.price});
+
+  @override
+  Widget build(BuildContext context) {
+    final byAdmin = cancelledBy == 'admin';
+    final cancelLabel = byAdmin ? 'تم إلغاء هذه الجلسة من قِبَل الإدارة' : 'قمت بإلغاء هذه الجلسة';
+
+    final hasPaid = (price is num ? (price as num).toDouble() : double.tryParse(price?.toString() ?? '0') ?? 0.0) > 0;
+    final isRefunded = paymentStatus == 'refunded';
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppTheme.errorColor.withOpacity(0.07),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.errorColor.withOpacity(0.25)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.cancel_outlined, size: 16, color: AppTheme.errorColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(cancelLabel,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.errorColor, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        ),
+        if (hasPaid) ...[
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: isRefunded ? Colors.purple.withOpacity(0.07) : Colors.orange.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: isRefunded ? Colors.purple.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isRefunded ? Icons.check_circle_outline : Icons.hourglass_empty,
+                  size: 16,
+                  color: isRefunded ? Colors.purple : Colors.orange,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isRefunded ? 'تم استرداد المبلغ' : 'في انتظار استرداد المبلغ',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: isRefunded ? Colors.purple : Colors.orange,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

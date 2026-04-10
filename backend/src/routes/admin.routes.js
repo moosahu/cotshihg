@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin.controller');
+const therapistController = require('../controllers/therapist.controller');
 const jwt = require('jsonwebtoken');
 const { errorResponse } = require('../utils/response.utils');
 
@@ -29,7 +30,10 @@ router.put('/therapists/:id/pricing', adminAuth, adminController.updateTherapist
 router.put('/therapists/:id/discount', adminAuth, adminController.updateTherapistDiscount);
 router.put('/therapists/:id/specializations', adminAuth, adminController.updateTherapistSpecializations);
 router.get('/bookings', adminAuth, adminController.getBookings);
+router.post('/bookings', adminAuth, adminController.createBooking);
 router.put('/bookings/:id/cancel', adminAuth, adminController.cancelBooking);
+router.get('/therapists/:id/availability', adminAuth, therapistController.getAvailability);
+router.get('/therapists/:id/booked-slots', adminAuth, therapistController.getBookedSlots);
 router.get('/payments', adminAuth, adminController.getPayments);
 router.post('/payments/:id/refund', adminAuth, adminController.refundPayment);
 router.get('/content', adminAuth, adminController.getContent);

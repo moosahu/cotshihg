@@ -128,6 +128,11 @@ async function runPatches() {
         ADD COLUMN IF NOT EXISTS payment_id TEXT
     `);
 
+    // Patch: cancelled_by column on bookings
+    await pool.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancelled_by VARCHAR(20)
+    `);
+
     // Patch: payments table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payments (

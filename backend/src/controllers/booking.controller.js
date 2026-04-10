@@ -172,12 +172,14 @@ exports.confirmBooking = async (req, res) => {
 exports.cancelBooking = async (req, res) => {
   try {
     console.log(`🔴 cancelBooking: id=${req.params.id} user=${req.user.id} role=${req.user.role}`);
+    const isAdmin = req.user.role === 'admin';
+    const cancelledBy = isAdmin ? 'admin' : 'client';
     const result = await pool.query(
-      `UPDATE bookings SET status='cancelled', updated_at=NOW()
+      `UPDATE bookings SET status='cancelled', cancelled_by=$3, updated_at=NOW()
        WHERE id=$1 AND (client_id=$2 OR therapist_id=(SELECT id FROM therapists WHERE user_id=$2)
          OR $2 IN (SELECT id FROM users WHERE role='admin'))
        AND status IN ('pending','confirmed') RETURNING *`,
-      [req.params.id, req.user.id]
+      [req.params.id, req.user.id, cancelledBy]
     );
     console.log(`🔴 cancelBooking result: ${result.rowCount} rows`);
 

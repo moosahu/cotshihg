@@ -209,6 +209,75 @@ exports.getBookings = async (req, res) => {
   }
 };
 
+// POST /admin/bookings — admin creates booking for a client
+exports.createBooking = async (req, res) => {
+  try {
+    const { client_id, therapist_id, scheduled_at, session_type, price, payment_method } = req.body;
+    if (!client_id || !therapist_id || !scheduled_at || !session_type || !price || !payment_method) {
+      return errorResponse(res, 'جميع الحقول مطلوبة', 400);
+    }
+
+    // Check slot not already taken
+    const conflict = await pool.query(
+      `SELECT id FROM bookings
+       WHERE therapist_id=$1 AND status IN ('pending','confirmed')
+       AND scheduled_at BETWEEN $2::timestamptz - INTERVAL '30 minutes' AND $2::timestamptz + INTERVAL '30 minutes'`,
+      [therapist_id, scheduled_at]
+    );
+    if (conflict.rows[0]) return errorResponse(res, 'هذا الموعد محجوز بالفعل', 400);
+
+    const isManual = payment_method === 'manual';
+    const bookingStatus = isManual ? 'confirmed' : 'pending';
+    const paymentStatus = isManual ? 'paid' : 'pending';
+
+    // Create booking
+    const booking = await pool.query(
+      `INSERT INTO bookings (client_id, therapist_id, session_type, scheduled_at, duration_minutes, price, status, payment_status, notes)
+       VALUES ($1,$2,$3,$4,60,$5,$6,$7,'حجز من الإدارة') RETURNING *`,
+      [client_id, therapist_id, session_type, scheduled_at, price, bookingStatus, paymentStatus]
+    );
+    const bookingId = booking.rows[0].id;
+
+    // Create payment record
+    await pool.query(
+      `INSERT INTO payments (booking_id, user_id, amount, currency, provider, provider_payment_id, status)
+       VALUES ($1,$2,$3,'SAR',$4,$5,$6)`,
+      [bookingId, client_id, price,
+        isManual ? 'manual' : 'paymob',
+        isManual ? `manual_${bookingId}` : `booking_${bookingId}`,
+        paymentStatus]
+    );
+
+    // Notify client
+    const clientRes = await pool.query('SELECT fcm_token, name FROM users WHERE id=$1', [client_id]);
+    const clientToken = clientRes.rows[0]?.fcm_token;
+    if (clientToken) {
+      const { sendPushNotification } = require('../utils/notifications.utils');
+      if (isManual) {
+        await sendPushNotification(clientToken, 'تم تأكيد حجزك', 'تم حجز جلسة لك من قِبَل الإدارة').catch(() => {});
+      } else {
+        await sendPushNotification(clientToken, 'لديك حجز جديد', 'تم إنشاء حجز لك — يرجى إتمام الدفع عبر التطبيق').catch(() => {});
+      }
+    }
+
+    // Notify coach
+    const coachRes = await pool.query(
+      'SELECT u.fcm_token FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1',
+      [therapist_id]
+    );
+    const coachToken = coachRes.rows[0]?.fcm_token;
+    if (coachToken) {
+      const { sendPushNotification } = require('../utils/notifications.utils');
+      await sendPushNotification(coachToken, 'حجز جديد', 'تم إضافة حجز جديد في جدولك').catch(() => {});
+    }
+
+    successResponse(res, booking.rows[0], 'تم إنشاء الحجز بنجاح');
+  } catch (err) {
+    console.error('❌ Admin createBooking error:', err.message);
+    errorResponse(res, err.message, 500);
+  }
+};
+
 // PUT /admin/bookings/:id/cancel
 exports.cancelBooking = async (req, res) => {
   try {
@@ -219,7 +288,7 @@ exports.cancelBooking = async (req, res) => {
       [id]
     );
     const result = await pool.query(
-      `UPDATE bookings SET status='cancelled', updated_at=NOW()
+      `UPDATE bookings SET status='cancelled', cancelled_by='admin', updated_at=NOW()
        WHERE id=$1 AND status NOT IN ('completed','cancelled')
        RETURNING id, status`,
       [id]
