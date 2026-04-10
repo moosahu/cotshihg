@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/di/injection.dart';
@@ -112,6 +113,56 @@ class _CoachProfilePageState extends State<CoachProfilePage> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleNotifications() async {
+    final status = await Permission.notification.status;
+    if (status.isGranted) {
+      await openAppSettings();
+    } else if (status.isPermanentlyDenied) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('تفعيل الإشعارات'),
+            content: const Text('الإشعارات محجوبة. يرجى تفعيلها من إعدادات الجهاز.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('لاحقاً')),
+              ElevatedButton(
+                onPressed: () { Navigator.pop(context); openAppSettings(); },
+                child: const Text('فتح الإعدادات'),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      await Permission.notification.request();
+      if (mounted) {
+        final newStatus = await Permission.notification.status;
+        if (newStatus.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('تم تفعيل الإشعارات ✓'),
+            backgroundColor: AppTheme.successColor,
+          ));
+        } else {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('تفعيل الإشعارات'),
+              content: const Text('لم يتم تفعيل الإشعارات.\nيمكنك تفعيلها من إعدادات الجهاز.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('لاحقاً')),
+                ElevatedButton(
+                  onPressed: () { Navigator.pop(context); openAppSettings(); },
+                  child: const Text('فتح الإعدادات'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _editBankDetails() async {
@@ -259,7 +310,7 @@ class _CoachProfilePageState extends State<CoachProfilePage> {
             _tile(Icons.edit_outlined, 'تعديل الملف الشخصي', _editProfile),
             _tile(Icons.schedule_outlined, 'المواعيد المتاحة', () => context.go('/coach/schedule')),
             _tile(Icons.account_balance_outlined, 'بيانات البنك (IBAN)', _editBankDetails),
-            _tile(Icons.notifications_outlined, 'الإشعارات', () {}),
+            _tile(Icons.notifications_outlined, 'الإشعارات', _handleNotifications),
           ]),
           _section('الحساب', [
             _tile(Icons.help_outline, 'المساعدة', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpPage()))),

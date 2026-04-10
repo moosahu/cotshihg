@@ -87,14 +87,35 @@ class _ProfilePageState extends State<ProfilePage> {
       await NotificationService.requestPermission();
       if (mounted) {
         final newStatus = await Permission.notification.status;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(newStatus.isGranted
-              ? 'تم تفعيل الإشعارات'
-              : 'لم يتم تفعيل الإشعارات'),
-          backgroundColor: newStatus.isGranted
-              ? AppTheme.successColor
-              : AppTheme.errorColor,
-        ));
+        if (newStatus.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('تم تفعيل الإشعارات ✓'),
+            backgroundColor: AppTheme.successColor,
+          ));
+        } else {
+          // User denied — show dialog to open settings
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('تفعيل الإشعارات'),
+              content: const Text(
+                  'لم يتم تفعيل الإشعارات.\nلتفعيلها: اذهب إلى إعدادات الجهاز ← التطبيقات ← كوتشينج ← الإشعارات.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('لاحقاً'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    openAppSettings();
+                  },
+                  child: const Text('فتح الإعدادات'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }
