@@ -24,6 +24,11 @@ class ApiClient {
     return res.data;
   }
 
+  Future<Map<String, dynamic>> getCoachDashboardStats() async {
+    final res = await _dio.get('/bookings/coach-stats');
+    return res.data;
+  }
+
   Future<Map<String, dynamic>> getMyBookings({String? status}) async {
     final res = await _dio.get('/bookings', queryParameters: status != null ? {'status': status} : null);
     return res.data;

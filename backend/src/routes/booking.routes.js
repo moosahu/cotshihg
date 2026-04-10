@@ -5,6 +5,7 @@ const { authenticate, authorize } = require('../middleware/auth.middleware');
 
 router.post('/', authenticate, authorize('client'), bookingController.createBooking);
 router.post('/instant', authenticate, authorize('client'), bookingController.createInstantBooking);
+router.get('/coach-stats', authenticate, authorize('therapist', 'coach'), bookingController.getCoachDashboardStats);
 router.get('/', authenticate, bookingController.getMyBookings);
 router.get('/:id', authenticate, bookingController.getBookingById);
 router.put('/:id/confirm', authenticate, authorize('therapist', 'coach'), bookingController.confirmBooking);

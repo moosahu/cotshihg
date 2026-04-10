@@ -82,6 +82,69 @@ exports.createInstantBooking = async (req, res) => {
   }
 };
 
+exports.getCoachDashboardStats = async (req, res) => {
+  try {
+    const therapistRow = await pool.query(
+      'SELECT id, rating FROM therapists WHERE user_id=$1', [req.user.id]
+    );
+    if (!therapistRow.rows[0]) return errorResponse(res, 'Coach not found', 404);
+    const therapistId = therapistRow.rows[0].id;
+    const rating = therapistRow.rows[0].rating;
+
+    const [todayRes, weekRes, earningsRes, todaySessionsRes, pendingRes] = await Promise.all([
+      // جلسات اليوم
+      pool.query(
+        `SELECT COUNT(*) FROM bookings
+         WHERE therapist_id=$1 AND status IN ('confirmed','completed','in_progress')
+         AND scheduled_at::date = CURRENT_DATE`,
+        [therapistId]
+      ),
+      // جلسات هذا الأسبوع
+      pool.query(
+        `SELECT COUNT(*) FROM bookings
+         WHERE therapist_id=$1 AND status IN ('confirmed','completed','in_progress')
+         AND scheduled_at >= date_trunc('week', NOW())
+         AND scheduled_at < date_trunc('week', NOW()) + INTERVAL '7 days'`,
+        [therapistId]
+      ),
+      // أرباح هذا الأسبوع
+      pool.query(
+        `SELECT COALESCE(SUM(p.amount),0) as total
+         FROM payments p
+         JOIN bookings b ON b.id = p.booking_id
+         WHERE b.therapist_id=$1 AND p.status='paid'
+         AND p.created_at >= date_trunc('week', NOW())`,
+        [therapistId]
+      ),
+      // جلسات اليوم مع اسم العميل
+      pool.query(
+        `SELECT b.id, b.session_type, b.scheduled_at, b.status, u.name as client_name
+         FROM bookings b JOIN users u ON u.id = b.client_id
+         WHERE b.therapist_id=$1 AND status IN ('confirmed','in_progress')
+         AND b.scheduled_at::date = CURRENT_DATE
+         ORDER BY b.scheduled_at ASC`,
+        [therapistId]
+      ),
+      // الطلبات المعلقة
+      pool.query(
+        `SELECT COUNT(*) FROM bookings WHERE therapist_id=$1 AND status='pending'`,
+        [therapistId]
+      ),
+    ]);
+
+    successResponse(res, {
+      today_count: parseInt(todayRes.rows[0].count),
+      week_count: parseInt(weekRes.rows[0].count),
+      week_earnings: parseFloat(earningsRes.rows[0].total),
+      rating: rating ? parseFloat(rating).toFixed(1) : null,
+      today_sessions: todaySessionsRes.rows,
+      pending_count: parseInt(pendingRes.rows[0].count),
+    });
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};
+
 exports.getMyBookings = async (req, res) => {
   try {
     const { status, role } = req.query;

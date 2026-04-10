@@ -319,7 +319,6 @@ class _BookingPageState extends State<BookingPage> {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 ...[
-                  ('chat', 'محادثة نصية', Icons.chat_bubble_outline),
                   ('voice', 'مكالمة صوتية', Icons.phone_outlined),
                   ('video', 'مكالمة فيديو', Icons.videocam_outlined),
                 ].map((e) => Padding(
@@ -355,7 +354,7 @@ class _BookingPageState extends State<BookingPage> {
                               ),
                               if (_therapist != null)
                                 RiyalText(
-                                  '${(double.tryParse((_therapist![e.$1 == 'chat' ? 'session_price_chat' : e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video'])?.toString() ?? '0') ?? 0).toInt()}',
+                                  '${(double.tryParse((_therapist![e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video'])?.toString() ?? '0') ?? 0).toInt()}',
                                   style: const TextStyle(
                                       color: AppTheme.primaryColor,
                                       fontWeight: FontWeight.bold,
