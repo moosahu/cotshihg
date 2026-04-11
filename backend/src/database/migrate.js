@@ -597,6 +597,10 @@ async function runPatches() {
       )
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC)`);
+    // Patch: add booking_id column if missing (table may have been created before this column was added)
+    await pool.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS booking_id UUID`);
+    await pool.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50)`);
+    await pool.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false`);
 
     // Patch: announcements table
     await pool.query(`
