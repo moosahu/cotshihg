@@ -211,8 +211,11 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold)),
                 if (phone.isNotEmpty)
-                  Text(phone,
-                      style: const TextStyle(color: AppTheme.textSecondary)),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(phone,
+                        style: const TextStyle(color: AppTheme.textSecondary)),
+                  ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _editProfile,

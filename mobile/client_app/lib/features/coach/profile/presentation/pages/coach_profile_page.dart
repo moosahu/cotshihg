@@ -253,7 +253,10 @@ class _CoachProfilePageState extends State<CoachProfilePage> with WidgetsBinding
                 ),
                 const SizedBox(height: 12),
                 Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                if (phone.isNotEmpty) Text(phone, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                if (phone.isNotEmpty) Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(phone, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                ),
                 if (bio.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(bio, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13), textAlign: TextAlign.center),
