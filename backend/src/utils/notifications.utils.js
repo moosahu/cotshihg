@@ -17,7 +17,11 @@ const sendPushNotification = async (fcmToken, title, body, data = {}, channelId 
       `INSERT INTO notifications (user_id, title, body, type, booking_id)
        VALUES ($1, $2, $3, $4, $5)`,
       [userId, title, body, data.type || null, data.booking_id || null]
-    ).catch(() => {});
+    ).then(() => {
+      console.log(`💾 saveNotification OK | user=${userId} | type=${data.type || '?'}`);
+    }).catch((err) => {
+      console.error(`💾 saveNotification FAILED | user=${userId} | type=${data.type || '?'} | error=${err.message}`);
+    });
   }
 
   if (!fcmToken) {
@@ -55,7 +59,11 @@ const saveNotification = (userId, title, body, type = null, bookingId = null) =>
   pool.query(
     `INSERT INTO notifications (user_id, title, body, type, booking_id) VALUES ($1,$2,$3,$4,$5)`,
     [userId, title, body, type, bookingId || null]
-  ).catch(() => {});
+  ).then(() => {
+    console.log(`💾 saveNotification OK | user=${userId} | type=${type}`);
+  }).catch((err) => {
+    console.error(`💾 saveNotification FAILED | user=${userId} | type=${type} | error=${err.message}`);
+  });
 };
 
 module.exports = { sendPushNotification, saveNotification };
