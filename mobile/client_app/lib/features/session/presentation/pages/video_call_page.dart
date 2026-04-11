@@ -72,7 +72,51 @@ class _VideoCallPageState extends State<VideoCallPage> {
   void initState() {
     super.initState();
     _loadMyId();
-    _initSession();
+    _showPrivacyNotice();
+  }
+
+  Future<void> _showPrivacyNotice() async {
+    await Future.delayed(Duration.zero); // wait for context
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 8),
+        content: const Row(
+          children: [
+            Icon(Icons.lock_outline, color: Color(0xFF1A6B72), size: 22),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'جلستك خاصة ومحمية — التسجيل والتصوير غير مسموح',
+                style: TextStyle(fontSize: 14, height: 1.5),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A6B72),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('دخول الجلسة', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (mounted) _initSession();
   }
 
   void _loadMyId() {

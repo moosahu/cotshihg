@@ -530,6 +530,20 @@ class _BookingPageState extends State<BookingPage> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.lock_outline, size: 16, color: Color(0xFF1A6B72)),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'جلستك خاصة ومحمية — التسجيل والتصوير غير مسموح',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF1A6B72), height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
                       Row(
                         children: [
                           Checkbox(
