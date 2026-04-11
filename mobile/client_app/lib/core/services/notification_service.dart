@@ -62,6 +62,8 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
         notifId = 6; defaultTitle = '📋 استبيان جديد'; defaultBody = 'أرسل لك الكوتش استبياناً'; break;
       case 'questionnaire_completed':
         notifId = 7; defaultTitle = '📋 استبيان مكتمل'; defaultBody = 'أكمل العميل الاستبيان'; break;
+      case 'session_waiting':
+        notifId = 8; defaultTitle = '⏳ في انتظارك'; defaultBody = 'الطرف الآخر دخل الجلسة وينتظرك'; break;
       default:
         // Unknown type — only show if FCM sent a notification payload
         if (message.notification == null) return;
@@ -212,6 +214,8 @@ class NotificationService {
             notifId = 6; defaultTitle = '📋 استبيان جديد'; defaultBody = 'أرسل لك الكوتش استبياناً'; break;
           case 'questionnaire_completed':
             notifId = 7; defaultTitle = '📋 استبيان مكتمل'; defaultBody = 'أكمل العميل الاستبيان'; break;
+          case 'session_waiting':
+            notifId = 8; defaultTitle = '⏳ في انتظارك'; defaultBody = 'الطرف الآخر دخل الجلسة وينتظرك'; break;
           default:
             if (message.notification == null) return; // unknown type — nothing to show
         }

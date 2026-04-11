@@ -185,25 +185,41 @@ exports.startSession = async (req, res) => {
       [req.params.bookingId]
     );
 
-    // Notify coach via socket + FCM (in case socket not connected)
-    if (coachRow.rows[0]) {
-      const io = getIo();
-      io?.to(`user_${coachRow.rows[0].id}`).emit('incoming_call', {
+    // Notify the OTHER party that someone is waiting
+    const io = getIo();
+    if (isCoach) {
+      // Coach joined first → notify client
+      io?.to(`user_${booking.rows[0].client_id}`).emit('session_waiting', {
         booking_id: req.params.bookingId,
-        from_name: clientUser?.name ?? 'عميل',
-        call_type: booking.rows[0].session_type,
+        from_name: coachName,
         room_id: roomId,
         agora_token: agoraToken,
       });
-
-      const isVoice = booking.rows[0].session_type === 'voice';
       await sendPushNotification(
-        coachRow.rows[0].fcm_token,
-        isVoice ? '📞 مكالمة صوتية واردة' : '📹 مكالمة فيديو واردة',
-        `${clientUser?.name ?? 'عميل'} يطلب ${isVoice ? 'مكالمة صوتية' : 'مكالمة فيديو'}`,
-        { type: 'incoming_call', booking_id: String(req.params.bookingId), call_type: booking.rows[0].session_type, from_name: clientUser?.name ?? 'عميل' },
-        'incoming_call_channel',  // fullScreenIntent channel for calls only
+        clientUser?.fcm_token,
+        '⏳ الكوتش في انتظارك',
+        `${coachName} دخل الجلسة وينتظرك، انضم الآن!`,
+        { type: 'session_waiting', booking_id: String(req.params.bookingId) },
       );
+    } else {
+      // Client joined first → notify coach
+      if (coachRow.rows[0]) {
+        io?.to(`user_${coachRow.rows[0].id}`).emit('incoming_call', {
+          booking_id: req.params.bookingId,
+          from_name: clientUser?.name ?? 'عميل',
+          call_type: booking.rows[0].session_type,
+          room_id: roomId,
+          agora_token: agoraToken,
+        });
+        const isVoice = booking.rows[0].session_type === 'voice';
+        await sendPushNotification(
+          coachRow.rows[0].fcm_token,
+          isVoice ? '⏳ عميلك في انتظارك' : '⏳ عميلك في انتظارك',
+          `${clientUser?.name ?? 'عميل'} دخل الجلسة وينتظرك، انضم الآن!`,
+          { type: 'incoming_call', booking_id: String(req.params.bookingId), call_type: booking.rows[0].session_type, from_name: clientUser?.name ?? 'عميل' },
+          'incoming_call_channel',
+        );
+      }
     }
 
     successResponse(res, { session: session.rows[0], room_id: roomId, agora_token: agoraToken, coach_name: coachName, is_first_party: true });
