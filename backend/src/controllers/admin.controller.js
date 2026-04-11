@@ -318,18 +318,28 @@ exports.cancelBooking = async (req, res) => {
       const { sendPushNotification, saveNotification } = require('../utils/notifications.utils');
       const bookingInfo = await pool.query(
         `SELECT b.client_id, b.therapist_id, c.fcm_token AS client_token,
-                u.id AS coach_user_id, u.fcm_token AS coach_token
+                u.id AS coach_user_id, u.fcm_token AS coach_token,
+                p.payment_method, p.amount
          FROM bookings b
          JOIN users c ON c.id = b.client_id
          JOIN therapists t ON t.id = b.therapist_id
+         LEFT JOIN payments p ON p.booking_id = b.id AND p.status = 'paid'
          JOIN users u ON u.id = t.user_id
          WHERE b.id=$1`, [id]
       );
       if (bookingInfo.rows[0]) {
         const r = bookingInfo.rows[0];
         const notifData = { type: 'booking_cancelled', booking_id: String(id) };
-        await sendPushNotification(r.client_token, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433', notifData).catch(() => {});
-        saveNotification(r.client_id, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433', 'booking_cancelled', String(id));
+
+        // Build client body based on payment method
+        const isOnlinePayment = ['card', 'apple_pay', 'online'].includes(r.payment_method);
+        const hasPaidAmount = r.amount && parseFloat(r.amount) > 0;
+        const clientBody = isOnlinePayment && hasPaidAmount
+          ? 'تم إلغاء جلستك من قِبَل الإدارة\nسيتم رد المبلغ خلال 5-7 أيام عمل'
+          : 'تم إلغاء جلستك من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433';
+
+        await sendPushNotification(r.client_token, '❌ تم إلغاء موعدك', clientBody, notifData).catch(() => {});
+        saveNotification(r.client_id, '❌ تم إلغاء موعدك', clientBody, 'booking_cancelled', String(id));
         await sendPushNotification(r.coach_token, '❌ تم إلغاء حجز', 'تم إلغاء أحد الحجوزات من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433', notifData).catch(() => {});
         saveNotification(r.coach_user_id, '❌ تم إلغاء حجز', 'تم إلغاء أحد الحجوزات من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433', 'booking_cancelled', String(id));
       }
