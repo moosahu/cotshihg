@@ -40,31 +40,37 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
       ),
     );
   } else {
-    // All other notification types: new_booking, booking_confirmed, booking_cancelled, session_reminder, session_joined
+    int notifId = 99;
     String defaultTitle = '';
     String defaultBody = '';
-    int notifId = 1;
     String channelId = 'general_channel';
     String channelName = 'إشعارات عامة';
 
     switch (type) {
       case 'new_booking':
-        defaultTitle = '📅 حجز جديد'; defaultBody = 'لديك طلب حجز جديد'; notifId = 1; break;
+        notifId = 1; defaultTitle = '📅 حجز جديد'; defaultBody = 'لديك طلب حجز جديد'; break;
       case 'booking_confirmed':
-        defaultTitle = '✅ تم تأكيد موعدك'; defaultBody = 'تم تأكيد جلستك'; notifId = 2; break;
+        notifId = 2; defaultTitle = '✅ تم تأكيد موعدك'; defaultBody = 'تم تأكيد جلستك'; break;
       case 'booking_cancelled':
-        defaultTitle = '❌ تم إلغاء الحجز'; defaultBody = 'تم إلغاء جلستك'; notifId = 3; break;
+        notifId = 3; defaultTitle = '❌ تم إلغاء الحجز'; defaultBody = 'تم إلغاء جلستك'; break;
       case 'session_reminder':
-        defaultTitle = '⏰ تذكير بالجلسة'; defaultBody = 'لديك جلسة قادمة'; notifId = 4;
+        notifId = 4; defaultTitle = '⏰ تذكير بالجلسة'; defaultBody = 'لديك جلسة قادمة';
         channelId = 'reminders'; channelName = 'تذكيرات الجلسات'; break;
       case 'session_joined':
-        defaultTitle = '✅ انضم للجلسة'; defaultBody = 'الطرف الآخر انضم للجلسة'; notifId = 5; break;
+        notifId = 5; defaultTitle = '✅ انضم للجلسة'; defaultBody = 'الطرف الآخر انضم للجلسة'; break;
+      default:
+        // Unknown type — only show if FCM sent a notification payload
+        if (message.notification == null) return;
     }
+
+    final title = message.notification?.title ?? defaultTitle;
+    final body  = message.notification?.body  ?? defaultBody;
+    if (title.isEmpty && body.isEmpty) return;
 
     await plugin.show(
       notifId,
-      message.notification?.title ?? defaultTitle,
-      message.notification?.body ?? defaultBody,
+      title,
+      body,
       NotificationDetails(
         android: AndroidNotificationDetails(
           channelId, channelName,
@@ -180,31 +186,36 @@ class NotificationService {
       if (type == 'incoming_call') {
         // App is open — socket already handles the dialog
       } else {
-        // new_booking, booking_confirmed, booking_cancelled, session_reminder, session_joined
+        int notifId = 99;
         String defaultTitle = '';
         String defaultBody = '';
-        int notifId = 1;
         String channelId = 'general_channel';
         String channelName = 'إشعارات عامة';
 
         switch (type) {
           case 'new_booking':
-            defaultTitle = '📅 حجز جديد'; defaultBody = 'لديك طلب حجز جديد'; notifId = 1; break;
+            notifId = 1; defaultTitle = '📅 حجز جديد'; defaultBody = 'لديك طلب حجز جديد'; break;
           case 'booking_confirmed':
-            defaultTitle = '✅ تم تأكيد موعدك'; defaultBody = 'تم تأكيد جلستك'; notifId = 2; break;
+            notifId = 2; defaultTitle = '✅ تم تأكيد موعدك'; defaultBody = 'تم تأكيد جلستك'; break;
           case 'booking_cancelled':
-            defaultTitle = '❌ تم إلغاء الحجز'; defaultBody = 'تم إلغاء جلستك'; notifId = 3; break;
+            notifId = 3; defaultTitle = '❌ تم إلغاء الحجز'; defaultBody = 'تم إلغاء جلستك'; break;
           case 'session_reminder':
-            defaultTitle = '⏰ تذكير بالجلسة'; defaultBody = 'لديك جلسة قادمة'; notifId = 4;
+            notifId = 4; defaultTitle = '⏰ تذكير بالجلسة'; defaultBody = 'لديك جلسة قادمة';
             channelId = 'reminders'; channelName = 'تذكيرات الجلسات'; break;
           case 'session_joined':
-            defaultTitle = '✅ انضم للجلسة'; defaultBody = 'الطرف الآخر انضم للجلسة'; notifId = 5; break;
+            notifId = 5; defaultTitle = '✅ انضم للجلسة'; defaultBody = 'الطرف الآخر انضم للجلسة'; break;
+          default:
+            if (message.notification == null) return; // unknown type — nothing to show
         }
+
+        final title = message.notification?.title ?? defaultTitle;
+        final body  = message.notification?.body  ?? defaultBody;
+        if (title.isEmpty && body.isEmpty) return;
 
         _localNotif.show(
           notifId,
-          message.notification?.title ?? defaultTitle,
-          message.notification?.body ?? defaultBody,
+          title,
+          body,
           NotificationDetails(
             android: AndroidNotificationDetails(channelId, channelName,
                 importance: Importance.high, priority: Priority.high),
@@ -262,33 +273,4 @@ class NotificationService {
     return await FirebaseMessaging.instance.getToken();
   }
 
-  /// Show incoming call notification (used in background)
-  static Future<void> _showCallNotification({
-    required String fromName,
-    required String callType,
-    required String bookingId,
-  }) async {
-    final isVoice = callType == 'voice';
-    final title = isVoice ? '📞 مكالمة صوتية واردة' : '📹 مكالمة فيديو واردة';
-    final body = '$fromName يطلب ${isVoice ? "مكالمة صوتية" : "مكالمة فيديو"}';
-
-    const androidDetails = AndroidNotificationDetails(
-      _callChannelId,
-      _callChannelName,
-      importance: Importance.max,
-      priority: Priority.max,
-      fullScreenIntent: true,
-      playSound: true,
-      enableVibration: true,
-      category: AndroidNotificationCategory.call,
-    );
-
-    await _localNotif.show(
-      0,
-      title,
-      body,
-      const NotificationDetails(android: androidDetails),
-      payload: 'booking_id=$bookingId&call_type=$callType',
-    );
-  }
 }
