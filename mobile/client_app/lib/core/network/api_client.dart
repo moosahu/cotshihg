@@ -344,16 +344,6 @@ class ApiClient {
     return res.data;
   }
 
-  // Questionnaire Sets
-  Future<Map<String, dynamic>> getQuestionnaireSets() async {
-    final res = await _dio.get('/questionnaires/my-assignments');
-    return res.data;
-  }
-
-  Future<void> sendSetToClient(String setId, String bookingId) async {
-    await _dio.post('/questionnaires/sets/$setId/send/$bookingId');
-  }
-
   Future<Map<String, dynamic>> getAvailableQuestionnaireSets() async {
     final res = await _dio.get('/questionnaires/sets');
     return res.data;
