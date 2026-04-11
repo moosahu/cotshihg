@@ -191,6 +191,7 @@ exports.startSession = async (req, res) => {
         isVoice ? '📞 مكالمة صوتية واردة' : '📹 مكالمة فيديو واردة',
         `${clientUser?.name ?? 'عميل'} يطلب ${isVoice ? 'مكالمة صوتية' : 'مكالمة فيديو'}`,
         { type: 'incoming_call', booking_id: String(req.params.bookingId), call_type: booking.rows[0].session_type, from_name: clientUser?.name ?? 'عميل' },
+        'incoming_call_channel',  // fullScreenIntent channel for calls only
       );
     }
 

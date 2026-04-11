@@ -39,10 +39,11 @@
             </intent-filter>
         </activity>
 
-        <!-- FCM: show notification when app is in background/killed -->
+        <!-- FCM: default channel for notifications when app is killed/background -->
+        <!-- Use general_channel (not incoming_call_channel) to avoid fullScreenIntent on regular notifications -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="incoming_call_channel"/>
+            android:value="general_channel"/>
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/ic_launcher"/>
