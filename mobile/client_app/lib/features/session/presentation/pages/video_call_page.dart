@@ -120,6 +120,10 @@ class _VideoCallPageState extends State<VideoCallPage> {
         socket.connect();
         socket.joinBooking(widget.bookingId);
         socket.onNewMessage(_onNewMessage);
+        socket.onSocketError((err) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('خطأ في الدردشة: ${err['message'] ?? err}'), backgroundColor: Colors.red));
+        });
         // Listen for remote party ending the call
         socket.onCallEnded((_) {
           if (!_isEnding) _endCall(notifyRemote: false);
@@ -335,6 +339,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   void dispose() {
     _timer?.cancel();
     getIt<SocketService>().offCallEnded();
+    getIt<SocketService>().offSocketError();
     _engine?.leaveChannel();
     _engine?.release();
     _chatController.dispose();

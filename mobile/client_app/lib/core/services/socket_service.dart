@@ -107,6 +107,15 @@ class SocketService {
     _socket?.off('new_message');
   }
 
+  void onSocketError(Function(dynamic) callback) {
+    _socket?.off('error');
+    _socket?.on('error', callback);
+  }
+
+  void offSocketError() {
+    _socket?.off('error');
+  }
+
   void disconnect() {
     _socket?.disconnect();
     _socket = null;
