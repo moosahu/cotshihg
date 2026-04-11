@@ -261,7 +261,7 @@ async function cleanupStaleSessions() {
   try {
     const result = await pool.query(
       `UPDATE sessions SET status='ended', ended_at=NOW()
-       WHERE status='active' AND started_at < NOW() - INTERVAL '2 hours'
+       WHERE status='active' AND started_at < NOW() - INTERVAL '24 hours'
        RETURNING booking_id`
     );
     for (const row of result.rows) {
@@ -279,7 +279,7 @@ async function cleanupStaleSessions() {
       `SELECT sf.id, sf.file_path, sf.mime_type
        FROM session_files sf
        JOIN messages m ON m.media_url = sf.file_path
-       WHERE m.created_at < NOW() - INTERVAL '2 hours'`
+       WHERE m.created_at < NOW() - INTERVAL '24 hours'`
     );
     for (const file of expiredFiles.rows) {
       try {
@@ -294,7 +294,7 @@ async function cleanupStaleSessions() {
 
     // Delete chat messages older than 2 hours
     const deleted = await pool.query(
-      `DELETE FROM messages WHERE created_at < NOW() - INTERVAL '2 hours'`
+      `DELETE FROM messages WHERE created_at < NOW() - INTERVAL '24 hours'`
     );
     if (deleted.rowCount > 0) {
       console.log(`🗑️ Deleted ${deleted.rowCount} expired messages + ${expiredFiles.rowCount} files`);
