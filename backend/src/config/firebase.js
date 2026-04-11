@@ -16,13 +16,29 @@ const hasRealCredentials =
 
 if (!admin.apps.length) {
   if (hasRealCredentials) {
+    // Normalize private key — handles all Render/env var line-ending formats:
+    // 1. Literal \n strings  →  actual newlines
+    // 2. Already has real newlines  →  keep as-is
+    // 3. Quoted with surrounding quotes  →  strip them
+    let formattedKey = privateKey
+      .replace(/^["']|["']$/g, '')   // strip surrounding quotes if any
+      .replace(/\\n/g, '\n');         // literal \n → real newline
+
+    // If key still has no newlines after replacement, it may use \n already — try as-is
+    if (!formattedKey.includes('\n')) {
+      formattedKey = privateKey;
+    }
+
+    console.log(`🔑 Firebase key starts with: ${formattedKey.slice(0, 40).replace(/\n/g, '\\n')}`);
+
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId,
-        privateKey: privateKey.replace(/\\n/g, '\n'),
+        privateKey: formattedKey,
         clientEmail,
       }),
     });
+    console.log('✅ Firebase Admin initialized with credentials');
   } else {
     // Initialize without credentials (push notifications disabled)
     admin.initializeApp();
