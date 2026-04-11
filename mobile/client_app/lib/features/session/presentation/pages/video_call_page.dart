@@ -394,8 +394,16 @@ class _VideoCallPageState extends State<VideoCallPage> {
   void _toggleCamera() async {
     final off = !_isCameraOff;
     if (!off) {
-      // Turning camera ON — enable track first if needed
+      // Turning camera ON — enable track and publish to channel
       await _engine?.enableLocalVideo(true);
+      await _engine?.updateChannelMediaOptions(const ChannelMediaOptions(
+        publishCameraTrack: true,
+      ));
+    } else {
+      // Turning camera OFF — stop publishing to channel
+      await _engine?.updateChannelMediaOptions(const ChannelMediaOptions(
+        publishCameraTrack: false,
+      ));
     }
     await _engine?.muteLocalVideoStream(off);
     setState(() => _isCameraOff = off);
