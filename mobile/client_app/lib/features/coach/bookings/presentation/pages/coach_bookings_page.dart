@@ -17,7 +17,7 @@ class _CoachBookingsPageState extends State<CoachBookingsPage> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -36,7 +36,7 @@ class _CoachBookingsPageState extends State<CoachBookingsPage> with SingleTicker
           controller: _tabController,
           labelColor: AppTheme.primaryColor,
           indicatorColor: AppTheme.primaryColor,
-          tabs: const [Tab(text: 'القادمة'), Tab(text: 'جارية'), Tab(text: 'المعلقة'), Tab(text: 'المكتملة')],
+          tabs: const [Tab(text: 'القادمة'), Tab(text: 'جارية'), Tab(text: 'المكتملة')],
         ),
       ),
       body: TabBarView(
@@ -44,7 +44,6 @@ class _CoachBookingsPageState extends State<CoachBookingsPage> with SingleTicker
         children: [
           _BookingsList(status: 'confirmed'),
           _BookingsList(status: 'in_progress'),
-          _BookingsList(status: 'pending'),
           _BookingsList(status: 'completed'),
         ],
       ),
@@ -136,9 +135,7 @@ class _BookingsListState extends State<_BookingsList> {
       ? 'لا توجد حجوزات قادمة'
       : widget.status == 'in_progress'
           ? 'لا توجد جلسات جارية'
-          : widget.status == 'pending'
-              ? 'لا توجد طلبات معلقة'
-              : 'لا توجد جلسات مكتملة';
+          : 'لا توجد جلسات مكتملة';
 
   static const Map<String, String> _typeLabels = {'video': 'فيديو', 'voice': 'صوتي', 'chat': 'دردشة'};
   static const Map<String, IconData> _typeIcons = {'video': Icons.videocam_outlined, 'voice': Icons.mic_outlined, 'chat': Icons.chat_bubble_outline};
@@ -218,38 +215,7 @@ class _BookingsListState extends State<_BookingsList> {
                         ),
                     ],
                   ),
-                  if (widget.status == 'pending') ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: ElevatedButton(
-                          onPressed: () async {
-                            try {
-                              await getIt<ApiClient>().confirmBooking(b['id'].toString());
-                              _load();
-                            } catch (e) {
-                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
-                            }
-                          },
-                          child: const Text('قبول'),
-                        )),
-                        const SizedBox(width: 8),
-                        Expanded(child: OutlinedButton(
-                          onPressed: () async {
-                            try {
-                              await getIt<ApiClient>().cancelBooking(b['id'].toString());
-                              _load();
-                            } catch (e) {
-                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor));
-                            }
-                          },
-                          child: const Text('رفض'),
-                        )),
-                      ],
-                    ),
-                  ] else if (widget.status == 'in_progress') ...[
+                  if (widget.status == 'in_progress') ...[
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,

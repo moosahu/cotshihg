@@ -247,7 +247,7 @@ exports.createBooking = async (req, res) => {
     if (conflict.rows[0]) return errorResponse(res, 'هذا الموعد محجوز بالفعل', 400);
 
     const isManual = payment_method === 'manual';
-    const bookingStatus = isManual ? 'confirmed' : 'pending';
+    const bookingStatus = 'confirmed'; // Admin bookings are always confirmed directly
     const paymentStatus = isManual ? 'paid' : 'pending';
 
     // Create booking

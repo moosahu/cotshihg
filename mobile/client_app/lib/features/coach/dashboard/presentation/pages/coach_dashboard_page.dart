@@ -72,7 +72,6 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
     final weekEarnings = (_stats['week_earnings'] ?? 0).toStringAsFixed(0);
     final rating = _stats['rating'];
     final todaySessions = (_stats['today_sessions'] as List?) ?? [];
-    final pendingCount = _stats['pending_count'] ?? 0;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -168,39 +167,6 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
                                   ...todaySessions.map((s) => _SessionTile(session: s as Map<String, dynamic>)),
                               ],
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // ── الطلبات المعلقة ──
-                        Card(
-                          child: ListTile(
-                            leading: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                  color: AppTheme.warningColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(10)),
-                              child: const Icon(Icons.pending_actions_outlined,
-                                  color: AppTheme.warningColor),
-                            ),
-                            title: const Text('الطلبات المعلقة',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(
-                              pendingCount > 0 ? '$pendingCount طلب بانتظار موافقتك' : 'لا توجد طلبات معلقة',
-                              style: TextStyle(
-                                  color: pendingCount > 0 ? AppTheme.warningColor : AppTheme.textSecondary),
-                            ),
-                            trailing: pendingCount > 0
-                                ? Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: const BoxDecoration(
-                                        color: AppTheme.warningColor, shape: BoxShape.circle),
-                                    child: Text('$pendingCount',
-                                        style: const TextStyle(
-                                            color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                                  )
-                                : const Icon(Icons.chevron_left, color: AppTheme.textSecondary),
-                            onTap: () => context.go('/coach/bookings'),
                           ),
                         ),
                         const SizedBox(height: 16),
