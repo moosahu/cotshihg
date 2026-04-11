@@ -157,6 +157,27 @@ exports.submitAnswers = async (req, res) => {
        WHERE id=$2 RETURNING *`,
       [JSON.stringify(answers), req.params.assignmentId]
     );
+
+    // Notify coach
+    try {
+      const { sendPushNotification, saveNotification } = require('../utils/notifications.utils');
+      const coachRes = await pool.query(
+        `SELECT u.fcm_token, u.id as coach_user_id, c.name as client_name
+         FROM questionnaire_assignments qa
+         JOIN bookings b ON b.id = qa.booking_id
+         JOIN therapists t ON t.id = b.therapist_id
+         JOIN users u ON u.id = t.user_id
+         JOIN users c ON c.id = qa.client_id
+         WHERE qa.id=$1`,
+        [req.params.assignmentId]
+      );
+      if (coachRes.rows[0]) {
+        const { fcm_token, coach_user_id, client_name } = coachRes.rows[0];
+        await sendPushNotification(fcm_token, '📋 استبيان مكتمل', `أكمل ${client_name} الاستبيان المرسل`, { type: 'questionnaire_completed' }).catch(() => {});
+        saveNotification(coach_user_id, '📋 استبيان مكتمل', `أكمل ${client_name} الاستبيان المرسل`, 'questionnaire_completed');
+      }
+    } catch (_) {}
+
     successResponse(res, result.rows[0], 'Answers submitted');
   } catch (err) {
     errorResponse(res, err.message, 500);
@@ -493,6 +514,26 @@ exports.completeAssignment = async (req, res) => {
        WHERE id=$2 RETURNING *`,
       [JSON.stringify(answers), req.params.id]
     );
+
+    // Notify coach
+    try {
+      const { sendPushNotification, saveNotification } = require('../utils/notifications.utils');
+      const coachRes = await pool.query(
+        `SELECT u.fcm_token, u.id as coach_user_id, c.name as client_name, qs.name as set_name
+         FROM set_assignments sa
+         JOIN users u ON u.id = sa.coach_id
+         JOIN users c ON c.id = sa.client_id
+         JOIN questionnaire_sets qs ON qs.id = sa.set_id
+         WHERE sa.id=$1`,
+        [req.params.id]
+      );
+      if (coachRes.rows[0]) {
+        const { fcm_token, coach_user_id, client_name, set_name } = coachRes.rows[0];
+        await sendPushNotification(fcm_token, '📋 استبيان مكتمل', `أكمل ${client_name} استبيان: ${set_name}`, { type: 'questionnaire_completed' }).catch(() => {});
+        saveNotification(coach_user_id, '📋 استبيان مكتمل', `أكمل ${client_name} استبيان: ${set_name}`, 'questionnaire_completed');
+      }
+    } catch (_) {}
+
     successResponse(res, result.rows[0], 'Submitted');
   } catch (err) {
     errorResponse(res, err.message, 500);

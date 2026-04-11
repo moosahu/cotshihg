@@ -39,8 +39,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
       case 'booking_cancelled': return Icons.cancel_rounded;
       case 'session_reminder':  return Icons.alarm_rounded;
       case 'session_joined':      return Icons.video_call_rounded;
-      case 'new_questionnaire':   return Icons.assignment_rounded;
-      default:                    return Icons.notifications_rounded;
+      case 'new_questionnaire':       return Icons.assignment_rounded;
+      case 'questionnaire_completed': return Icons.assignment_turned_in_rounded;
+      default:                        return Icons.notifications_rounded;
     }
   }
 
@@ -51,8 +52,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
       case 'booking_cancelled':   return Colors.red;
       case 'session_reminder':    return Colors.orange;
       case 'session_joined':      return Colors.blue;
-      case 'new_questionnaire':   return Colors.purple;
-      default:                    return AppTheme.textSecondary;
+      case 'new_questionnaire':       return Colors.purple;
+      case 'questionnaire_completed': return Colors.teal;
+      default:                        return AppTheme.textSecondary;
     }
   }
 
