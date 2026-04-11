@@ -56,6 +56,9 @@ const api = {
   updateAnnouncement: (id, data) => request(`/admin/announcements/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteAnnouncement: (id) => request(`/admin/announcements/${id}`, { method: 'DELETE' }),
 
+  // Chat review (dispute / audit)
+  getBookingMessages: (bookingId) => request(`/admin/bookings/${bookingId}/messages`),
+
   // Questionnaire sets
   getQuestionnaireSets: () => request('/admin/questionnaire/sets'),
   createQuestionnaireSet: (data) => request('/admin/questionnaire/sets', { method: 'POST', body: JSON.stringify(data) }),

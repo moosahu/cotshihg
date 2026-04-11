@@ -277,11 +277,137 @@ const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, color: '#3
 const selectStyle = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, marginBottom: 16, direction: 'rtl' };
 const inputStyle = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, marginBottom: 16, boxSizing: 'border-box' };
 
+// ── Messages Review Modal ─────────────────────────────────────────────────────
+function MessagesModal({ booking, onClose }) {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getBookingMessages(booking.id)
+      .then(res => setMessages(res.data || []))
+      .catch(err => toast.error('فشل تحميل الرسائل: ' + err.message))
+      .finally(() => setLoading(false));
+  }, [booking.id]);
+
+  function timeLeft(createdAt) {
+    const deleteAt = new Date(new Date(createdAt).getTime() + 24 * 60 * 60 * 1000);
+    const diff = deleteAt - Date.now();
+    if (diff <= 0) return 'ستُحذف قريباً';
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    return `تُحذف بعد ${h}س ${m}د`;
+  }
+
+  function renderContent(msg) {
+    const type = msg.message_type || 'text';
+    const url = msg.media_url;
+
+    if (type === 'image' && url) {
+      return (
+        <div>
+          <p style={{ margin: '0 0 6px', fontSize: 13 }}>{msg.content}</p>
+          <a href={url} target="_blank" rel="noreferrer">
+            <img src={url} alt="مرفق" style={{ maxWidth: 220, maxHeight: 160, borderRadius: 8, border: '1px solid #E5E7EB', display: 'block' }} />
+          </a>
+        </div>
+      );
+    }
+    if ((type === 'file' || (url && url.includes('.pdf'))) && url) {
+      return (
+        <div>
+          <p style={{ margin: '0 0 6px', fontSize: 13 }}>{msg.content}</p>
+          <a href={url} target="_blank" rel="noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, background: '#FFF3F3', color: '#E53935', fontSize: 12, fontWeight: 600, textDecoration: 'none', border: '1px solid #E5E7EB' }}>
+            📄 فتح PDF
+          </a>
+        </div>
+      );
+    }
+    if (type === 'questionnaire') {
+      return <p style={{ margin: 0, fontSize: 13, color: '#7C3AED' }}>📋 {msg.content}</p>;
+    }
+    return <p style={{ margin: 0, fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</p>;
+  }
+
+  const overlayStyle = {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20,
+  };
+  const boxStyle = {
+    background: '#fff', borderRadius: 16, width: '100%', maxWidth: 620,
+    maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+  };
+
+  return (
+    <div style={overlayStyle} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={boxStyle}>
+        {/* Header */}
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+              مراجعة رسائل الجلسة
+            </h3>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#8A94A6' }}>
+              {booking.client_name} ↔ {booking.therapist_name}
+            </p>
+          </div>
+          <button onClick={onClose}
+            style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            ✕
+          </button>
+        </div>
+
+        {/* Warning banner */}
+        <div style={{ padding: '10px 20px', background: '#FFFBEB', borderBottom: '1px solid #FDE68A', fontSize: 12, color: '#92400E' }}>
+          ⚠️ الرسائل تُحذف تلقائياً بعد 24 ساعة من إرسالها — راجعها قبل انتهاء المهلة
+        </div>
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {loading && <div style={{ textAlign: 'center', color: '#8A94A6', padding: 40 }}>جاري التحميل...</div>}
+          {!loading && messages.length === 0 && (
+            <div style={{ textAlign: 'center', color: '#8A94A6', padding: 40 }}>لا توجد رسائل لهذه الجلسة</div>
+          )}
+          {messages.map(msg => {
+            const isClient = msg.sender_role === 'client';
+            return (
+              <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isClient ? 'flex-start' : 'flex-end' }}>
+                <div style={{ fontSize: 11, color: '#8A94A6', marginBottom: 3 }}>
+                  {msg.sender_name} · {new Date(msg.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+                <div style={{
+                  maxWidth: '75%', padding: '10px 14px', borderRadius: 12,
+                  background: isClient ? '#F3F4F6' : '#E8F4F5',
+                  borderTopLeftRadius: isClient ? 4 : 12,
+                  borderTopRightRadius: isClient ? 12 : 4,
+                }}>
+                  {renderContent(msg)}
+                </div>
+                <div style={{ fontSize: 10, color: '#F5A623', marginTop: 3 }}>
+                  {timeLeft(msg.created_at)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #F3F4F6', textAlign: 'center' }}>
+          <span style={{ fontSize: 12, color: '#8A94A6' }}>
+            {messages.length} رسالة · الرسائل مشفرة في قاعدة البيانات ولا يمكن لأحد قراءتها إلا من هنا
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [reviewBooking, setReviewBooking] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -354,14 +480,24 @@ export default function Bookings() {
     },
     {
       key: 'id', label: 'إجراء',
-      render: (id, row) => canCancel(row.status) ? (
-        <button
-          onClick={() => handleCancel(id, row.payment_status === 'paid')}
-          style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid #E53935', background: 'transparent', color: '#E53935', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
-        >
-          إلغاء
-        </button>
-      ) : '—'
+      render: (id, row) => (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setReviewBooking(row)}
+            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #1A6B72', background: 'transparent', color: '#1A6B72', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+          >
+            💬 رسائل
+          </button>
+          {canCancel(row.status) && (
+            <button
+              onClick={() => handleCancel(id, row.payment_status === 'paid')}
+              style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #E53935', background: 'transparent', color: '#E53935', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+            >
+              إلغاء
+            </button>
+          )}
+        </div>
+      )
     },
   ];
 
@@ -386,6 +522,12 @@ export default function Bookings() {
         <CreateBookingModal
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); load(); }}
+        />
+      )}
+      {reviewBooking && (
+        <MessagesModal
+          booking={reviewBooking}
+          onClose={() => setReviewBooking(null)}
         />
       )}
     </div>
