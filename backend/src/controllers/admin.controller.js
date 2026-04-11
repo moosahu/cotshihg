@@ -328,10 +328,10 @@ exports.cancelBooking = async (req, res) => {
       if (bookingInfo.rows[0]) {
         const r = bookingInfo.rows[0];
         const notifData = { type: 'booking_cancelled', booking_id: String(id) };
-        await sendPushNotification(r.client_token, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة', notifData).catch(() => {});
-        saveNotification(r.client_id, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة', 'booking_cancelled', String(id));
-        await sendPushNotification(r.coach_token, '❌ تم إلغاء حجز', 'تم إلغاء أحد الحجوزات من قِبَل الإدارة', notifData).catch(() => {});
-        saveNotification(r.coach_user_id, '❌ تم إلغاء حجز', 'تم إلغاء أحد الحجوزات من قِبَل الإدارة', 'booking_cancelled', String(id));
+        await sendPushNotification(r.client_token, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433', notifData).catch(() => {});
+        saveNotification(r.client_id, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433', 'booking_cancelled', String(id));
+        await sendPushNotification(r.coach_token, '❌ تم إلغاء حجز', 'تم إلغاء أحد الحجوزات من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433', notifData).catch(() => {});
+        saveNotification(r.coach_user_id, '❌ تم إلغاء حجز', 'تم إلغاء أحد الحجوزات من قِبَل الإدارة\nللاستفسار تواصل معنا: 966536011433', 'booking_cancelled', String(id));
       }
     } catch (_) {}
 
