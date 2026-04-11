@@ -5,6 +5,12 @@ const { getIo } = require('../socket/socket.instance');
 const { sendPushNotification } = require('../utils/notifications.utils');
 const crypto = require('crypto');
 const zlib = require('zlib');
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const AGORA_APP_ID = (process.env.AGORA_APP_ID && !process.env.AGORA_APP_ID.startsWith('your_'))
   ? process.env.AGORA_APP_ID
@@ -268,12 +274,30 @@ async function cleanupStaleSessions() {
       console.log(`🧹 Cleaned up ${result.rows.length} stale sessions`);
     }
 
-    // Delete chat messages older than 2 hours (session chat is temporary)
+    // Delete session files + Cloudinary assets older than 2 hours
+    const expiredFiles = await pool.query(
+      `SELECT sf.id, sf.file_path, sf.mime_type
+       FROM session_files sf
+       JOIN messages m ON m.media_url = sf.file_path
+       WHERE m.created_at < NOW() - INTERVAL '2 hours'`
+    );
+    for (const file of expiredFiles.rows) {
+      try {
+        const match = file.file_path.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
+        if (match) {
+          const isPdf = file.mime_type === 'application/pdf';
+          await cloudinary.uploader.destroy(match[1], { resource_type: isPdf ? 'raw' : 'image' });
+        }
+      } catch (_) {}
+      await pool.query('DELETE FROM session_files WHERE id=$1', [file.id]);
+    }
+
+    // Delete chat messages older than 2 hours
     const deleted = await pool.query(
       `DELETE FROM messages WHERE created_at < NOW() - INTERVAL '2 hours'`
     );
     if (deleted.rowCount > 0) {
-      console.log(`🗑️ Deleted ${deleted.rowCount} expired chat messages`);
+      console.log(`🗑️ Deleted ${deleted.rowCount} expired messages + ${expiredFiles.rowCount} files`);
     }
   } catch (_) {}
 }
