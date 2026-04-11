@@ -133,6 +133,17 @@ class SocketService {
     _socket?.off('error');
   }
 
+  /// Called every time the socket successfully reconnects after a drop.
+  /// Use this to re-join rooms and re-sync state.
+  void onReconnect(Function() callback) {
+    _socket?.off('connect'); // 'connect' fires on every (re)connection
+    _socket?.on('connect', (_) => callback());
+  }
+
+  void offReconnect() {
+    _socket?.off('connect');
+  }
+
   void disconnect() {
     _socket?.disconnect();
     _socket = null;

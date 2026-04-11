@@ -111,17 +111,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
       _debugInfo = 'API ✓ | room: ${_roomId?.substring(0, 8)}... | token: ${token.isEmpty ? "EMPTY" : token.substring(0, 10) + "..."}';
 
       // Load existing chat messages (in case user rejoins after killing app)
-      try {
-        final msgs = await getIt<ApiClient>().getChatMessages(widget.bookingId);
-        if (mounted && msgs.isNotEmpty) {
-          setState(() => _messages.addAll(msgs));
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (_chatScrollController.hasClients) {
-              _chatScrollController.jumpTo(_chatScrollController.position.maxScrollExtent);
-            }
-          });
-        }
-      } catch (_) {}
+      await _syncMissedMessages();
 
       await _initAgora(token);
     } catch (e) {
@@ -164,6 +154,12 @@ class _VideoCallPageState extends State<VideoCallPage> {
         // Listen for remote party ending the call
         socket.onCallEnded((_) {
           if (!_isEnding) _endCall(notifyRemote: false);
+        });
+        // On every reconnect: re-join booking room + fill in missed messages
+        socket.onReconnect(() {
+          socket.joinBooking(widget.bookingId);
+          socket.onNewMessage(_onNewMessage); // re-register listener
+          _syncMissedMessages();
         });
         // Only client notifies coach of incoming call
         if (!widget.isCoach) {
@@ -308,6 +304,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
     final socket = getIt<SocketService>();
     socket.offCallEnded();
     socket.offNewMessage();
+    socket.offReconnect();
 
     // Navigate immediately — don't block on cleanup
     if (mounted) {
@@ -376,6 +373,32 @@ class _VideoCallPageState extends State<VideoCallPage> {
     if (text.isEmpty) return;
     getIt<SocketService>().sendMessage(widget.bookingId, text);
     _chatController.clear();
+  }
+
+  /// Fetches messages from API and appends any that aren't already shown.
+  /// Called on init and on every socket reconnect to fill gaps.
+  Future<void> _syncMissedMessages() async {
+    try {
+      final msgs = await getIt<ApiClient>().getChatMessages(widget.bookingId);
+      if (!mounted || msgs.isEmpty) return;
+      setState(() {
+        final existingIds = _messages.map((m) => m['id']).toSet();
+        final newMsgs = msgs.where((m) => !existingIds.contains(m['id'])).toList();
+        if (newMsgs.isNotEmpty) {
+          _messages.addAll(newMsgs);
+          _messages.sort((a, b) {
+            final ta = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime(0);
+            final tb = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime(0);
+            return ta.compareTo(tb);
+          });
+        }
+      });
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (_chatScrollController.hasClients) {
+          _chatScrollController.jumpTo(_chatScrollController.position.maxScrollExtent);
+        }
+      });
+    } catch (_) {}
   }
 
   void _showAttachmentOptions() {
@@ -475,7 +498,9 @@ class _VideoCallPageState extends State<VideoCallPage> {
     _timer?.cancel();
     WakelockPlus.disable();
     getIt<SocketService>().offCallEnded();
+    getIt<SocketService>().offNewMessage();
     getIt<SocketService>().offSocketError();
+    getIt<SocketService>().offReconnect();
     _engine?.leaveChannel();
     _engine?.release();
     _chatController.dispose();
