@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
@@ -55,6 +59,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   int _unreadCount = 0;
+  bool _isUploading = false;
   String? _myUserId;
 
   bool get _isVoiceOnly => widget.sessionType == 'voice';
@@ -335,6 +340,97 @@ class _VideoCallPageState extends State<VideoCallPage> {
     _chatController.clear();
   }
 
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('إرسال مرفق', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _AttachOption(icon: Icons.image_outlined, label: 'صورة', color: Colors.blue, onTap: () { Navigator.pop(context); _pickAndUploadImage(); }),
+                  _AttachOption(icon: Icons.picture_as_pdf_outlined, label: 'PDF', color: Colors.red, onTap: () { Navigator.pop(context); _pickAndUploadPdf(); }),
+                  _AttachOption(icon: Icons.assignment_outlined, label: 'استبيان', color: Colors.purple, onTap: () { Navigator.pop(context); _sendQuestionnaire(); }),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
+    await _uploadAndSend(picked.path, 'image/jpeg', 'image');
+  }
+
+  Future<void> _pickAndUploadPdf() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+    if (result == null || result.files.single.path == null) return;
+    await _uploadAndSend(result.files.single.path!, 'application/pdf', 'file');
+  }
+
+  Future<void> _uploadAndSend(String filePath, String mimeType, String msgType) async {
+    if (_isUploading) return;
+    if (mounted) setState(() => _isUploading = true);
+    try {
+      final res = await getIt<ApiClient>().uploadFile(widget.bookingId, filePath, mimeType);
+      final fileUrl = res['data']?['file_url'] as String?;
+      if (fileUrl != null) {
+        getIt<SocketService>().sendMessage(widget.bookingId, msgType == 'image' ? '📷 صورة' : '📄 ملف PDF', type: msgType, mediaUrl: fileUrl);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل رفع الملف: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _sendQuestionnaire() async {
+    try {
+      final res = await getIt<ApiClient>().getAvailableQuestionnaireSets();
+      final sets = (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (sets.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد استبيانات متاحة')));
+        return;
+      }
+      if (!mounted) return;
+      final selected = await showModalBottomSheet<Map<String, dynamic>>(
+        context: context,
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const Text('اختر استبياناً', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            ...sets.map((s) => ListTile(
+              leading: const Icon(Icons.assignment_outlined, color: Colors.purple),
+              title: Text(s['name'] as String? ?? '', style: const TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(context, s),
+            )),
+          ],
+        ),
+      );
+      if (selected == null || !mounted) return;
+      await getIt<ApiClient>().sendSetToClient(selected['id'].toString(), widget.bookingId);
+      getIt<SocketService>().sendMessage(widget.bookingId, '📋 ${selected['name']}', type: 'questionnaire');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -595,6 +691,8 @@ class _VideoCallPageState extends State<VideoCallPage> {
                                 final isMe = _myUserId != null &&
                                     msg['sender_id']?.toString() == _myUserId;
                                 final text = msg['content'] as String? ?? '';
+                                final msgType = msg['message_type'] as String? ?? 'text';
+                                final mediaUrl = msg['media_url'] as String?;
                                 final time = msg['created_at'] != null
                                     ? _formatTime(msg['created_at'].toString())
                                     : '';
@@ -602,28 +700,44 @@ class _VideoCallPageState extends State<VideoCallPage> {
                                   alignment: isMe ? Alignment.centerLeft : Alignment.centerRight,
                                   child: Container(
                                     margin: const EdgeInsets.only(bottom: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    constraints: BoxConstraints(
-                                      maxWidth: MediaQuery.of(context).size.width * 0.7,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: msgType == 'image' ? 4 : 12,
+                                      vertical: msgType == 'image' ? 4 : 8,
                                     ),
+                                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
                                     decoration: BoxDecoration(
-                                      color: isMe
-                                          ? AppTheme.primaryColor.withOpacity(0.85)
-                                          : Colors.white12,
+                                      color: isMe ? AppTheme.primaryColor.withOpacity(0.85) : Colors.white12,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Column(
-                                      crossAxisAlignment: isMe
-                                          ? CrossAxisAlignment.end
-                                          : CrossAxisAlignment.start,
+                                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(text,
-                                            style: const TextStyle(color: Colors.white, fontSize: 14)),
+                                        if (msgType == 'image' && mediaUrl != null)
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: CachedNetworkImage(imageUrl: mediaUrl, width: 200, fit: BoxFit.cover),
+                                          )
+                                        else if (msgType == 'file' && mediaUrl != null)
+                                          GestureDetector(
+                                            onTap: () => launchUrl(Uri.parse(mediaUrl), mode: LaunchMode.externalApplication),
+                                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                              const Icon(Icons.picture_as_pdf, color: Colors.red, size: 28),
+                                              const SizedBox(width: 8),
+                                              const Text('فتح PDF', style: TextStyle(color: Colors.white, fontSize: 13, decoration: TextDecoration.underline)),
+                                            ]),
+                                          )
+                                        else if (msgType == 'questionnaire')
+                                          Row(mainAxisSize: MainAxisSize.min, children: [
+                                            const Icon(Icons.assignment_outlined, color: Colors.purple, size: 20),
+                                            const SizedBox(width: 6),
+                                            Flexible(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13))),
+                                          ])
+                                        else
+                                          Text(text, style: const TextStyle(color: Colors.white, fontSize: 14)),
                                         if (time.isNotEmpty) ...[
                                           const SizedBox(height: 2),
-                                          Text(time,
-                                              style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                                          Text(time, style: const TextStyle(color: Colors.white38, fontSize: 10)),
                                         ],
                                       ],
                                     ),
@@ -643,6 +757,17 @@ class _VideoCallPageState extends State<VideoCallPage> {
                           textDirection: TextDirection.rtl,
                           child: Row(
                             children: [
+                              GestureDetector(
+                                onTap: _isUploading ? null : _showAttachmentOptions,
+                                child: Container(
+                                  width: 42, height: 42,
+                                  decoration: BoxDecoration(color: Colors.white10, shape: BoxShape.circle),
+                                  child: _isUploading
+                                      ? const Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                      : const Icon(Icons.attach_file, color: Colors.white70, size: 20),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: TextField(
                                   controller: _chatController,
@@ -666,10 +791,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
                                 onTap: _sendChatMessage,
                                 child: Container(
                                   width: 42, height: 42,
-                                  decoration: const BoxDecoration(
-                                    color: AppTheme.primaryColor,
-                                    shape: BoxShape.circle,
-                                  ),
+                                  decoration: const BoxDecoration(color: AppTheme.primaryColor, shape: BoxShape.circle),
                                   child: const Icon(Icons.send, color: Colors.white, size: 18),
                                 ),
                               ),
@@ -853,6 +975,34 @@ class _CallButton extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _AttachOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _AttachOption({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(color: color.withOpacity(0.2), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ],
       ),
     );

@@ -49,6 +49,7 @@ dependencies:
 
   # Media
   image_picker: ^1.0.4
+  file_picker: ^8.0.0+1
   just_audio: ^0.9.35
 
   # Utilities

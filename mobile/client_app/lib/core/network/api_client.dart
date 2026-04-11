@@ -334,4 +334,28 @@ class ApiClient {
         queryParameters: specialization != null ? {'specialization': specialization} : null);
     return res.data;
   }
+
+  // Files
+  Future<Map<String, dynamic>> uploadFile(String bookingId, String filePath, String mimeType) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath, contentType: DioMediaType.parse(mimeType)),
+    });
+    final res = await _dio.post('/files/upload/$bookingId', data: formData);
+    return res.data;
+  }
+
+  // Questionnaire Sets
+  Future<Map<String, dynamic>> getQuestionnaireSets() async {
+    final res = await _dio.get('/questionnaires/my-assignments');
+    return res.data;
+  }
+
+  Future<void> sendSetToClient(String setId, String bookingId) async {
+    await _dio.post('/questionnaires/sets/$setId/send/$bookingId');
+  }
+
+  Future<Map<String, dynamic>> getAvailableQuestionnaireSets() async {
+    final res = await _dio.get('/questionnaires/sets');
+    return res.data;
+  }
 }
