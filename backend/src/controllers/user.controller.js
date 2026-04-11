@@ -65,3 +65,15 @@ exports.markNotificationRead = async (req, res) => {
     errorResponse(res, err.message, 500);
   }
 };
+
+exports.markAllNotificationsRead = async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE notifications SET is_read=true WHERE user_id=$1 AND is_read=false',
+      [req.user.id]
+    );
+    successResponse(res, null, 'All notifications marked as read');
+  } catch (err) {
+    errorResponse(res, err.message, 500);
+  }
+};

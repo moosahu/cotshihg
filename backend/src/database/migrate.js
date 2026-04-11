@@ -583,6 +583,21 @@ async function runPatches() {
         ADD COLUMN IF NOT EXISTS payout_date TIMESTAMP
     `);
 
+    // Patch: notifications table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(200) NOT NULL,
+        body TEXT,
+        type VARCHAR(50),
+        booking_id UUID,
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC)`);
+
     // Patch: announcements table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS announcements (

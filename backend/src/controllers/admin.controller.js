@@ -268,29 +268,24 @@ exports.createBooking = async (req, res) => {
         paymentStatus]
     );
 
-    const { sendPushNotification } = require('../utils/notifications.utils');
+    const { sendPushNotification, saveNotification } = require('../utils/notifications.utils');
     const notifData = { type: 'new_booking', booking_id: String(bookingId) };
 
     // Notify client
     const clientRes = await pool.query('SELECT fcm_token FROM users WHERE id=$1', [client_id]);
     const clientToken = clientRes.rows[0]?.fcm_token;
-    if (clientToken) {
-      if (isManual) {
-        await sendPushNotification(clientToken, '✅ تم تأكيد حجزك', 'تم حجز جلسة لك من قِبَل الإدارة', notifData).catch(() => {});
-      } else {
-        await sendPushNotification(clientToken, '📅 لديك حجز جديد', 'تم إنشاء حجز لك — يرجى إتمام الدفع عبر التطبيق', notifData).catch(() => {});
-      }
-    }
+    const clientTitle = isManual ? '✅ تم تأكيد حجزك' : '📅 لديك حجز جديد';
+    const clientBody  = isManual ? 'تم حجز جلسة لك من قِبَل الإدارة' : 'تم إنشاء حجز لك — يرجى إتمام الدفع عبر التطبيق';
+    await sendPushNotification(clientToken, clientTitle, clientBody, notifData).catch(() => {});
+    saveNotification(client_id, clientTitle, clientBody, 'new_booking', String(bookingId));
 
     // Notify coach
     const coachRes = await pool.query(
-      'SELECT u.fcm_token FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1',
+      'SELECT u.id as user_id, u.fcm_token FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1',
       [therapist_id]
     );
-    const coachToken = coachRes.rows[0]?.fcm_token;
-    if (coachToken) {
-      await sendPushNotification(coachToken, '📅 حجز جديد من الإدارة', 'تم إضافة حجز جديد في جدولك', notifData).catch(() => {});
-    }
+    await sendPushNotification(coachRes.rows[0]?.fcm_token, '📅 حجز جديد من الإدارة', 'تم إضافة حجز جديد في جدولك', notifData).catch(() => {});
+    saveNotification(coachRes.rows[0]?.user_id, '📅 حجز جديد من الإدارة', 'تم إضافة حجز جديد في جدولك', 'new_booking', String(bookingId));
 
     successResponse(res, booking.rows[0], 'تم إنشاء الحجز بنجاح');
   } catch (err) {
@@ -320,10 +315,10 @@ exports.cancelBooking = async (req, res) => {
 
     // Notify client and coach about cancellation
     try {
-      const { sendPushNotification } = require('../utils/notifications.utils');
+      const { sendPushNotification, saveNotification } = require('../utils/notifications.utils');
       const bookingInfo = await pool.query(
         `SELECT b.client_id, b.therapist_id, c.fcm_token AS client_token,
-                u.fcm_token AS coach_token
+                u.id AS coach_user_id, u.fcm_token AS coach_token
          FROM bookings b
          JOIN users c ON c.id = b.client_id
          JOIN therapists t ON t.id = b.therapist_id
@@ -331,19 +326,12 @@ exports.cancelBooking = async (req, res) => {
          WHERE b.id=$1`, [id]
       );
       if (bookingInfo.rows[0]) {
+        const r = bookingInfo.rows[0];
         const notifData = { type: 'booking_cancelled', booking_id: String(id) };
-        await sendPushNotification(
-          bookingInfo.rows[0].client_token,
-          '❌ تم إلغاء موعدك',
-          'تم إلغاء جلستك من قِبَل الإدارة',
-          notifData
-        ).catch(() => {});
-        await sendPushNotification(
-          bookingInfo.rows[0].coach_token,
-          '❌ تم إلغاء حجز',
-          'تم إلغاء أحد الحجوزات من قِبَل الإدارة',
-          notifData
-        ).catch(() => {});
+        await sendPushNotification(r.client_token, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة', notifData).catch(() => {});
+        saveNotification(r.client_id, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة', 'booking_cancelled', String(id));
+        await sendPushNotification(r.coach_token, '❌ تم إلغاء حجز', 'تم إلغاء أحد الحجوزات من قِبَل الإدارة', notifData).catch(() => {});
+        saveNotification(r.coach_user_id, '❌ تم إلغاء حجز', 'تم إلغاء أحد الحجوزات من قِبَل الإدارة', 'booking_cancelled', String(id));
       }
     } catch (_) {}
 

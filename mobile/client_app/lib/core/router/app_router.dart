@@ -41,6 +41,7 @@ import '../../features/questionnaire/presentation/pages/questionnaire_list_page.
 import '../../features/questionnaire/presentation/pages/questionnaire_form_page.dart';
 import '../../features/questionnaire/presentation/pages/questionnaire_fill_page.dart';
 import '../../features/questionnaire/presentation/pages/questionnaire_responses_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
 
 class AppRouter {
   static final navigatorKey = GlobalKey<NavigatorState>();
@@ -90,6 +91,9 @@ class AppRouter {
           GoRoute(path: '/coach/questionnaires', builder: (_, __) => const QuestionnaireListPage()),
         ],
       ),
+
+      // ─── Notifications ───
+      GoRoute(path: '/notifications', builder: (_, __) => const NotificationsPage()),
 
       // ─── Shared ───
       GoRoute(

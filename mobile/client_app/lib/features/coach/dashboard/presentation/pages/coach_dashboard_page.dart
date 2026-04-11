@@ -17,12 +17,22 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
   String _userName = '';
   Map<String, dynamic> _stats = {};
   bool _loading = true;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUser();
     _loadStats();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final list = await getIt<ApiClient>().getNotifications();
+      final unread = list.where((n) => n['is_read'] == false).length;
+      if (mounted) setState(() => _unreadCount = unread);
+    } catch (_) {}
   }
 
   Future<void> _loadUser() async {
@@ -78,6 +88,33 @@ class _CoachDashboardPageState extends State<CoachDashboardPage> {
                 'مرحباً، ${_userName.isNotEmpty ? _userName : 'كوتش'}',
                 style: const TextStyle(fontSize: 17),
               ),
+              actions: [
+                Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () async {
+                        await context.push('/notifications');
+                        _loadUnreadCount();
+                      },
+                    ),
+                    if (_unreadCount > 0)
+                      Positioned(
+                        right: 8, top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                          child: Text(
+                            _unreadCount > 9 ? '9+' : '$_unreadCount',
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
             SliverPadding(
               padding: const EdgeInsets.all(16),

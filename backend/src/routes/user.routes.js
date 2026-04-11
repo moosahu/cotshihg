@@ -7,6 +7,7 @@ router.get('/profile', authenticate, userController.getProfile);
 router.put('/profile', authenticate, userController.updateProfile);
 router.put('/fcm-token', authenticate, userController.updateFCMToken);
 router.get('/notifications', authenticate, userController.getNotifications);
+router.put('/notifications/read-all', authenticate, userController.markAllNotificationsRead);
 router.put('/notifications/:id/read', authenticate, userController.markNotificationRead);
 
 module.exports = router;

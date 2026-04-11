@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
-const { sendPushNotification } = require('../utils/notifications.utils');
+const { sendPushNotification, saveNotification } = require('../utils/notifications.utils');
 const { v4: uuidv4 } = require('uuid');
 const { autoAssignOnBooking } = require('./questionnaire.controller');
 
@@ -9,7 +9,7 @@ exports.createBooking = async (req, res) => {
     const { therapist_id, session_type, scheduled_at, duration_minutes, notes } = req.body;
 
     const therapistResult = await pool.query(
-      `SELECT t.*, u.fcm_token, u.name as therapist_name
+      `SELECT t.*, u.id as user_id, u.fcm_token, u.name as therapist_name
        FROM therapists t JOIN users u ON u.id = t.user_id WHERE t.id=$1`,
       [therapist_id]
     );
@@ -37,12 +37,14 @@ exports.createBooking = async (req, res) => {
     );
 
     // Notify therapist
+    const bookingId = result.rows[0].id;
     await sendPushNotification(
       therapist.fcm_token,
       'طلب جلسة جديد',
       `لديك طلب جلسة جديد من ${req.user.name}`,
-      { type: 'new_booking', booking_id: result.rows[0].id }
+      { type: 'new_booking', booking_id: bookingId }
     );
+    saveNotification(therapist.user_id, 'طلب جلسة جديد', `لديك طلب جلسة جديد من ${req.user.name}`, 'new_booking', bookingId);
 
     successResponse(res, result.rows[0], 'Booking created', 201);
   } catch (err) {
@@ -216,15 +218,15 @@ exports.confirmBooking = async (req, res) => {
     await autoAssignOnBooking(result.rows[0].id, result.rows[0].client_id, result.rows[0].therapist_id);
 
     // Notify client
-    const bookingDetails = await pool.query('SELECT client_id FROM bookings WHERE id=$1', [req.params.id]);
-    const clientResult = await pool.query('SELECT fcm_token, name FROM users WHERE id=$1', [bookingDetails.rows[0].client_id]);
-
+    const clientId = result.rows[0].client_id;
+    const clientResult = await pool.query('SELECT fcm_token FROM users WHERE id=$1', [clientId]);
     await sendPushNotification(
-      clientResult.rows[0].fcm_token,
+      clientResult.rows[0]?.fcm_token,
       'تم تأكيد موعدك',
-      'تم تأكيد جلستك من قبل المعالج',
+      'تم تأكيد جلستك من قبل الكوتش',
       { type: 'booking_confirmed', booking_id: req.params.id }
     );
+    saveNotification(clientId, 'تم تأكيد موعدك', 'تم تأكيد جلستك من قبل الكوتش', 'booking_confirmed', req.params.id);
 
     successResponse(res, result.rows[0], 'Booking confirmed');
   } catch (err) {
@@ -272,28 +274,18 @@ exports.cancelBooking = async (req, res) => {
 
       if (cancellerIsCoach) {
         // Coach cancelled → notify client
-        await sendPushNotification(
-          clientUser?.fcm_token,
-          '❌ تم إلغاء موعدك',
-          `تم إلغاء جلستك مع ${coachUser?.name ?? 'الكوتش'}`,
-          notifData
-        );
+        await sendPushNotification(clientUser?.fcm_token, '❌ تم إلغاء موعدك', `تم إلغاء جلستك مع ${coachUser?.name ?? 'الكوتش'}`, notifData);
+        saveNotification(booking.client_id, '❌ تم إلغاء موعدك', `تم إلغاء جلستك مع ${coachUser?.name ?? 'الكوتش'}`, 'booking_cancelled', req.params.id);
       } else {
         // Client or admin cancelled → notify coach
-        await sendPushNotification(
-          coachUser?.fcm_token,
-          '❌ تم إلغاء حجز',
-          `ألغى ${isAdmin ? 'الإدارة' : (clientUser?.name ?? 'العميل')} الجلسة المقررة`,
-          notifData
-        );
+        const coachUserIdRes = await pool.query('SELECT user_id FROM therapists WHERE id=$1', [booking.therapist_id]);
+        const coachUserId = coachUserIdRes.rows[0]?.user_id;
+        await sendPushNotification(coachUser?.fcm_token, '❌ تم إلغاء حجز', `ألغى ${isAdmin ? 'الإدارة' : (clientUser?.name ?? 'العميل')} الجلسة المقررة`, notifData);
+        saveNotification(coachUserId, '❌ تم إلغاء حجز', `ألغى ${isAdmin ? 'الإدارة' : (clientUser?.name ?? 'العميل')} الجلسة المقررة`, 'booking_cancelled', req.params.id);
         // If admin cancelled, notify client too
         if (isAdmin) {
-          await sendPushNotification(
-            clientUser?.fcm_token,
-            '❌ تم إلغاء موعدك',
-            'تم إلغاء جلستك من قِبَل الإدارة',
-            notifData
-          );
+          await sendPushNotification(clientUser?.fcm_token, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة', notifData);
+          saveNotification(booking.client_id, '❌ تم إلغاء موعدك', 'تم إلغاء جلستك من قِبَل الإدارة', 'booking_cancelled', req.params.id);
         }
       }
     } catch (_) {}

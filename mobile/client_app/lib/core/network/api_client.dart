@@ -304,6 +304,22 @@ class ApiClient {
     return res.data;
   }
 
+  // Notifications
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    final res = await _dio.get('/users/notifications');
+    final data = res.data['data'];
+    if (data == null) return [];
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _dio.put('/users/notifications/read-all');
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await _dio.put('/users/notifications/$id/read');
+  }
+
   // Announcements
   Future<List<Map<String, dynamic>>> getActiveAnnouncements() async {
     final res = await _dio.get('/announcements/active');
