@@ -10,7 +10,11 @@ const admin = require('../config/firebase');
  */
 const sendPushNotification = async (fcmToken, title, body, data = {}, channelId = 'general_channel') => {
   try {
-    if (!fcmToken) return;
+    if (!fcmToken) {
+      console.warn(`📵 sendPush SKIPPED — no FCM token | title="${title}"`);
+      return;
+    }
+    console.log(`📤 sendPush → token=${fcmToken.slice(0,20)}... | title="${title}" | type=${data.type || '?'}`);
 
     await admin.messaging().send({
       token: fcmToken,
@@ -38,8 +42,9 @@ const sendPushNotification = async (fcmToken, title, body, data = {}, channelId 
         },
       },
     });
+    console.log(`✅ sendPush SUCCESS | title="${title}"`);
   } catch (err) {
-    console.error('Push notification error:', err.message || err);
+    console.error(`❌ sendPush FAILED | title="${title}" | error=${err.message || err}`);
   }
 };
 
