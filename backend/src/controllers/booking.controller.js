@@ -254,6 +254,49 @@ exports.cancelBooking = async (req, res) => {
       [req.params.id]
     );
 
+    // Notify the other party about cancellation
+    try {
+      const booking = result.rows[0];
+      const notifData = { type: 'booking_cancelled', booking_id: String(req.params.id) };
+
+      const clientRes = await pool.query('SELECT name, fcm_token FROM users WHERE id=$1', [booking.client_id]);
+      const coachRes = await pool.query(
+        'SELECT u.name, u.fcm_token FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1',
+        [booking.therapist_id]
+      );
+
+      const clientUser = clientRes.rows[0];
+      const coachUser = coachRes.rows[0];
+      const cancellerIsCoach = req.user.id !== booking.client_id && !isAdmin;
+
+      if (cancellerIsCoach) {
+        // Coach cancelled → notify client
+        await sendPushNotification(
+          clientUser?.fcm_token,
+          '❌ تم إلغاء موعدك',
+          `تم إلغاء جلستك مع ${coachUser?.name ?? 'الكوتش'}`,
+          notifData
+        );
+      } else {
+        // Client or admin cancelled → notify coach
+        await sendPushNotification(
+          coachUser?.fcm_token,
+          '❌ تم إلغاء حجز',
+          `ألغى ${isAdmin ? 'الإدارة' : (clientUser?.name ?? 'العميل')} الجلسة المقررة`,
+          notifData
+        );
+        // If admin cancelled, notify client too
+        if (isAdmin) {
+          await sendPushNotification(
+            clientUser?.fcm_token,
+            '❌ تم إلغاء موعدك',
+            'تم إلغاء جلستك من قِبَل الإدارة',
+            notifData
+          );
+        }
+      }
+    } catch (_) {}
+
     successResponse(res, result.rows[0], 'Booking cancelled');
   } catch (err) {
     errorResponse(res, err.message, 500);
@@ -274,6 +317,22 @@ exports.confirmAfterPayment = async (req, res) => {
       `UPDATE payments SET status='paid' WHERE booking_id=$1 AND status='pending'`,
       [req.params.id]
     );
+
+    // Notify coach that payment completed and booking is confirmed
+    try {
+      const booking = result.rows[0];
+      const clientRes = await pool.query('SELECT name FROM users WHERE id=$1', [booking.client_id]);
+      const coachRes = await pool.query(
+        'SELECT u.fcm_token FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1',
+        [booking.therapist_id]
+      );
+      await sendPushNotification(
+        coachRes.rows[0]?.fcm_token,
+        '💳 تأكيد حجز جديد',
+        `أتم ${clientRes.rows[0]?.name ?? 'العميل'} الدفع وتم تأكيد الجلسة`,
+        { type: 'new_booking', booking_id: String(req.params.id) }
+      );
+    } catch (_) {}
 
     successResponse(res, result.rows[0], 'Booking confirmed');
   } catch (err) {

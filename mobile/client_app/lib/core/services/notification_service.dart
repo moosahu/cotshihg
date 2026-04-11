@@ -39,43 +39,38 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
         iOS: DarwinNotificationDetails(sound: 'default'),
       ),
     );
-  } else if (type == 'new_booking') {
+  } else {
+    // All other notification types: new_booking, booking_confirmed, booking_cancelled, session_reminder, session_joined
+    String defaultTitle = '';
+    String defaultBody = '';
+    int notifId = 1;
+    String channelId = 'general_channel';
+    String channelName = 'إشعارات عامة';
+
+    switch (type) {
+      case 'new_booking':
+        defaultTitle = '📅 حجز جديد'; defaultBody = 'لديك طلب حجز جديد'; notifId = 1; break;
+      case 'booking_confirmed':
+        defaultTitle = '✅ تم تأكيد موعدك'; defaultBody = 'تم تأكيد جلستك'; notifId = 2; break;
+      case 'booking_cancelled':
+        defaultTitle = '❌ تم إلغاء الحجز'; defaultBody = 'تم إلغاء جلستك'; notifId = 3; break;
+      case 'session_reminder':
+        defaultTitle = '⏰ تذكير بالجلسة'; defaultBody = 'لديك جلسة قادمة'; notifId = 4;
+        channelId = 'reminders'; channelName = 'تذكيرات الجلسات'; break;
+      case 'session_joined':
+        defaultTitle = '✅ انضم للجلسة'; defaultBody = 'الطرف الآخر انضم للجلسة'; notifId = 5; break;
+    }
+
     await plugin.show(
-      1,
-      message.notification?.title ?? '📅 حجز جديد',
-      message.notification?.body ?? 'لديك طلب حجز جديد',
-      const NotificationDetails(
+      notifId,
+      message.notification?.title ?? defaultTitle,
+      message.notification?.body ?? defaultBody,
+      NotificationDetails(
         android: AndroidNotificationDetails(
-          'general_channel', 'إشعارات عامة',
+          channelId, channelName,
           importance: Importance.high, priority: Priority.high,
         ),
-        iOS: DarwinNotificationDetails(sound: 'default'),
-      ),
-    );
-  } else if (type == 'session_reminder') {
-    await plugin.show(
-      2,
-      message.notification?.title ?? '⏰ تذكير بالجلسة',
-      message.notification?.body ?? 'لديك جلسة قادمة',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'reminders', 'تذكيرات الجلسات',
-          importance: Importance.high, priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(sound: 'default'),
-      ),
-    );
-  } else if (type == 'session_joined') {
-    await plugin.show(
-      3,
-      message.notification?.title ?? '✅ انضم للجلسة',
-      message.notification?.body ?? 'الطرف الآخر انضم للجلسة',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'general_channel', 'إشعارات عامة',
-          importance: Importance.high, priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(sound: 'default'),
+        iOS: const DarwinNotificationDetails(sound: 'default'),
       ),
     );
   }
@@ -184,37 +179,36 @@ class NotificationService {
       final type = data['type'] ?? '';
       if (type == 'incoming_call') {
         // App is open — socket already handles the dialog
-      } else if (type == 'new_booking') {
+      } else {
+        // new_booking, booking_confirmed, booking_cancelled, session_reminder, session_joined
+        String defaultTitle = '';
+        String defaultBody = '';
+        int notifId = 1;
+        String channelId = 'general_channel';
+        String channelName = 'إشعارات عامة';
+
+        switch (type) {
+          case 'new_booking':
+            defaultTitle = '📅 حجز جديد'; defaultBody = 'لديك طلب حجز جديد'; notifId = 1; break;
+          case 'booking_confirmed':
+            defaultTitle = '✅ تم تأكيد موعدك'; defaultBody = 'تم تأكيد جلستك'; notifId = 2; break;
+          case 'booking_cancelled':
+            defaultTitle = '❌ تم إلغاء الحجز'; defaultBody = 'تم إلغاء جلستك'; notifId = 3; break;
+          case 'session_reminder':
+            defaultTitle = '⏰ تذكير بالجلسة'; defaultBody = 'لديك جلسة قادمة'; notifId = 4;
+            channelId = 'reminders'; channelName = 'تذكيرات الجلسات'; break;
+          case 'session_joined':
+            defaultTitle = '✅ انضم للجلسة'; defaultBody = 'الطرف الآخر انضم للجلسة'; notifId = 5; break;
+        }
+
         _localNotif.show(
-          1,
-          message.notification?.title ?? '📅 حجز جديد',
-          message.notification?.body ?? 'لديك طلب حجز جديد',
-          const NotificationDetails(
-            android: AndroidNotificationDetails('general_channel', 'إشعارات عامة',
+          notifId,
+          message.notification?.title ?? defaultTitle,
+          message.notification?.body ?? defaultBody,
+          NotificationDetails(
+            android: AndroidNotificationDetails(channelId, channelName,
                 importance: Importance.high, priority: Priority.high),
-            iOS: DarwinNotificationDetails(sound: 'default'),
-          ),
-        );
-      } else if (type == 'session_reminder') {
-        _localNotif.show(
-          2,
-          message.notification?.title ?? '⏰ تذكير بالجلسة',
-          message.notification?.body ?? 'لديك جلسة قادمة',
-          const NotificationDetails(
-            android: AndroidNotificationDetails('reminders', 'تذكيرات الجلسات',
-                importance: Importance.high, priority: Priority.high),
-            iOS: DarwinNotificationDetails(sound: 'default'),
-          ),
-        );
-      } else if (type == 'session_joined') {
-        _localNotif.show(
-          3,
-          message.notification?.title ?? '✅ انضم للجلسة',
-          message.notification?.body ?? 'الطرف الآخر انضم للجلسة',
-          const NotificationDetails(
-            android: AndroidNotificationDetails('general_channel', 'إشعارات عامة',
-                importance: Importance.high, priority: Priority.high),
-            iOS: DarwinNotificationDetails(sound: 'default'),
+            iOS: const DarwinNotificationDetails(sound: 'default'),
           ),
         );
       }
