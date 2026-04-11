@@ -10,6 +10,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/socket_service.dart';
 import 'help_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -289,6 +290,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
               title: 'تسجيل الخروج',
               color: AppTheme.errorColor,
               onTap: () {
+                getIt<SocketService>().disconnect();
                 context.read<AuthBloc>().add(LogoutEvent());
                 context.go('/login');
               },

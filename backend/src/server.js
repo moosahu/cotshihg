@@ -26,6 +26,7 @@ const errorHandler = require('./middleware/error.middleware');
 const rateLimiter = require('./middleware/rateLimit.middleware');
 const runMigration = require('./database/migrate');
 const { startReminderJobs } = require('./jobs/reminder.job');
+const { startCleanupJob } = require('./jobs/cleanup.job');
 
 const app = express();
 const httpServer = createServer(app);
@@ -95,6 +96,7 @@ httpServer.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   await runMigration();
   startReminderJobs();
+  startCleanupJob();
 });
 
 module.exports = { app, io };

@@ -142,8 +142,15 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
 
   Future<void> _load() async {
     try {
-      final res = await getIt<ApiClient>().getMyBookings(status: 'confirmed');
-      final list = (res['data'] as List?) ?? [];
+      // Fetch both confirmed and in_progress so client can rejoin active sessions
+      final results = await Future.wait([
+        getIt<ApiClient>().getMyBookings(status: 'confirmed'),
+        getIt<ApiClient>().getMyBookings(status: 'in_progress'),
+      ]);
+      final list = [
+        ...((results[0]['data'] as List?) ?? []),
+        ...((results[1]['data'] as List?) ?? []),
+      ];
       final now = DateTime.now();
       final upcoming = list.cast<Map<String, dynamic>>().where((b) {
         final sat = b['scheduled_at'] as String?;
@@ -170,15 +177,16 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
         ? scheduledDateTime.toString().substring(0, 16)
         : scheduledAt ?? '';
     final now = DateTime.now();
-    final canJoin = scheduledDateTime != null &&
+    final isInProgress = _session!['status'] == 'in_progress';
+    final canJoin = isInProgress || (scheduledDateTime != null &&
         now.isAfter(scheduledDateTime.subtract(const Duration(minutes: 15))) &&
-        now.isBefore(scheduledDateTime.add(const Duration(hours: 2)));
+        now.isBefore(scheduledDateTime.add(const Duration(hours: 2))));
     final sessionType = _session!['session_type'] as String? ?? 'video';
     final timeLabel = scheduledDateTime != null
         ? '${scheduledDateTime.hour.toString().padLeft(2, '0')}:${scheduledDateTime.minute.toString().padLeft(2, '0')}'
         : '';
     return Card(
-      color: AppTheme.primaryColor,
+      color: isInProgress ? Colors.green.shade700 : AppTheme.primaryColor,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -189,7 +197,10 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('جلستك القادمة', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    isInProgress ? 'جلسة جارية الآن' : 'جلستك القادمة',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
                   Text(therapistName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   Text(dateStr, style: const TextStyle(color: Colors.white70, fontSize: 13)),
                 ],
@@ -204,7 +215,7 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
                 }
               } : null,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppTheme.primaryColor),
-              child: Text(canJoin ? 'انضم' : timeLabel),
+              child: Text(isInProgress ? 'انضم مجدداً' : (canJoin ? 'انضم' : timeLabel)),
             ),
           ],
         ),

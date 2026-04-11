@@ -294,7 +294,7 @@ class _SessionTile extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            onPressed: canStart ? () => context.push('/coach/video/$bookingId',
+            onPressed: canStart ? () => context.go('/coach/video/$bookingId',
                 extra: {'sessionType': sessionType}) : null,
             style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

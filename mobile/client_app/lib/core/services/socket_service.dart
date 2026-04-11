@@ -9,11 +9,20 @@ class SocketService {
 
   bool get isConnected => _socket?.connected ?? false;
 
-  /// Connects only once — ignores call if already connected/connecting
-  void connect() async {
+  /// Connects and returns a Future that completes when the socket is connected
+  Future<void> connect() async {
     if (_socket != null) {
-      // Reconnect if disconnected, otherwise keep existing socket
       if (!_socket!.connected) _socket!.connect();
+      // Wait until connected (max 5s)
+      if (!_socket!.connected) {
+        await Future.any([
+          Future.doWhile(() async {
+            await Future.delayed(const Duration(milliseconds: 100));
+            return !(_socket?.connected ?? false);
+          }),
+          Future.delayed(const Duration(seconds: 5)),
+        ]);
+      }
       return;
     }
 
@@ -32,6 +41,15 @@ class SocketService {
     _socket!.onConnect((_) => print('✅ Socket connected'));
     _socket!.onDisconnect((_) => print('🔌 Socket disconnected'));
     _socket!.onError((err) => print('❌ Socket error: $err'));
+
+    // Wait until connected (max 5s)
+    await Future.any([
+      Future.doWhile(() async {
+        await Future.delayed(const Duration(milliseconds: 100));
+        return !(_socket?.connected ?? false);
+      }),
+      Future.delayed(const Duration(seconds: 5)),
+    ]);
   }
 
   /// Joins booking room — waits for connection if not yet connected
@@ -40,12 +58,11 @@ class SocketService {
     if (_socket!.connected) {
       _socket!.emit('join_booking', bookingId);
     } else {
-      // Emit once after connection is established
       _socket!.once('connect', (_) => _socket?.emit('join_booking', bookingId));
     }
   }
 
-  /// Legacy alias — use joinBookingWhenReady for video calls
+  /// Legacy alias
   void joinBooking(String bookingId) => joinBookingWhenReady(bookingId);
 
   void sendMessage(String bookingId, String content,

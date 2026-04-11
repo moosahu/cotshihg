@@ -58,6 +58,7 @@ dependencies:
   url_launcher: ^6.2.2
   permission_handler: ^11.1.0
   get_it: ^7.6.4
+  wakelock_plus: ^1.2.8
 
   flutter_local_notifications: ^17.2.4
   webview_flutter: ^4.10.0

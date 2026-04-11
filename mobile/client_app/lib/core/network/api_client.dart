@@ -137,6 +137,13 @@ class ApiClient {
     await _dio.post('/sessions/$sessionId/end');
   }
 
+  Future<List<Map<String, dynamic>>> getChatMessages(String bookingId) async {
+    final res = await _dio.get('/chat/$bookingId/messages');
+    final data = res.data['data'];
+    if (data is List) return data.cast<Map<String, dynamic>>();
+    return [];
+  }
+
   Future<void> saveFcmToken(String token) async {
     await _dio.put('/users/fcm-token', data: {'fcm_token': token});
   }

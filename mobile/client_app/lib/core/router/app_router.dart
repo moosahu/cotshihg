@@ -355,7 +355,8 @@ class _CoachShellState extends State<CoachShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _stopRinging();
     _ringtonePlayer.dispose();
-    getIt<SocketService>().disconnect();
+    // Do NOT disconnect socket here — it must stay alive during video calls
+    // Socket is disconnected explicitly on logout
     super.dispose();
   }
 

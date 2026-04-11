@@ -82,20 +82,30 @@ class _BookingPageState extends State<BookingPage> {
       final now = DateTime.now();
 
       // Helper to expand a time range into 60-min slots
+      final today = DateTime(now.year, now.month, now.day);
+      final todayKey = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
       void addTimeRange(String dateKey, String startRaw, String endRaw) {
         final sp = startRaw.split(':');
         final ep = endRaw.split(':');
         int sh = int.parse(sp[0]), sm = int.parse(sp[1]);
         final eh = int.parse(ep[0]), em = int.parse(ep[1]);
         while (sh * 60 + sm + 60 <= eh * 60 + em) {
+          // For today: skip slots whose start time has already passed
+          if (dateKey == todayKey) {
+            final slotStart = DateTime(today.year, today.month, today.day, sh, sm);
+            if (!slotStart.isAfter(now)) {
+              sm += 60;
+              if (sm >= 60) { sh += sm ~/ 60; sm = sm % 60; }
+              continue;
+            }
+          }
           slotsSet.putIfAbsent(dateKey, () => <String>{})
               .add('${sh.toString().padLeft(2, '0')}:${sm.toString().padLeft(2, '0')}');
           sm += 60;
           if (sm >= 60) { sh += sm ~/ 60; sm = sm % 60; }
         }
       }
-
-      final today = DateTime(now.year, now.month, now.day);
 
       // 1. Specific-date slots (one-time)
       for (final a in avail) {

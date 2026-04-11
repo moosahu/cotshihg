@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/di/injection.dart';
@@ -113,8 +114,15 @@ class _CoachAvailabilityPageState extends State<CoachAvailabilityPage> {
       }
     } catch (e) {
       if (mounted) {
+        String msg = 'حدث خطأ، حاول مجدداً';
+        if (e is DioException) {
+          final data = e.response?.data;
+          if (data is Map && data['message'] != null) {
+            msg = data['message'].toString();
+          }
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppTheme.errorColor),
+          SnackBar(content: Text(msg), backgroundColor: AppTheme.errorColor),
         );
       }
     } finally {
@@ -148,6 +156,24 @@ class _CoachAvailabilityPageState extends State<CoachAvailabilityPage> {
       helpText: 'وقت النهاية',
     );
     if (end == null || !mounted) return;
+
+    // Validate: end must be after start by at least 60 minutes
+    final startMins = start.hour * 60 + start.minute;
+    final endMins   = end.hour   * 60 + end.minute;
+    if (endMins <= startMins) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('وقت النهاية يجب أن يكون بعد وقت البداية'),
+        backgroundColor: AppTheme.errorColor,
+      ));
+      return;
+    }
+    if (endMins - startMins < 60) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('الفترة الزمنية يجب أن لا تقل عن ساعة كاملة'),
+        backgroundColor: AppTheme.errorColor,
+      ));
+      return;
+    }
 
     // Ask about repeat
     final repeatWeeks = await _showRepeatDialog();
@@ -200,7 +226,21 @@ class _CoachAvailabilityPageState extends State<CoachAvailabilityPage> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final sortedDates = (_schedule.keys.toList()..sort()).where((d) {
+    final todayKey = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    // Remove past slots for today, and past dates entirely
+    final schedule = Map<String, List<Map<String, String>>>.from(_schedule);
+    if (schedule.containsKey(todayKey)) {
+      schedule[todayKey] = schedule[todayKey]!.where((slot) {
+        final parts = (slot['end'] ?? '00:00').split(':');
+        final endDt = DateTime(today.year, today.month, today.day,
+            int.parse(parts[0]), int.parse(parts[1]));
+        return endDt.isAfter(now);
+      }).toList();
+      if (schedule[todayKey]!.isEmpty) schedule.remove(todayKey);
+    }
+
+    final sortedDates = (schedule.keys.toList()..sort()).where((d) {
       final parts = d.split('-');
       final date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
       return !date.isBefore(today);
@@ -255,7 +295,7 @@ class _CoachAvailabilityPageState extends State<CoachAvailabilityPage> {
                   itemCount: sortedDates.length,
                   itemBuilder: (_, i) {
                     final dateKey = sortedDates[i];
-                    final slots = _schedule[dateKey]!;
+                    final slots = schedule[dateKey]!;
 
                     // Count booked slots for this date
                     final bookedCount = slots

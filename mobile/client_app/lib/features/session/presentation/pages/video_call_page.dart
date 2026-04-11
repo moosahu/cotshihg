@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
@@ -94,8 +95,34 @@ class _VideoCallPageState extends State<VideoCallPage> {
           (session?['therapist_name'] as String?) ??
           'الكوتش';
       final isFirstParty = data['is_first_party'] as bool? ?? true;
-      if (isFirstParty) _isWaiting = true;
+      if (isFirstParty) {
+        _isWaiting = true;
+      } else {
+        // Joining an existing session — compute actual remaining time
+        final startedAtStr = session?['started_at'] as String?;
+        if (startedAtStr != null) {
+          final startedAt = DateTime.tryParse(startedAtStr);
+          if (startedAt != null) {
+            final elapsed = DateTime.now().difference(startedAt.toLocal()).inSeconds;
+            _remainingSeconds = (_totalSeconds - elapsed).clamp(0, _totalSeconds);
+          }
+        }
+      }
       _debugInfo = 'API ✓ | room: ${_roomId?.substring(0, 8)}... | token: ${token.isEmpty ? "EMPTY" : token.substring(0, 10) + "..."}';
+
+      // Load existing chat messages (in case user rejoins after killing app)
+      try {
+        final msgs = await getIt<ApiClient>().getChatMessages(widget.bookingId);
+        if (mounted && msgs.isNotEmpty) {
+          setState(() => _messages.addAll(msgs));
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (_chatScrollController.hasClients) {
+              _chatScrollController.jumpTo(_chatScrollController.position.maxScrollExtent);
+            }
+          });
+        }
+      } catch (_) {}
+
       await _initAgora(token);
     } catch (e) {
       _debugInfo = 'API Error: $e';
@@ -109,6 +136,9 @@ class _VideoCallPageState extends State<VideoCallPage> {
   }
 
   Future<void> _initAgora(String token) async {
+    // Keep screen on during call
+    WakelockPlus.enable();
+
     // Request permissions
     if (_isVoiceOnly) {
       await Permission.microphone.request();
@@ -120,11 +150,11 @@ class _VideoCallPageState extends State<VideoCallPage> {
     await _engine!.initialize(const RtcEngineContext(appId: _agoraAppId));
 
     _engine!.registerEventHandler(RtcEngineEventHandler(
-      onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
+      onJoinChannelSuccess: (RtcConnection connection, int elapsed) async {
         if (mounted) setState(() { _isJoined = true; _loading = false; });
         // Both coach and client join booking room for chat
         final socket = getIt<SocketService>();
-        socket.connect();
+        await socket.connect(); // wait until socket is actually connected
         socket.joinBooking(widget.bookingId);
         socket.onNewMessage(_onNewMessage);
         socket.onSocketError((err) {
@@ -180,6 +210,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   }
 
   void _startTimer() {
+    if (_timer != null) return; // already running — prevent double timer
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
       setState(() {
@@ -268,6 +299,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
     if (_isEnding) return;
     _isEnding = true;
     _timer?.cancel();
+    WakelockPlus.disable();
 
     // Notify the other party
     if (notifyRemote) {
@@ -364,7 +396,8 @@ class _VideoCallPageState extends State<VideoCallPage> {
                 children: [
                   _AttachOption(icon: Icons.image_outlined, label: 'صورة', color: Colors.blue, onTap: () { Navigator.pop(context); _pickAndUploadImage(); }),
                   _AttachOption(icon: Icons.picture_as_pdf_outlined, label: 'PDF', color: Colors.red, onTap: () { Navigator.pop(context); _pickAndUploadPdf(); }),
-                  _AttachOption(icon: Icons.assignment_outlined, label: 'استبيان', color: Colors.purple, onTap: () { Navigator.pop(context); _sendQuestionnaire(); }),
+                  if (widget.isCoach)
+                    _AttachOption(icon: Icons.assignment_outlined, label: 'استبيان', color: Colors.purple, onTap: () { Navigator.pop(context); _sendQuestionnaire(); }),
                 ],
               ),
             ],
@@ -440,6 +473,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    WakelockPlus.disable();
     getIt<SocketService>().offCallEnded();
     getIt<SocketService>().offSocketError();
     _engine?.leaveChannel();
