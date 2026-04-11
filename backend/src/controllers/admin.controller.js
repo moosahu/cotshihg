@@ -237,6 +237,11 @@ exports.createBooking = async (req, res) => {
       return errorResponse(res, 'جميع الحقول مطلوبة', 400);
     }
 
+    // Reject past slots
+    if (new Date(scheduled_at) < new Date()) {
+      return errorResponse(res, 'لا يمكن حجز موعد في الماضي', 400);
+    }
+
     // Check slot not already taken
     const conflict = await pool.query(
       `SELECT id FROM bookings

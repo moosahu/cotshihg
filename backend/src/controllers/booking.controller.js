@@ -21,6 +21,11 @@ exports.createBooking = async (req, res) => {
     const discount = parseInt(therapist.discount_percent || 0);
     const price = discount > 0 ? +(basePrice * (1 - discount / 100)).toFixed(2) : basePrice;
 
+    // Reject past slots
+    if (new Date(scheduled_at) < new Date()) {
+      return errorResponse(res, 'لا يمكن حجز موعد في الماضي', 400);
+    }
+
     const conflict = await pool.query(
       `SELECT id FROM bookings
        WHERE therapist_id=$1
