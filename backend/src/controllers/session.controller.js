@@ -119,6 +119,17 @@ exports.startSession = async (req, res) => {
     );
     if (!booking.rows[0]) return errorResponse(res, 'Booking not found', 404);
 
+    // Time validation: allow only 15 min before scheduled_at up to 2h after
+    const scheduledAt = new Date(booking.rows[0].scheduled_at);
+    const now = new Date();
+    const diffMinutes = (scheduledAt - now) / 60000;
+    if (diffMinutes > 15) {
+      return errorResponse(res, 'لم يحن موعد الجلسة بعد، يمكنك الدخول قبل 15 دقيقة من الموعد', 403);
+    }
+    if (diffMinutes < -120) {
+      return errorResponse(res, 'انتهى وقت الجلسة', 403);
+    }
+
     // Return existing active session (idempotent)
     const existing = await pool.query(
       `SELECT * FROM sessions WHERE booking_id=$1 AND status='active'`,
@@ -157,7 +168,7 @@ exports.startSession = async (req, res) => {
         );
       }
 
-      return successResponse(res, { session: s, room_id: s.room_id, agora_token: generateAgoraToken(s.room_id), coach_name: coachName });
+      return successResponse(res, { session: s, room_id: s.room_id, agora_token: generateAgoraToken(s.room_id), coach_name: coachName, is_first_party: false });
     }
 
     const roomId = uuidv4();
@@ -195,7 +206,7 @@ exports.startSession = async (req, res) => {
       );
     }
 
-    successResponse(res, { session: session.rows[0], room_id: roomId, agora_token: agoraToken, coach_name: coachName });
+    successResponse(res, { session: session.rows[0], room_id: roomId, agora_token: agoraToken, coach_name: coachName, is_first_party: true });
   } catch (err) {
     errorResponse(res, err.message, 500);
   }

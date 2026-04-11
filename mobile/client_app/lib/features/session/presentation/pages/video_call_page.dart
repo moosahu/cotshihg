@@ -52,6 +52,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   bool _showWarning = false;
 
   bool _isEnding = false; // prevent recursive end
+  bool _isWaiting = false; // waiting for second party
 
   // Chat
   bool _showChat = false;
@@ -92,6 +93,8 @@ class _VideoCallPageState extends State<VideoCallPage> {
       _coachName = data['coach_name'] as String? ??
           (session?['therapist_name'] as String?) ??
           'الكوتش';
+      final isFirstParty = data['is_first_party'] as bool? ?? true;
+      if (isFirstParty) _isWaiting = true;
       _debugInfo = 'API ✓ | room: ${_roomId?.substring(0, 8)}... | token: ${token.isEmpty ? "EMPTY" : token.substring(0, 10) + "..."}';
       await _initAgora(token);
     } catch (e) {
@@ -119,7 +122,6 @@ class _VideoCallPageState extends State<VideoCallPage> {
     _engine!.registerEventHandler(RtcEngineEventHandler(
       onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
         if (mounted) setState(() { _isJoined = true; _loading = false; });
-        _startTimer();
         // Both coach and client join booking room for chat
         final socket = getIt<SocketService>();
         socket.connect();
@@ -139,7 +141,11 @@ class _VideoCallPageState extends State<VideoCallPage> {
         }
       },
       onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-        if (mounted) setState(() => _remoteUid = remoteUid);
+        if (mounted) setState(() {
+          _remoteUid = remoteUid;
+          _isWaiting = false;
+        });
+        _startTimer(); // countdown starts only when second party joins
       },
       onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
         if (mounted) setState(() => _remoteUid = null);
@@ -455,6 +461,8 @@ class _VideoCallPageState extends State<VideoCallPage> {
             const Center(child: CircularProgressIndicator(color: Colors.white))
           else if (_errorMsg != null)
             Center(child: _ErrorView(msg: _errorMsg!, debug: _debugInfo, onRetry: _initSession))
+          else if (_isWaiting)
+            _WaitingView(isCoach: widget.isCoach)
           else
             _RemoteArea(
               engine: _engine,
@@ -1004,6 +1012,36 @@ class _AttachOption extends StatelessWidget {
           const SizedBox(height: 8),
           Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ],
+      ),
+    );
+  }
+}
+
+class _WaitingView extends StatelessWidget {
+  final bool isCoach;
+  const _WaitingView({required this.isCoach});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF1A1A2E),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.white54, strokeWidth: 2),
+            const SizedBox(height: 24),
+            Text(
+              isCoach ? 'في انتظار العميل...' : 'في انتظار الكوتش...',
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'سيبدأ العد التنازلي عند دخول الطرف الآخر',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+          ],
+        ),
       ),
     );
   }

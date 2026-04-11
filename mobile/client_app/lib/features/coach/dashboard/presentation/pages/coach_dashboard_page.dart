@@ -260,9 +260,13 @@ class _SessionTile extends StatelessWidget {
     final clientName = session['client_name'] as String? ?? 'عميل';
     final sessionType = session['session_type'] as String? ?? 'video';
     final scheduledAt = session['scheduled_at'] as String?;
-    final timeStr = scheduledAt != null
-        ? TimeOfDay.fromDateTime(DateTime.parse(scheduledAt).toLocal())
-            .format(context)
+    final scheduledDateTime = scheduledAt != null ? DateTime.tryParse(scheduledAt)?.toLocal() : null;
+    final now = DateTime.now();
+    final canStart = scheduledDateTime != null &&
+        now.isAfter(scheduledDateTime.subtract(const Duration(minutes: 15))) &&
+        now.isBefore(scheduledDateTime.add(const Duration(hours: 2)));
+    final timeStr = scheduledDateTime != null
+        ? TimeOfDay.fromDateTime(scheduledDateTime).format(context)
         : '';
     final bookingId = session['id']?.toString() ?? '';
 
@@ -290,12 +294,12 @@ class _SessionTile extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            onPressed: () => context.push('/coach/video/$bookingId',
-                extra: {'sessionType': sessionType}),
+            onPressed: canStart ? () => context.push('/coach/video/$bookingId',
+                extra: {'sessionType': sessionType}) : null,
             style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 minimumSize: Size.zero),
-            child: const Text('ابدأ', style: TextStyle(fontSize: 13)),
+            child: Text(canStart ? 'ابدأ' : timeStr, style: const TextStyle(fontSize: 13)),
           ),
         ],
       ),
