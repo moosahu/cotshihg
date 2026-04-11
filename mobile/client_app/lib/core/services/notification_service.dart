@@ -58,6 +58,8 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
         channelId = 'reminders'; channelName = 'تذكيرات الجلسات'; break;
       case 'session_joined':
         notifId = 5; defaultTitle = '✅ انضم للجلسة'; defaultBody = 'الطرف الآخر انضم للجلسة'; break;
+      case 'new_questionnaire':
+        notifId = 6; defaultTitle = '📋 استبيان جديد'; defaultBody = 'أرسل لك الكوتش استبياناً'; break;
       default:
         // Unknown type — only show if FCM sent a notification payload
         if (message.notification == null) return;
@@ -204,6 +206,8 @@ class NotificationService {
             channelId = 'reminders'; channelName = 'تذكيرات الجلسات'; break;
           case 'session_joined':
             notifId = 5; defaultTitle = '✅ انضم للجلسة'; defaultBody = 'الطرف الآخر انضم للجلسة'; break;
+          case 'new_questionnaire':
+            notifId = 6; defaultTitle = '📋 استبيان جديد'; defaultBody = 'أرسل لك الكوتش استبياناً'; break;
           default:
             if (message.notification == null) return; // unknown type — nothing to show
         }

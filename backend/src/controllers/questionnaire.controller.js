@@ -93,6 +93,22 @@ exports.assignToBooking = async (req, res) => {
        VALUES ($1, $2, $3) RETURNING *`,
       [templateId, bookingId, booking.rows[0].client_id]
     );
+
+    // Notify client
+    try {
+      const { sendPushNotification, saveNotification } = require('../utils/notifications.utils');
+      const clientRes = await pool.query(`SELECT fcm_token FROM users WHERE id=$1`, [booking.rows[0].client_id]);
+      const templateRes = await pool.query(`SELECT title FROM questionnaire_templates WHERE id=$1`, [templateId]);
+      const templateTitle = templateRes.rows[0]?.title || 'استبيان';
+      await sendPushNotification(
+        clientRes.rows[0]?.fcm_token,
+        '📋 استبيان جديد',
+        `أرسل لك الكوتش استبياناً: ${templateTitle}`,
+        { type: 'new_questionnaire', booking_id: String(bookingId) }
+      ).catch(() => {});
+      saveNotification(booking.rows[0].client_id, '📋 استبيان جديد', `أرسل لك الكوتش استبياناً: ${templateTitle}`, 'new_questionnaire', String(bookingId));
+    } catch (_) {}
+
     successResponse(res, result.rows[0], 'Questionnaire sent to client');
   } catch (err) {
     errorResponse(res, err.message, 500);
@@ -417,6 +433,24 @@ exports.sendSetToClient = async (req, res) => {
        ON CONFLICT (set_id, booking_id) DO NOTHING RETURNING *`,
       [setId, bookingId, booking.rows[0].client_id, req.user.id]
     );
+
+    // Notify client
+    if (result.rows[0]) {
+      try {
+        const { sendPushNotification, saveNotification } = require('../utils/notifications.utils');
+        const clientRes = await pool.query(`SELECT fcm_token FROM users WHERE id=$1`, [booking.rows[0].client_id]);
+        const setRes = await pool.query(`SELECT name FROM questionnaire_sets WHERE id=$1`, [setId]);
+        const setName = setRes.rows[0]?.name || 'استبيان';
+        await sendPushNotification(
+          clientRes.rows[0]?.fcm_token,
+          '📋 استبيان جديد',
+          `أرسل لك الكوتش استبياناً: ${setName}`,
+          { type: 'new_questionnaire', booking_id: String(bookingId) }
+        ).catch(() => {});
+        saveNotification(booking.rows[0].client_id, '📋 استبيان جديد', `أرسل لك الكوتش استبياناً: ${setName}`, 'new_questionnaire', String(bookingId));
+      } catch (_) {}
+    }
+
     successResponse(res, result.rows[0] || null, 'Questionnaire sent');
   } catch (err) {
     errorResponse(res, err.message, 500);

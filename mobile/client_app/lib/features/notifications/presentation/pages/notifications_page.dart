@@ -38,19 +38,21 @@ class _NotificationsPageState extends State<NotificationsPage> {
       case 'booking_confirmed': return Icons.check_circle_rounded;
       case 'booking_cancelled': return Icons.cancel_rounded;
       case 'session_reminder':  return Icons.alarm_rounded;
-      case 'session_joined':    return Icons.video_call_rounded;
-      default:                  return Icons.notifications_rounded;
+      case 'session_joined':      return Icons.video_call_rounded;
+      case 'new_questionnaire':   return Icons.assignment_rounded;
+      default:                    return Icons.notifications_rounded;
     }
   }
 
   Color _colorFor(String? type) {
     switch (type) {
-      case 'new_booking':       return AppTheme.primaryColor;
-      case 'booking_confirmed': return Colors.green;
-      case 'booking_cancelled': return Colors.red;
-      case 'session_reminder':  return Colors.orange;
-      case 'session_joined':    return Colors.blue;
-      default:                  return AppTheme.textSecondary;
+      case 'new_booking':         return AppTheme.primaryColor;
+      case 'booking_confirmed':   return Colors.green;
+      case 'booking_cancelled':   return Colors.red;
+      case 'session_reminder':    return Colors.orange;
+      case 'session_joined':      return Colors.blue;
+      case 'new_questionnaire':   return Colors.purple;
+      default:                    return AppTheme.textSecondary;
     }
   }
 
