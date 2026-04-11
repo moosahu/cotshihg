@@ -5,13 +5,12 @@ import api from '../services/api';
 import './Dashboard.css';
 
 const DEFAULT_SESSION_TYPES = [
-  { name: 'فيديو', value: 0, color: '#1A6B72' },
-  { name: 'صوتي', value: 0, color: '#F5A623' },
+  { name: 'جلسات صوتية', value: 0, color: '#1A6B72' },
 ];
 
 const statusColors = { completed: '#2ECC71', confirmed: '#1A6B72', pending: '#F5A623', cancelled: '#E53935', in_progress: '#FF6B35' };
 const statusLabels = { completed: 'مكتملة', confirmed: 'مؤكدة', pending: 'معلقة', cancelled: 'ملغية', in_progress: 'جارية' };
-const typeLabels = { video: 'فيديو', voice: 'صوتي', chat: 'دردشة' };
+const typeLabels = { video: 'جلسة', voice: 'جلسة', chat: 'دردشة' };
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);

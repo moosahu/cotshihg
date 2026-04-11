@@ -43,9 +43,9 @@ exports.getStats = async (req, res) => {
 
     const total = sessionTypesRes.rows.reduce((s, r) => s + parseInt(r.count), 0) || 1;
     const sessionTypes = sessionTypesRes.rows.map(r => ({
-      name: r.session_type === 'video' ? 'فيديو' : r.session_type === 'voice' ? 'صوتي' : 'دردشة',
+      name: 'جلسات صوتية',
       value: Math.round(parseInt(r.count) / total * 100),
-      color: r.session_type === 'video' ? '#1A6B72' : r.session_type === 'voice' ? '#F5A623' : '#FF6B35',
+      color: '#1A6B72',
     }));
 
     successResponse(res, {
@@ -54,8 +54,7 @@ exports.getStats = async (req, res) => {
       todaySessions: parseInt(bookingsRes.rows[0].count),
       totalRevenue: parseFloat(paymentsRes.rows[0].total),
       sessionTypes: sessionTypes.length > 0 ? sessionTypes : [
-        { name: 'فيديو', value: 0, color: '#1A6B72' },
-        { name: 'صوتي', value: 0, color: '#F5A623' },
+        { name: 'جلسات صوتية', value: 0, color: '#1A6B72' },
       ],
     });
   } catch (err) {
@@ -232,8 +231,8 @@ exports.getBookings = async (req, res) => {
 // POST /admin/bookings — admin creates booking for a client
 exports.createBooking = async (req, res) => {
   try {
-    const { client_id, therapist_id, scheduled_at, session_type, price, payment_method } = req.body;
-    if (!client_id || !therapist_id || !scheduled_at || !session_type || !price || !payment_method) {
+    const { client_id, therapist_id, scheduled_at, price, payment_method } = req.body;
+    if (!client_id || !therapist_id || !scheduled_at || !price || !payment_method) {
       return errorResponse(res, 'جميع الحقول مطلوبة', 400);
     }
 
@@ -258,8 +257,8 @@ exports.createBooking = async (req, res) => {
     // Create booking
     const booking = await pool.query(
       `INSERT INTO bookings (client_id, therapist_id, session_type, scheduled_at, duration_minutes, price, status, payment_status, notes)
-       VALUES ($1,$2,$3,$4,60,$5,$6,$7,'حجز من الإدارة') RETURNING *`,
-      [client_id, therapist_id, session_type, scheduled_at, price, bookingStatus, paymentStatus]
+       VALUES ($1,$2,'voice',$3,60,$4,$5,$6,'حجز من الإدارة') RETURNING *`,
+      [client_id, therapist_id, scheduled_at, price, bookingStatus, paymentStatus]
     );
     const bookingId = booking.rows[0].id;
 

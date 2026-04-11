@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 const statusColors = { completed: '#2ECC71', confirmed: '#1A6B72', pending: '#F5A623', cancelled: '#E53935', in_progress: '#FF6B35' };
 const statusLabels = { completed: 'مكتملة', confirmed: 'مؤكدة', pending: 'معلق', cancelled: 'ملغية', in_progress: 'جارية' };
-const typeLabels = { video: 'فيديو', voice: 'صوتي', chat: 'دردشة' };
+const typeLabels = { video: 'جلسة', voice: 'جلسة', chat: 'دردشة' };
 
 // ── Slot generation (same logic as Flutter booking page) ──────────────────────
 function generateSlots(availability, bookedSlots) {
@@ -68,7 +68,7 @@ function CreateBookingModal({ onClose, onCreated }) {
   const [slotsByDate, setSlotsByDate] = useState({});
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [sessionType, setSessionType] = useState('video');
+  const sessionType = 'voice';
   const [price, setPrice] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('app');
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -125,31 +125,14 @@ function CreateBookingModal({ onClose, onCreated }) {
     setSelectedTime('');
   };
 
-  const handleSessionTypeChange = (type) => {
-    setSessionType(type);
-    if (coachData) {
-      const priceMap = {
-        video: coachData.session_price_video,
-        voice: coachData.session_price_voice,
-        chat: coachData.session_price_chat,
-      };
-      setPrice(priceMap[type] || coachData.session_price || '');
-    }
-  };
-
-  // Pre-fill price when coach and type both set
+  // Pre-fill price when coach is selected
   useEffect(() => {
     if (!coachData) return;
-    const priceMap = {
-      video: coachData.session_price_video,
-      voice: coachData.session_price_voice,
-      chat: coachData.session_price_chat,
-    };
-    setPrice(priceMap[sessionType] || coachData.session_price || '');
-  }, [coachData, sessionType]);
+    setPrice(coachData.session_price_voice || coachData.session_price || '');
+  }, [coachData]);
 
   const handleSubmit = async () => {
-    if (!clientId || !coachId || !selectedDate || !selectedTime || !sessionType || !price || !paymentMethod) {
+    if (!clientId || !coachId || !selectedDate || !selectedTime || !price || !paymentMethod) {
       toast.error('يرجى تعبئة جميع الحقول');
       return;
     }
@@ -186,17 +169,6 @@ function CreateBookingModal({ onClose, onCreated }) {
           <option value=''>اختر كوتشاً...</option>
           {coaches.map(c => <option key={c.therapist_id || c.id} value={c.therapist_id || c.id}>{c.name}</option>)}
         </select>
-
-        {/* Session type */}
-        <label style={labelStyle}>نوع الجلسة</label>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {['video', 'voice', 'chat'].map(t => (
-            <button key={t} onClick={() => handleSessionTypeChange(t)}
-              style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: `2px solid ${sessionType === t ? '#1A6B72' : '#E5E7EB'}`, background: sessionType === t ? '#1A6B72' : '#fff', color: sessionType === t ? '#fff' : '#374151', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
-              {typeLabels[t]}
-            </button>
-          ))}
-        </div>
 
         {/* Slots */}
         {coachId && (

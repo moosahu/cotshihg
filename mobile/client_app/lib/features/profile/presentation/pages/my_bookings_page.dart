@@ -242,10 +242,9 @@ class _BookingsListState extends State<_BookingsList>
                             Text(dateStr,
                                 style: const TextStyle(
                                     color: AppTheme.textSecondary, fontSize: 12)),
-                            if (sessionType.isNotEmpty)
-                              Text(sessionType,
-                                  style: const TextStyle(
-                                      color: AppTheme.textSecondary, fontSize: 11)),
+                            const Text('جلسة صوتية',
+                                style: TextStyle(
+                                    color: AppTheme.textSecondary, fontSize: 11)),
                           ],
                         ),
                       ),
@@ -299,11 +298,11 @@ class _BookingsListState extends State<_BookingsList>
                               if (sessionType == 'chat') {
                                 context.go('/chat/$id');
                               } else {
-                                context.go('/video-call/$id', extra: {'sessionType': sessionType});
+                                context.go('/video-call/$id');
                               }
                             } : null,
                             icon: Icon(
-                              sessionType == 'chat' ? Icons.chat_bubble_outline : Icons.videocam_outlined,
+                              sessionType == 'chat' ? Icons.chat_bubble_outline : Icons.phone_outlined,
                               size: 18,
                             ),
                             label: Text(canStart ? 'ابدأ الجلسة' : 'تبدأ في ${scheduledDateTime != null ? "${scheduledDateTime.hour.toString().padLeft(2,'0')}:${scheduledDateTime.minute.toString().padLeft(2,'0')}" : ""}'),

@@ -181,7 +181,7 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
     final canJoin = isInProgress || (scheduledDateTime != null &&
         now.isAfter(scheduledDateTime.subtract(const Duration(minutes: 15))) &&
         now.isBefore(scheduledDateTime.add(const Duration(hours: 2))));
-    final sessionType = _session!['session_type'] as String? ?? 'video';
+    final sessionType = _session!['session_type'] as String? ?? 'voice';
     final timeLabel = scheduledDateTime != null
         ? '${scheduledDateTime.hour.toString().padLeft(2, '0')}:${scheduledDateTime.minute.toString().padLeft(2, '0')}'
         : '';
@@ -211,7 +211,7 @@ class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
                 if (sessionType == 'chat') {
                   context.go('/chat/${_session!['id']}');
                 } else {
-                  context.go('/video-call/${_session!['id']}', extra: {'sessionType': sessionType});
+                  context.go('/video-call/${_session!['id']}');
                 }
               } : null,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppTheme.primaryColor),

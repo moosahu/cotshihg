@@ -45,8 +45,7 @@ async function sendDayReminders() {
     `);
 
     for (const row of rows.rows) {
-      const typeLabel = row.session_type === 'video' ? 'فيديو'
-                      : row.session_type === 'voice'  ? 'صوتية' : 'دردشة';
+      const typeLabel = 'صوتية';
       const reminderData = { type: 'session_reminder', booking_id: String(row.booking_id), reminder: '1day' };
 
       // Notify client
@@ -92,8 +91,7 @@ async function sendHalfHourReminders() {
     `);
 
     for (const row of rows.rows) {
-      const typeLabel = row.session_type === 'video' ? 'فيديو'
-                      : row.session_type === 'voice'  ? 'صوتية' : 'دردشة';
+      const typeLabel = 'صوتية';
       const reminderData = { type: 'session_reminder', booking_id: String(row.booking_id), reminder: '30min' };
 
       // Notify client

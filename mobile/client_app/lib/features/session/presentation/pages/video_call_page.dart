@@ -19,13 +19,11 @@ const _agoraAppId = '45772ce780f046808740a6d07c34781b';
 
 class VideoCallPage extends StatefulWidget {
   final String bookingId;
-  final String sessionType; // 'video' or 'voice'
   final bool isCoach;
 
   const VideoCallPage({
     super.key,
     required this.bookingId,
-    this.sessionType = 'video',
     this.isCoach = false,
   });
 
@@ -38,7 +36,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
   int? _remoteUid;
   bool _isJoined = false;
   bool _isMuted = false;
-  bool _isCameraOff = false;
+  bool _isCameraOff = _startWithCameraOff;
   bool _loading = true;
   String? _errorMsg;
   String? _debugInfo; // shows full error for diagnosis
@@ -55,6 +53,9 @@ class _VideoCallPageState extends State<VideoCallPage> {
   bool _isEnding = false; // prevent recursive end
   bool _isWaiting = false; // waiting for second party
 
+  // Camera starts OFF — user enables manually (audio-first approach)
+  static const _startWithCameraOff = true;
+
   // Chat
   bool _showChat = false;
   final List<Map<String, dynamic>> _messages = [];
@@ -64,7 +65,8 @@ class _VideoCallPageState extends State<VideoCallPage> {
   bool _isUploading = false;
   String? _myUserId;
 
-  bool get _isVoiceOnly => widget.sessionType == 'voice';
+  // Always false — all sessions support video (camera off by default, user toggles)
+  bool get _isVoiceOnly => false;
 
   @override
   void initState() {
@@ -163,7 +165,7 @@ class _VideoCallPageState extends State<VideoCallPage> {
         });
         // Only client notifies coach of incoming call
         if (!widget.isCoach) {
-          socket.initiateCall(widget.bookingId, widget.sessionType);
+          socket.initiateCall(widget.bookingId, 'voice');
         }
       },
       onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
@@ -186,23 +188,24 @@ class _VideoCallPageState extends State<VideoCallPage> {
       },
     ));
 
-    if (!_isVoiceOnly) {
-      await _engine!.enableVideo();
-      await _engine!.startPreview();
-    }
+    await _engine!.enableVideo();
+    await _engine!.startPreview();
 
     await _engine!.joinChannel(
       token: token,
       channelId: _roomId!,
       uid: 0,
-      options: ChannelMediaOptions(
+      options: const ChannelMediaOptions(
         publishMicrophoneTrack: true,
-        publishCameraTrack: !_isVoiceOnly,
+        publishCameraTrack: false, // camera off by default — user enables manually
         autoSubscribeAudio: true,
-        autoSubscribeVideo: !_isVoiceOnly,
+        autoSubscribeVideo: true,
         clientRoleType: ClientRoleType.clientRoleBroadcaster,
       ),
     );
+
+    // Mute camera track on entry (audio-first)
+    await _engine!.muteLocalVideoStream(true);
   }
 
   void _startTimer() {
@@ -346,6 +349,10 @@ class _VideoCallPageState extends State<VideoCallPage> {
 
   void _toggleCamera() async {
     final off = !_isCameraOff;
+    if (!off) {
+      // Turning camera ON — enable track first if needed
+      await _engine?.enableLocalVideo(true);
+    }
     await _engine?.muteLocalVideoStream(off);
     setState(() => _isCameraOff = off);
   }

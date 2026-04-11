@@ -132,24 +132,16 @@ class AppRouter {
       ),
       GoRoute(
         path: '/video-call/:bookingId',
-        builder: (_, state) {
-          final extra = state.extra as Map<String, dynamic>?;
-          return VideoCallPage(
-            bookingId: state.pathParameters['bookingId']!,
-            sessionType: extra?['sessionType'] as String? ?? 'video',
-          );
-        },
+        builder: (_, state) => VideoCallPage(
+          bookingId: state.pathParameters['bookingId']!,
+        ),
       ),
       GoRoute(
         path: '/coach/video/:bookingId',
-        builder: (_, state) {
-          final extra = state.extra as Map<String, dynamic>?;
-          return VideoCallPage(
-            bookingId: state.pathParameters['bookingId']!,
-            sessionType: extra?['sessionType'] as String? ?? 'video',
-            isCoach: true,
-          );
-        },
+        builder: (_, state) => VideoCallPage(
+          bookingId: state.pathParameters['bookingId']!,
+          isCoach: true,
+        ),
       ),
       GoRoute(
         path: '/rating/:bookingId',
@@ -309,9 +301,6 @@ class _CoachShellState extends State<CoachShell> with WidgetsBindingObserver {
     final d = data as Map<String, dynamic>;
     final bookingId = d['booking_id'] as String? ?? '';
     final fromName = d['from_name'] as String? ?? 'عميل';
-    final callType = d['call_type'] as String? ?? 'video';
-    final isVoice = callType == 'voice';
-
     _startRinging();
 
     showDialog(
@@ -319,12 +308,12 @@ class _CoachShellState extends State<CoachShell> with WidgetsBindingObserver {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: Row(children: [
-          Icon(isVoice ? Icons.phone : Icons.videocam, color: AppTheme.primaryColor),
+          Icon(Icons.phone, color: AppTheme.primaryColor),
           const SizedBox(width: 8),
           const Text('طلب جلسة فورية'),
         ]),
         content: Text(
-          '$fromName يطلب ${isVoice ? "مكالمة صوتية" : "مكالمة فيديو"}',
+          '$fromName يطلب جلسة',
           textAlign: TextAlign.center,
         ),
         actions: [
@@ -339,10 +328,9 @@ class _CoachShellState extends State<CoachShell> with WidgetsBindingObserver {
             onPressed: () {
               _stopRinging();
               Navigator.pop(context);
-              context.push('/coach/video/$bookingId',
-                  extra: {'sessionType': callType});
+              context.push('/coach/video/$bookingId');
             },
-            icon: Icon(isVoice ? Icons.phone : Icons.videocam),
+            icon: const Icon(Icons.phone),
             label: const Text('قبول'),
           ),
         ],

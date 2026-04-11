@@ -16,8 +16,7 @@ exports.createBooking = async (req, res) => {
     if (!therapistResult.rows[0]) return errorResponse(res, 'Therapist not found', 404);
 
     const therapist = therapistResult.rows[0];
-    const priceMap = { chat: therapist.session_price_chat, voice: therapist.session_price_voice, video: therapist.session_price_video };
-    const basePrice = parseFloat(priceMap[session_type] || 0);
+    const basePrice = parseFloat(therapist.session_price_voice || therapist.session_price || 0);
     const discount = parseInt(therapist.discount_percent || 0);
     const price = discount > 0 ? +(basePrice * (1 - discount / 100)).toFixed(2) : basePrice;
 
@@ -37,8 +36,8 @@ exports.createBooking = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO bookings (client_id, therapist_id, session_type, scheduled_at, duration_minutes, price, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [req.user.id, therapist_id, session_type, scheduled_at, duration_minutes || 60, price, notes]
+       VALUES ($1,$2,'voice',$3,$4,$5,$6) RETURNING *`,
+      [req.user.id, therapist_id, scheduled_at, duration_minutes || 60, price, notes]
     );
 
     // Notify therapist
@@ -69,15 +68,14 @@ exports.createInstantBooking = async (req, res) => {
     if (!therapistResult.rows[0]) return errorResponse(res, 'Therapist not available for instant session', 400);
 
     const therapist = therapistResult.rows[0];
-    const priceMap = { chat: therapist.session_price_chat, voice: therapist.session_price_voice, video: therapist.session_price_video };
-    const basePrice = parseFloat(priceMap[session_type] || 0);
+    const basePrice = parseFloat(therapist.session_price_voice || therapist.session_price || 0);
     const discount = parseInt(therapist.discount_percent || 0);
     const price = discount > 0 ? +(basePrice * (1 - discount / 100)).toFixed(2) : basePrice;
 
     const result = await pool.query(
       `INSERT INTO bookings (client_id, therapist_id, session_type, scheduled_at, booking_type, price, status)
-       VALUES ($1,$2,$3,NOW(),'instant',$4,'confirmed') RETURNING *`,
-      [req.user.id, therapist_id, session_type, price]
+       VALUES ($1,$2,'voice',NOW(),'instant',$3,'confirmed') RETURNING *`,
+      [req.user.id, therapist_id, price]
     );
 
     const booking = result.rows[0];

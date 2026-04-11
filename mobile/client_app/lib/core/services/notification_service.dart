@@ -20,11 +20,10 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   ));
 
   if (type == 'incoming_call') {
-    final isVoice = (data['call_type'] ?? '') == 'voice';
     await plugin.show(
       0,
-      isVoice ? '📞 مكالمة صوتية واردة' : '📹 مكالمة فيديو واردة',
-      '${data['from_name'] ?? 'عميل'} يطلب ${isVoice ? "مكالمة صوتية" : "مكالمة فيديو"}',
+      '📞 جلسة واردة',
+      '${data['from_name'] ?? 'عميل'} يطلب جلسة',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'incoming_call_channel',
@@ -158,10 +157,8 @@ class NotificationService {
       final data = message.data;
       if (data['type'] == 'incoming_call') {
         final bookingId = data['booking_id'] as String? ?? '';
-        final callType = data['call_type'] as String? ?? 'video';
         if (bookingId.isNotEmpty && _navigatorKey?.currentContext != null) {
-          _navigatorKey!.currentContext!
-              .go('/coach/video/$bookingId', extra: {'sessionType': callType});
+          _navigatorKey!.currentContext!.go('/coach/video/$bookingId');
         }
       }
     });
@@ -172,13 +169,11 @@ class NotificationService {
       final data = message.data;
       if (data['type'] == 'incoming_call') {
         final bookingId = data['booking_id'] as String? ?? '';
-        final callType = data['call_type'] as String? ?? 'video';
         if (bookingId.isNotEmpty) {
           // Delay to let the router initialize
           Future.delayed(const Duration(seconds: 1), () {
             if (_navigatorKey?.currentContext != null) {
-              _navigatorKey!.currentContext!
-                  .go('/coach/video/$bookingId', extra: {'sessionType': callType});
+              _navigatorKey!.currentContext!.go('/coach/video/$bookingId');
             }
           });
         }
@@ -245,13 +240,10 @@ class NotificationService {
   }
 
   static void _handleCallPayload(String payload) {
-    // payload format: "booking_id=xxx&call_type=video"
     final parts = Uri.splitQueryString(payload);
     final bookingId = parts['booking_id'] ?? '';
-    final callType = parts['call_type'] ?? 'video';
     if (bookingId.isNotEmpty && _navigatorKey?.currentContext != null) {
-      _navigatorKey!.currentContext!
-          .go('/coach/video/$bookingId', extra: {'sessionType': callType});
+      _navigatorKey!.currentContext!.go('/coach/video/$bookingId');
     }
   }
 

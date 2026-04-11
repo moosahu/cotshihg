@@ -23,7 +23,7 @@ class BookingPage extends StatefulWidget {
 }
 
 class _BookingPageState extends State<BookingPage> {
-  String _sessionType = 'video';
+  final String _sessionType = 'voice';
   bool _loading = false;
   bool _loadingData = true;
   bool _loadError = false;
@@ -163,12 +163,7 @@ class _BookingPageState extends State<BookingPage> {
 
   double get _price {
     if (_therapist == null) return 0;
-    final prices = {
-      'chat': _therapist!['session_price_chat'],
-      'voice': _therapist!['session_price_voice'],
-      'video': _therapist!['session_price_video'],
-    };
-    return double.tryParse(prices[_sessionType]?.toString() ?? '0') ?? 0;
+    return double.tryParse(_therapist!['session_price_voice']?.toString() ?? '0') ?? 0;
   }
 
   String _formatDate(String dateKey) {
@@ -345,58 +340,6 @@ class _BookingPageState extends State<BookingPage> {
                     ),
                   ),
                 const SizedBox(height: 16),
-
-                // Session type
-                const Text('نوع الجلسة',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                ...[
-                  ('voice', 'مكالمة صوتية', Icons.phone_outlined),
-                  ('video', 'مكالمة فيديو', Icons.videocam_outlined),
-                ].map((e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _sessionType = e.$1),
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: _sessionType == e.$1
-                                ? AppTheme.primaryColor.withOpacity(0.1)
-                                : Colors.white,
-                            border: Border.all(
-                                color: _sessionType == e.$1
-                                    ? AppTheme.primaryColor
-                                    : const Color(0xFFE0E0E0),
-                                width: _sessionType == e.$1 ? 2 : 1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(e.$3,
-                                  color: _sessionType == e.$1
-                                      ? AppTheme.primaryColor
-                                      : AppTheme.textSecondary),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(e.$2,
-                                    style: TextStyle(
-                                        fontWeight: _sessionType == e.$1
-                                            ? FontWeight.bold
-                                            : FontWeight.normal)),
-                              ),
-                              if (_therapist != null)
-                                RiyalText(
-                                  '${(double.tryParse((_therapist![e.$1 == 'voice' ? 'session_price_voice' : 'session_price_video'])?.toString() ?? '0') ?? 0).toInt()}',
-                                  style: const TextStyle(
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )),
 
                 const SizedBox(height: 8),
 

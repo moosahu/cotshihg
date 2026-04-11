@@ -28,10 +28,6 @@ class _ChatSessionPageState extends State<ChatSessionPage> {
             icon: const Icon(Icons.phone_outlined),
             onPressed: () => context.push('/video-call/${widget.bookingId}'),
           ),
-          IconButton(
-            icon: const Icon(Icons.videocam_outlined),
-            onPressed: () => context.push('/video-call/${widget.bookingId}'),
-          ),
         ],
       ),
       body: Column(

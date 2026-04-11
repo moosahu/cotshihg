@@ -213,16 +213,15 @@ exports.startSession = async (req, res) => {
         io?.to(`user_${coachRow.rows[0].id}`).emit('incoming_call', {
           booking_id: req.params.bookingId,
           from_name: clientUser?.name ?? 'عميل',
-          call_type: booking.rows[0].session_type,
+          call_type: 'voice',
           room_id: roomId,
           agora_token: agoraToken,
         });
-        const isVoice = booking.rows[0].session_type === 'voice';
         await sendPushNotification(
           coachRow.rows[0].fcm_token,
-          isVoice ? '⏳ عميلك في انتظارك' : '⏳ عميلك في انتظارك',
+          '⏳ عميلك في انتظارك',
           `${clientUser?.name ?? 'عميل'} دخل الجلسة وينتظرك، انضم الآن!`,
-          { type: 'incoming_call', booking_id: String(req.params.bookingId), call_type: booking.rows[0].session_type, from_name: clientUser?.name ?? 'عميل' },
+          { type: 'incoming_call', booking_id: String(req.params.bookingId), call_type: 'voice', from_name: clientUser?.name ?? 'عميل' },
           'incoming_call_channel',
         );
       }
