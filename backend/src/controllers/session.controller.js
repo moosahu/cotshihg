@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response.utils');
 const { v4: uuidv4 } = require('uuid');
 const { getIo } = require('../socket/socket.instance');
+const { sendPushNotification } = require('../utils/notifications.utils');
 const crypto = require('crypto');
 const zlib = require('zlib');
 
@@ -123,15 +124,39 @@ exports.startSession = async (req, res) => {
       `SELECT * FROM sessions WHERE booking_id=$1 AND status='active'`,
       [req.params.bookingId]
     );
-    // Fetch coach name for both paths
+    // Fetch coach info for both paths
     const coachRow = await pool.query(
-      `SELECT u.id, u.name FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1`,
+      `SELECT u.id, u.name, u.fcm_token FROM therapists t JOIN users u ON u.id=t.user_id WHERE t.id=$1`,
       [booking.rows[0].therapist_id]
     );
     const coachName = coachRow.rows[0]?.name ?? 'الكوتش';
 
+    const isCoach = coachRow.rows[0]?.id === req.user.id;
+    const clientRow = await pool.query('SELECT name, fcm_token FROM users WHERE id=$1', [booking.rows[0].client_id]);
+    const clientUser = clientRow.rows[0];
+
     if (existing.rows[0]) {
       const s = existing.rows[0];
+
+      // Second party joining — notify the other party
+      if (isCoach) {
+        // Coach joined → notify client
+        await sendPushNotification(
+          clientUser?.fcm_token,
+          '✅ انضم الكوتش للجلسة',
+          `${coachName} انضم للجلسة. يمكنك الدخول الآن!`,
+          { type: 'session_joined', booking_id: String(req.params.bookingId) },
+        );
+      } else {
+        // Client joined → notify coach via FCM (socket already sent incoming_call)
+        await sendPushNotification(
+          coachRow.rows[0]?.fcm_token,
+          '✅ انضم العميل للجلسة',
+          `${clientUser?.name ?? 'العميل'} دخل الجلسة.`,
+          { type: 'session_joined', booking_id: String(req.params.bookingId) },
+        );
+      }
+
       return successResponse(res, { session: s, room_id: s.room_id, agora_token: generateAgoraToken(s.room_id), coach_name: coachName });
     }
 
@@ -149,17 +174,24 @@ exports.startSession = async (req, res) => {
       [req.params.bookingId]
     );
 
-    // Notify coach via socket
+    // Notify coach via socket + FCM (in case socket not connected)
     if (coachRow.rows[0]) {
       const io = getIo();
-      const clientUser = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
       io?.to(`user_${coachRow.rows[0].id}`).emit('incoming_call', {
         booking_id: req.params.bookingId,
-        from_name: clientUser.rows[0]?.name ?? 'عميل',
+        from_name: clientUser?.name ?? 'عميل',
         call_type: booking.rows[0].session_type,
         room_id: roomId,
         agora_token: agoraToken,
       });
+
+      const isVoice = booking.rows[0].session_type === 'voice';
+      await sendPushNotification(
+        coachRow.rows[0].fcm_token,
+        isVoice ? '📞 مكالمة صوتية واردة' : '📹 مكالمة فيديو واردة',
+        `${clientUser?.name ?? 'عميل'} يطلب ${isVoice ? 'مكالمة صوتية' : 'مكالمة فيديو'}`,
+        { type: 'incoming_call', booking_id: String(req.params.bookingId), call_type: booking.rows[0].session_type, from_name: clientUser?.name ?? 'عميل' },
+      );
     }
 
     successResponse(res, { session: session.rows[0], room_id: roomId, agora_token: agoraToken, coach_name: coachName });

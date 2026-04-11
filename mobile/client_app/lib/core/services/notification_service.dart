@@ -8,7 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   final data = message.data;
-  if (data['type'] != 'incoming_call') return;
+  final type = data['type'] ?? '';
 
   // Must re-initialize local notifications in background isolate
   final plugin = FlutterLocalNotificationsPlugin();
@@ -19,24 +19,66 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     iOS: iosSettings,
   ));
 
-  final isVoice = (data['call_type'] ?? '') == 'voice';
-  await plugin.show(
-    0,
-    isVoice ? '📞 مكالمة صوتية واردة' : '📹 مكالمة فيديو واردة',
-    '${data['from_name'] ?? 'عميل'} يطلب ${isVoice ? "مكالمة صوتية" : "مكالمة فيديو"}',
-    const NotificationDetails(
-      android: AndroidNotificationDetails(
-        'incoming_call_channel',
-        'مكالمات واردة',
-        importance: Importance.max,
-        priority: Priority.max,
-        fullScreenIntent: true,
-        playSound: true,
-        enableVibration: true,
-        category: AndroidNotificationCategory.call,
+  if (type == 'incoming_call') {
+    final isVoice = (data['call_type'] ?? '') == 'voice';
+    await plugin.show(
+      0,
+      isVoice ? '📞 مكالمة صوتية واردة' : '📹 مكالمة فيديو واردة',
+      '${data['from_name'] ?? 'عميل'} يطلب ${isVoice ? "مكالمة صوتية" : "مكالمة فيديو"}',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'incoming_call_channel',
+          'مكالمات واردة',
+          importance: Importance.max,
+          priority: Priority.max,
+          fullScreenIntent: true,
+          playSound: true,
+          enableVibration: true,
+          category: AndroidNotificationCategory.call,
+        ),
+        iOS: DarwinNotificationDetails(sound: 'default'),
       ),
-    ),
-  );
+    );
+  } else if (type == 'new_booking') {
+    await plugin.show(
+      1,
+      message.notification?.title ?? '📅 حجز جديد',
+      message.notification?.body ?? 'لديك طلب حجز جديد',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'general_channel', 'إشعارات عامة',
+          importance: Importance.high, priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(sound: 'default'),
+      ),
+    );
+  } else if (type == 'session_reminder') {
+    await plugin.show(
+      2,
+      message.notification?.title ?? '⏰ تذكير بالجلسة',
+      message.notification?.body ?? 'لديك جلسة قادمة',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'reminders', 'تذكيرات الجلسات',
+          importance: Importance.high, priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(sound: 'default'),
+      ),
+    );
+  } else if (type == 'session_joined') {
+    await plugin.show(
+      3,
+      message.notification?.title ?? '✅ انضم للجلسة',
+      message.notification?.body ?? 'الطرف الآخر انضم للجلسة',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'general_channel', 'إشعارات عامة',
+          importance: Importance.high, priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(sound: 'default'),
+      ),
+    );
+  }
 }
 
 class NotificationService {
@@ -74,18 +116,28 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    // Create Android notification channel (with ringtone)
-    const channel = AndroidNotificationChannel(
-      _callChannelId,
-      _callChannelName,
+    final androidPlugin = _localNotif
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+    // Call channel (ringtone + full-screen intent)
+    await androidPlugin?.createNotificationChannel(const AndroidNotificationChannel(
+      _callChannelId, _callChannelName,
       importance: Importance.max,
       playSound: true,
       enableVibration: true,
-    );
-    await _localNotif
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    ));
+
+    // General channel (bookings, reminders, joined)
+    await androidPlugin?.createNotificationChannel(const AndroidNotificationChannel(
+      'general_channel', 'إشعارات عامة',
+      importance: Importance.high,
+    ));
+
+    // Reminders channel
+    await androidPlugin?.createNotificationChannel(const AndroidNotificationChannel(
+      'reminders', 'تذكيرات الجلسات',
+      importance: Importance.high,
+    ));
 
     // Handle notification tap when app was terminated (launched from notification)
     final launchDetails = await _localNotif.getNotificationAppLaunchDetails();
@@ -129,9 +181,42 @@ class NotificationService {
     // Handle foreground FCM messages
     FirebaseMessaging.onMessage.listen((message) {
       final data = message.data;
-      if (data['type'] == 'incoming_call') {
+      final type = data['type'] ?? '';
+      if (type == 'incoming_call') {
         // App is open — socket already handles the dialog
-        // No need to show notification
+      } else if (type == 'new_booking') {
+        _localNotif.show(
+          1,
+          message.notification?.title ?? '📅 حجز جديد',
+          message.notification?.body ?? 'لديك طلب حجز جديد',
+          const NotificationDetails(
+            android: AndroidNotificationDetails('general_channel', 'إشعارات عامة',
+                importance: Importance.high, priority: Priority.high),
+            iOS: DarwinNotificationDetails(sound: 'default'),
+          ),
+        );
+      } else if (type == 'session_reminder') {
+        _localNotif.show(
+          2,
+          message.notification?.title ?? '⏰ تذكير بالجلسة',
+          message.notification?.body ?? 'لديك جلسة قادمة',
+          const NotificationDetails(
+            android: AndroidNotificationDetails('reminders', 'تذكيرات الجلسات',
+                importance: Importance.high, priority: Priority.high),
+            iOS: DarwinNotificationDetails(sound: 'default'),
+          ),
+        );
+      } else if (type == 'session_joined') {
+        _localNotif.show(
+          3,
+          message.notification?.title ?? '✅ انضم للجلسة',
+          message.notification?.body ?? 'الطرف الآخر انضم للجلسة',
+          const NotificationDetails(
+            android: AndroidNotificationDetails('general_channel', 'إشعارات عامة',
+                importance: Importance.high, priority: Priority.high),
+            iOS: DarwinNotificationDetails(sound: 'default'),
+          ),
+        );
       }
     });
   }
