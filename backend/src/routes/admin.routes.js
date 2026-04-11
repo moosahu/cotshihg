@@ -58,6 +58,10 @@ router.post('/payouts/:therapistId/mark-paid', adminAuth, adminController.markPa
 router.get('/payout-requests', adminAuth, adminController.getPayoutRequests);
 router.post('/payout-requests/:id/mark-paid', adminAuth, adminController.markPayoutRequestPaid);
 
+// Chat — admin dispute review (decrypted)
+const chatController = require('../controllers/chat.controller');
+router.get('/bookings/:bookingId/messages', adminAuth, chatController.adminGetMessages);
+
 // Announcements
 const announcementController = require('../controllers/announcement.controller');
 router.get('/announcements', adminAuth, announcementController.getAll);

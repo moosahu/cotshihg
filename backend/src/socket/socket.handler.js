@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const admin = require('../config/firebase');
+const { encrypt, decrypt } = require('../utils/crypto.utils');
 
 const socketHandler = (io) => {
   // Auth middleware for socket
@@ -47,11 +48,14 @@ const socketHandler = (io) => {
         const result = await pool.query(
           `INSERT INTO messages (booking_id, sender_id, content, message_type, media_url)
            VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-          [booking_id, socket.user.id, content, message_type, media_url]
+          [booking_id, socket.user.id, encrypt(content), message_type, encrypt(media_url)]
         );
 
+        // Broadcast decrypted message to participants in the room
         const message = {
           ...result.rows[0],
+          content: decrypt(result.rows[0].content),
+          media_url: result.rows[0].media_url ? decrypt(result.rows[0].media_url) : null,
           sender_name: socket.user.name,
           sender_avatar: socket.user.avatar_url,
         };
