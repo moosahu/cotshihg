@@ -277,7 +277,7 @@ class _TherapistCard extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                        RiyalText('${therapist["session_price_video"] ?? "--"}', style: const TextStyle(
+                        RiyalText('${therapist["session_price_voice"] ?? "--"}', style: const TextStyle(
                             color: AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,
                           )),

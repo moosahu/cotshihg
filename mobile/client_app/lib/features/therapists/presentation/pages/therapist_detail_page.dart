@@ -126,23 +126,17 @@ class TherapistDetailPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      // Session types & prices
+                      // Session price
                       const Text(
-                        'أسعار الجلسات',
+                        'سعر الجلسة',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const SizedBox(height: 12),
                       _SessionTypeCard(
                         type: 'voice',
-                        label: 'صوتي',
-                        icon: Icons.mic_outlined,
+                        label: 'جلسة صوتية',
+                        icon: Icons.phone_outlined,
                         price: '${t['session_price_voice'] ?? 0}',
-                      ),
-                      _SessionTypeCard(
-                        type: 'video',
-                        label: 'فيديو',
-                        icon: Icons.videocam_outlined,
-                        price: '${t['session_price_video'] ?? 0}',
                       ),
                       const SizedBox(height: 24),
                     ]),

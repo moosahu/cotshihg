@@ -23,7 +23,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     _OnboardingData(
       icon: Icons.video_call_outlined,
       title: 'جلسات مرنة',
-      subtitle: 'احجز جلساتك عبر الفيديو أو الصوت أو الدردشة — في أي وقت ومن أي مكان',
+      subtitle: 'احجز جلساتك الصوتية مع الكوتش المناسب — في أي وقت ومن أي مكان',
       color: Color(0xFF2E9EA8),
     ),
     _OnboardingData(

@@ -35,7 +35,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
   }
 
   void _showBookingSheet(Map<String, dynamic> coach) {
-    String selectedType = 'video';
+    const selectedType = 'voice';
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -78,48 +78,28 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('نوع الجلسة',
+              const Text('سعر الجلسة',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               const SizedBox(height: 12),
-              ...[
-                ('chat', 'محادثة نصية', Icons.chat_bubble_outline, 'session_price_chat'),
-                ('voice', 'مكالمة صوتية', Icons.phone_outlined, 'session_price_voice'),
-                ('video', 'مكالمة فيديو', Icons.videocam_outlined, 'session_price_video'),
-              ].map((e) {
-                final price = (double.tryParse(coach[e.$4]?.toString() ?? '0') ?? 0).toInt();
-                final selected = selectedType == e.$1;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: GestureDetector(
-                    onTap: () => setSheetState(() => selectedType = e.$1),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: selected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.white,
-                        border: Border.all(
-                            color: selected ? AppTheme.primaryColor : const Color(0xFFE0E0E0),
-                            width: selected ? 2 : 1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(e.$3,
-                              color: selected ? AppTheme.primaryColor : AppTheme.textSecondary),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(e.$2,
-                                style: TextStyle(
-                                    fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
-                          ),
-                          RiyalText('$price',
-                              style: const TextStyle(
-                                  color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  border: Border.all(color: AppTheme.primaryColor, width: 2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.phone_outlined, color: AppTheme.primaryColor),
+                    const SizedBox(width: 12),
+                    const Expanded(child: Text('جلسة صوتية', style: TextStyle(fontWeight: FontWeight.bold))),
+                    RiyalText(
+                      '${(double.tryParse(coach['session_price_voice']?.toString() ?? '0') ?? 0).toInt()}',
+                      style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                );
-              }),
+                  ],
+                ),
+              ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -256,11 +236,7 @@ class _InstantBookingPageState extends State<InstantBookingPage> {
                         final specs = coach['specializations'] as List?;
                         final spec = specs != null && specs.isNotEmpty ? specs.first as String : '';
                         final rating = coach['rating'];
-                        final minPrice = [
-                          double.tryParse(coach['session_price_chat']?.toString() ?? '0') ?? 0,
-                          double.tryParse(coach['session_price_voice']?.toString() ?? '0') ?? 0,
-                          double.tryParse(coach['session_price_video']?.toString() ?? '0') ?? 0,
-                        ].where((p) => p > 0).fold<double>(0, (a, b) => a == 0 ? b : (b < a ? b : a));
+                        final minPrice = double.tryParse(coach['session_price_voice']?.toString() ?? '0') ?? 0;
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),

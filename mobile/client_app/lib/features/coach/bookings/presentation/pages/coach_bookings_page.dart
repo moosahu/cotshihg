@@ -137,8 +137,8 @@ class _BookingsListState extends State<_BookingsList> {
           ? 'لا توجد جلسات جارية'
           : 'لا توجد جلسات مكتملة';
 
-  static const Map<String, String> _typeLabels = {'video': 'فيديو', 'voice': 'صوتي', 'chat': 'دردشة'};
-  static const Map<String, IconData> _typeIcons = {'video': Icons.videocam_outlined, 'voice': Icons.mic_outlined, 'chat': Icons.chat_bubble_outline};
+  static const Map<String, String> _typeLabels = {'video': 'جلسة', 'voice': 'جلسة', 'chat': 'دردشة'};
+  static const Map<String, IconData> _typeIcons = {'video': Icons.phone_outlined, 'voice': Icons.phone_outlined, 'chat': Icons.chat_bubble_outline};
 
   @override
   Widget build(BuildContext context) {
