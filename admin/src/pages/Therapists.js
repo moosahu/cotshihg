@@ -125,23 +125,22 @@ export default function Therapists() {
     setPricingModal({
       therapistId: row.therapist_id,
       name: row.name,
-      chat: row.session_price_chat ?? '',
       voice: row.session_price_voice ?? '',
-      video: row.session_price_video ?? '',
     });
   };
 
   const savePricing = async () => {
     setSavingPrice(true);
+    const price = parseFloat(pricingModal.voice) || 0;
     try {
       await api.updateTherapistPricing(pricingModal.therapistId, {
-        session_price_chat: parseFloat(pricingModal.chat) || 0,
-        session_price_voice: parseFloat(pricingModal.voice) || 0,
-        session_price_video: parseFloat(pricingModal.video) || 0,
+        session_price_voice: price,
+        session_price_video: price,
+        session_price_chat: price,
       });
       setTherapists(prev => prev.map(t =>
         t.therapist_id === pricingModal.therapistId
-          ? { ...t, session_price_chat: pricingModal.chat, session_price_voice: pricingModal.voice, session_price_video: pricingModal.video }
+          ? { ...t, session_price_voice: pricingModal.voice, session_price_video: pricingModal.voice, session_price_chat: pricingModal.voice }
           : t
       ));
       toast.success('تم تحديث الأسعار');
@@ -182,14 +181,8 @@ export default function Therapists() {
         : <span style={{ color: '#ccc', fontSize: 13 }}>لا يوجد</span>
     },
     {
-      key: 'session_price_video', label: <span>الأسعار <i className="icon-saudi_riyal_new" /></span>,
-      render: (v, row) => (
-        <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-          <div>📹 فيديو: <b>{row.session_price_video ?? '—'}</b> {row.session_price_video ? <i className="icon-saudi_riyal_new" /> : ''}</div>
-          <div>🎙 صوتي: <b>{row.session_price_voice ?? '—'}</b> {row.session_price_voice ? <i className="icon-saudi_riyal_new" /> : ''}</div>
-          <div>💬 نصي: <b>{row.session_price_chat ?? '—'}</b> {row.session_price_chat ? <i className="icon-saudi_riyal_new" /> : ''}</div>
-        </div>
-      )
+      key: 'session_price_voice', label: <span>السعر <i className="icon-saudi_riyal_new" /></span>,
+      render: (v) => v ? <span><b>{v}</b> <i className="icon-saudi_riyal_new" /></span> : '—'
     },
     {
       key: 'is_approved', label: 'الحالة',
@@ -335,26 +328,20 @@ export default function Therapists() {
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>تحديد أسعار الجلسات</h2>
             <p style={{ color: '#8A94A6', fontSize: 13, marginBottom: 24 }}>{pricingModal.name}</p>
 
-            {[
-              { key: 'video', label: '📹 مكالمة فيديو', field: 'video' },
-              { key: 'voice', label: '🎙 مكالمة صوتية', field: 'voice' },
-              { key: 'chat', label: '💬 محادثة نصية', field: 'chat' },
-            ].map(({ key, label, field }) => (
-              <div key={key} style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>{label}</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input
-                    type="number"
-                    min="0"
-                    value={pricingModal[field]}
-                    onChange={e => setPricingModal(prev => ({ ...prev, [field]: e.target.value }))}
-                    style={{ flex: 1, padding: '8px 12px', border: '1px solid #E0E0E0', borderRadius: 8, fontSize: 14, textAlign: 'right' }}
-                    placeholder="0"
-                  />
-                  <i className="icon-saudi_riyal_new" style={{ color: '#8A94A6', fontSize: 22 }} />
-                </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>🎙 سعر الجلسة</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="number"
+                  min="0"
+                  value={pricingModal.voice}
+                  onChange={e => setPricingModal(prev => ({ ...prev, voice: e.target.value }))}
+                  style={{ flex: 1, padding: '10px 12px', border: '1px solid #E0E0E0', borderRadius: 8, fontSize: 15, textAlign: 'right' }}
+                  placeholder="0"
+                />
+                <i className="icon-saudi_riyal_new" style={{ color: '#8A94A6', fontSize: 22 }} />
               </div>
-            ))}
+            </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button
