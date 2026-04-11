@@ -250,15 +250,15 @@ class _SessionTile extends StatelessWidget {
   const _SessionTile({required this.session});
 
   static const Map<String, IconData> typeIcons = {
-    'video': Icons.videocam_outlined,
-    'voice': Icons.mic_outlined,
+    'video': Icons.phone_outlined,
+    'voice': Icons.phone_outlined,
     'chat': Icons.chat_bubble_outline,
   };
 
   @override
   Widget build(BuildContext context) {
     final clientName = session['client_name'] as String? ?? 'عميل';
-    final sessionType = session['session_type'] as String? ?? 'video';
+    final sessionType = session['session_type'] as String? ?? 'voice';
     final scheduledAt = session['scheduled_at'] as String?;
     final scheduledDateTime = scheduledAt != null ? DateTime.tryParse(scheduledAt)?.toLocal() : null;
     final now = DateTime.now();
