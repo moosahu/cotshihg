@@ -244,9 +244,6 @@ exports.endSession = async (req, res) => {
     const booking = await pool.query('SELECT therapist_id FROM bookings WHERE id=$1', [bookingId]);
     await pool.query('UPDATE therapists SET total_sessions = total_sessions + 1 WHERE id=$1', [booking.rows[0].therapist_id]);
 
-    // Delete session chat messages — chat is temporary, no need to persist after session
-    await pool.query('DELETE FROM messages WHERE booking_id=$1', [bookingId]);
-
     successResponse(res, result.rows[0], 'Session ended');
   } catch (err) {
     errorResponse(res, err.message, 500);
@@ -266,10 +263,17 @@ async function cleanupStaleSessions() {
         `UPDATE bookings SET status='completed', updated_at=NOW() WHERE id=$1`,
         [row.booking_id]
       );
-      await pool.query('DELETE FROM messages WHERE booking_id=$1', [row.booking_id]);
     }
     if (result.rows.length > 0) {
       console.log(`🧹 Cleaned up ${result.rows.length} stale sessions`);
+    }
+
+    // Delete chat messages older than 2 hours (session chat is temporary)
+    const deleted = await pool.query(
+      `DELETE FROM messages WHERE created_at < NOW() - INTERVAL '2 hours'`
+    );
+    if (deleted.rowCount > 0) {
+      console.log(`🗑️ Deleted ${deleted.rowCount} expired chat messages`);
     }
   } catch (_) {}
 }
